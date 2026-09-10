@@ -1,41 +1,43 @@
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Search } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { CopyButton } from "./CopyButton";
-import { Panel } from "./Field";
+import { ErrorNote, Panel } from "./Field";
 import { useSettings } from "./settings";
+import type { CompareResult, CompareSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { runForge } from "@/lib/forge.functions";
 
-type CompareResult = {
-  summary?: string;
-  artists?: Array<{ name?: string; match?: number; reasoning?: string[] }>;
-};
-
-export function ComparableArtists() {
+export function ComparableArtists({
+  value,
+  onChange,
+}: {
+  value: CompareSlice;
+  onChange: (next: CompareSlice) => void;
+}) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
-  const [lyrics, setLyrics] = useState("");
-  const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<CompareResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const { lyrics, tags, result } = value;
 
   const run = async () => {
     if (!lyrics.trim() && !tags.trim()) {
-      toast.error("Paste lyrics or style tags first.");
+      setError("Paste lyrics or style tags first.");
       return;
     }
+    setError(null);
     setLoading(true);
     try {
       const res = await forge({
         data: { task: "compare", routing, apiKey, payload: { lyrics, styleTags: tags } },
       });
-      setResult(JSON.parse(res.json) as CompareResult);
+      onChange({ ...value, result: JSON.parse(res.json) as CompareResult });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Lookup failed.");
+      setError(e instanceof Error ? e.message : "Lookup failed.");
     } finally {
       setLoading(false);
     }
@@ -48,6 +50,7 @@ export function ComparableArtists() {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
       <Panel title="Reverse Lookup" subtitle="Paste your lyrics and/or style tags.">
+        {error ? <ErrorNote message={error} onRetry={() => void run()} /> : null}
         <div className="space-y-4">
           <div>
             <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -55,7 +58,7 @@ export function ComparableArtists() {
             </span>
             <Textarea
               value={lyrics}
-              onChange={(e) => setLyrics(e.target.value)}
+              onChange={(e) => onChange({ ...value, lyrics: e.target.value })}
               rows={10}
               placeholder={"Paste a verse or chorus here…"}
               className="resize-y border-border bg-card/60 font-mono text-sm focus-visible:ring-primary"
@@ -67,19 +70,19 @@ export function ComparableArtists() {
             </span>
             <Textarea
               value={tags}
-              onChange={(e) => setTags(e.target.value)}
+              onChange={(e) => onChange({ ...value, tags: e.target.value })}
               rows={3}
               placeholder="dark synthwave, 104 bpm, breathy female vocal, analog tape…"
               className="resize-y border-border bg-card/60 font-mono text-sm focus-visible:ring-primary"
             />
           </div>
           <Button
-            onClick={run}
+            onClick={() => void run()}
             disabled={loading}
-            className="h-11 w-full gap-2 font-display tracking-wide glow-violet"
+            className="glow-primary h-11 w-full gap-2 font-display tracking-wide"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-            {loading ? "Matching…" : "Find Comparable Artists"}
+            {loading ? "Matching tone against real catalogues…" : "Find Comparable Artists"}
           </Button>
         </div>
       </Panel>
@@ -122,7 +125,7 @@ export function ComparableArtists() {
             ))}
           </div>
         ) : (
-          <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border text-center">
+          <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-6 text-center">
             <Search className="size-8 text-muted-foreground" />
             <p className="max-w-xs text-sm text-muted-foreground">
               Results appear here: three to four real artists with a bulleted reasoning breakdown.
