@@ -33,7 +33,7 @@ export function ComparableArtists() {
       const res = await forge({
         data: { task: "compare", routing, apiKey, payload: { lyrics, styleTags: tags } },
       });
-      setResult(res.result as CompareResult);
+      setResult(JSON.parse(res.json) as CompareResult);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lookup failed.");
     } finally {

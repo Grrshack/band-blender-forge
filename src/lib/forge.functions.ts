@@ -178,5 +178,5 @@ export const runForge = createServerFn({ method: "POST" })
       provider = "built-in";
     }
 
-    return { provider, result: extractJson(raw) as Record<string, unknown> };
+    return { provider, json: JSON.stringify(extractJson(raw)) };
   });

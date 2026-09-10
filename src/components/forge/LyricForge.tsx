@@ -57,7 +57,10 @@ export function LyricForge({ blend }: { blend: BlendResult | null }) {
           payload: { theme, hookIdea: hook, notes, style: styleContext },
         },
       });
-      const out = res.result as { title?: string; sections?: Array<{ tag?: string; lines?: string[] }> };
+      const out = JSON.parse(res.json) as {
+        title?: string;
+        sections?: Array<{ tag?: string; lines?: string[] }>;
+      };
       setTitle(out.title ?? "");
       setSections(
         (out.sections ?? []).map((s) => ({
@@ -110,7 +113,7 @@ export function LyricForge({ blend }: { blend: BlendResult | null }) {
           },
         },
       });
-      const out = res.result as { line?: string };
+      const out = JSON.parse(res.json) as { line?: string };
       if (out.line) editLine(si, li, out.line);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Line rewrite failed.");
@@ -143,7 +146,7 @@ export function LyricForge({ blend }: { blend: BlendResult | null }) {
           },
         },
       });
-      const out = res.result as { lines?: string[] };
+      const out = JSON.parse(res.json) as { lines?: string[] };
       if (out.lines?.length) {
         setSections((prev) =>
           prev.map((s, i) =>

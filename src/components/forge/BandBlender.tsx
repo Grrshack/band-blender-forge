@@ -78,7 +78,7 @@ export function BandBlender({
       const res = await forge({
         data: { task: "blend", routing, apiKey, payload: { artists: names, sliders } },
       });
-      const blend = res.result as BlendResult;
+      const blend = JSON.parse(res.json) as BlendResult;
       setResult(blend);
       if (blend.recommendedSliders) {
         setSliders({
