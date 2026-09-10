@@ -4,7 +4,7 @@ import { z } from "zod";
 const RoutingSchema = z.enum(["fast", "craft"]);
 
 const InputSchema = z.object({
-  task: z.enum(["blend", "lyrics", "regenLine", "regenSection", "compare"]),
+  task: z.enum(["blend", "lyrics", "regenLine", "regenSection", "compare", "critique"]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().optional(),
   payload: z.record(z.any()),
@@ -70,6 +70,17 @@ Return JSON exactly:
 {"summary":"one sentence describing the detected tone",
 "artists":[{"name":"real artist","match":0-100,"reasoning":["specific bullet","specific bullet","specific bullet"]}]}
 Return 3 or 4 artists, real and verifiable, most similar first.`;
+    case "critique":
+      return `You are a blunt A&R critic. Give honest, specific, unflattering-where-deserved feedback on this song draft.
+Input: ${p}
+No praise padding, no hedging, no "great start". Quote exact lines when criticising. Every criticism carries a concrete fix.
+Return JSON exactly:
+{"verdict":"2-3 sentences, brutally direct overall judgement",
+"scores":[{"label":"Hook strength","score":0-10,"note":"one sentence"},{"label":"Imagery","score":0-10,"note":"..."},{"label":"Singability","score":0-10,"note":"..."},{"label":"Structure","score":0-10,"note":"..."},{"label":"Originality","score":0-10,"note":"..."}],
+"cliches":[{"line":"the exact offending line","why":"why it is worn out","fix":"a specific rewritten line"}],
+"prosody":[{"line":"the exact line","note":"why it is awkward to sing and how to re-stress it"}],
+"fixFirst":["most important fix","second","third"]}
+Return every score. Return an empty array where nothing qualifies.`;
     default:
       throw new Error("Unknown task");
   }

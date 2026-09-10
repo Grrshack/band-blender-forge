@@ -37,8 +37,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-brand: var(--brand);
   --color-violet: var(--violet);
-  --color-teal: var(--teal);
   --color-signal-high: var(--signal-high);
   --color-signal-mid: var(--signal-mid);
   --color-signal-low: var(--signal-low);
@@ -52,28 +52,29 @@
 :root {
   --radius: 0.5rem;
 
-  --background: oklch(0.16 0.014 285);
-  --foreground: oklch(0.95 0.005 285);
+  /* Electric blue lead, violet as the secondary edge. */
+  --background: oklch(0.16 0.028 272);
+  --foreground: oklch(0.97 0.006 270);
 
-  --panel: oklch(0.2 0.016 285);
-  --panel-foreground: oklch(0.95 0.005 285);
+  --panel: oklch(0.22 0.038 278);
+  --panel-foreground: oklch(0.97 0.006 270);
 
-  --card: oklch(0.21 0.017 285);
-  --card-foreground: oklch(0.95 0.005 285);
-  --popover: oklch(0.19 0.016 285);
-  --popover-foreground: oklch(0.95 0.005 285);
+  --card: oklch(0.23 0.038 278);
+  --card-foreground: oklch(0.97 0.006 270);
+  --popover: oklch(0.2 0.036 278);
+  --popover-foreground: oklch(0.97 0.006 270);
 
-  --violet: oklch(0.66 0.24 305);
-  --teal: oklch(0.79 0.16 190);
+  --brand: oklch(0.57 0.235 268);
+  --violet: oklch(0.66 0.22 304);
 
-  --primary: oklch(0.66 0.24 305);
-  --primary-foreground: oklch(0.14 0.02 300);
-  --secondary: oklch(0.27 0.02 285);
-  --secondary-foreground: oklch(0.93 0.006 285);
-  --muted: oklch(0.25 0.017 285);
-  --muted-foreground: oklch(0.68 0.015 285);
-  --accent: oklch(0.79 0.16 190);
-  --accent-foreground: oklch(0.16 0.02 200);
+  --primary: oklch(0.57 0.235 268);
+  --primary-foreground: oklch(0.98 0.01 265);
+  --secondary: oklch(0.29 0.035 278);
+  --secondary-foreground: oklch(0.95 0.006 270);
+  --muted: oklch(0.27 0.032 278);
+  --muted-foreground: oklch(0.74 0.02 275);
+  --accent: oklch(0.7 0.2 302);
+  --accent-foreground: oklch(0.16 0.03 300);
   --destructive: oklch(0.62 0.22 22);
   --destructive-foreground: oklch(0.97 0.01 20);
 
@@ -81,21 +82,21 @@
   --signal-mid: oklch(0.82 0.16 90);
   --signal-low: oklch(0.66 0.2 30);
 
-  --border: oklch(0.31 0.02 288);
-  --input: oklch(0.28 0.02 288);
-  --ring: oklch(0.66 0.24 305);
+  --border: oklch(0.38 0.035 278);
+  --input: oklch(0.34 0.035 278);
+  --ring: oklch(0.62 0.22 266);
 
-  --gradient-neon: linear-gradient(115deg, var(--violet), var(--teal));
+  --gradient-neon: linear-gradient(115deg, var(--brand), var(--violet));
   --gradient-panel: linear-gradient(
     160deg,
-    color-mix(in oklab, var(--violet) 8%, var(--panel)),
+    color-mix(in oklab, var(--brand) 10%, var(--panel)),
     var(--panel)
   );
-  --glow-violet: 0 0 0 1px color-mix(in oklab, var(--violet) 35%, transparent),
-    0 12px 40px -12px color-mix(in oklab, var(--violet) 55%, transparent);
-  --glow-teal: 0 0 0 1px color-mix(in oklab, var(--teal) 35%, transparent),
-    0 12px 40px -14px color-mix(in oklab, var(--teal) 50%, transparent);
-  --grid-line: color-mix(in oklab, var(--violet) 9%, transparent);
+  --glow-primary: 0 0 0 1px color-mix(in oklab, var(--brand) 40%, transparent),
+    0 12px 40px -12px color-mix(in oklab, var(--brand) 60%, transparent);
+  --glow-accent: 0 0 0 1px color-mix(in oklab, var(--violet) 35%, transparent),
+    0 12px 40px -14px color-mix(in oklab, var(--violet) 50%, transparent);
+  --grid-line: color-mix(in oklab, var(--brand) 11%, transparent);
 }
 
 @layer base {
@@ -110,12 +111,12 @@
     background-image:
       radial-gradient(
         ellipse 70% 45% at 12% -10%,
-        color-mix(in oklab, var(--violet) 22%, transparent),
+        color-mix(in oklab, var(--brand) 26%, transparent),
         transparent
       ),
       radial-gradient(
         ellipse 60% 40% at 95% 0%,
-        color-mix(in oklab, var(--teal) 14%, transparent),
+        color-mix(in oklab, var(--violet) 14%, transparent),
         transparent
       ),
       linear-gradient(var(--grid-line) 1px, transparent 1px),
@@ -129,7 +130,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--teal) 45%, transparent);
+    background: color-mix(in oklab, var(--brand) 50%, transparent);
   }
 }
 
@@ -147,14 +148,14 @@
   backdrop-filter: blur(6px);
 }
 
-@utility glow-violet {
-  box-shadow: var(--glow-violet);
+@utility glow-primary {
+  box-shadow: var(--glow-primary);
 }
 
-@utility glow-teal {
-  box-shadow: var(--glow-teal);
+@utility glow-accent {
+  box-shadow: var(--glow-accent);
 }
 
 @utility hairline-top {
-  border-top: 1px solid color-mix(in oklab, var(--violet) 25%, transparent);
+  border-top: 1px solid color-mix(in oklab, var(--brand) 28%, transparent);
 }
