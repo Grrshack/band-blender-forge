@@ -1,35 +1,26 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Radar, Sparkles } from "lucide-react";
+import { Loader2, Radar, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { CopyButton } from "./CopyButton";
-import { Panel, ReadoutField } from "./Field";
+import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { useSettings } from "./settings";
+import type { BlendResult, BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { runForge } from "@/lib/forge.functions";
 import { cn } from "@/lib/utils";
 
-export type BlendResult = {
-  confidence?: { level?: string; note?: string };
-  genre?: string;
-  tempo?: string;
-  instrumentation?: string;
-  vocals?: string;
-  mood?: string;
-  styleTag?: string;
-  reconciliation?: string;
-  recommendedSliders?: { energy?: number; complexity?: number; brightness?: number };
-  sliderNotes?: string;
-};
+export type { BlendResult } from "./types";
 
 const SLIDERS = [
   { key: "energy", label: "Energy" },
   { key: "complexity", label: "Complexity" },
   { key: "brightness", label: "Brightness" },
 ] as const;
+
+const DEMO = ["Portishead", "Massive Attack", "FKA twigs"];
 
 function ConfidenceLamp({ level, note }: { level: string; note: string }) {
   const tone =
@@ -53,43 +44,55 @@ function ConfidenceLamp({ level, note }: { level: string; note: string }) {
 }
 
 export function BandBlender({
+  value,
+  onChange,
   onSendToForge,
 }: {
+  value: BlendSlice;
+  onChange: (next: BlendSlice) => void;
   onSendToForge: (blend: BlendResult) => void;
 }) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
-  const [artists, setArtists] = useState(["", "", ""]);
-  const [sliders, setSliders] = useState({ energy: 60, complexity: 50, brightness: 55 });
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<BlendResult | null>(null);
+  const [stage, setStage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const { artists, sliders, result } = value;
 
   const setArtist = (i: number, v: string) =>
-    setArtists((prev) => prev.map((a, idx) => (idx === i ? v : a)));
+    onChange({ ...value, artists: artists.map((a, idx) => (idx === i ? v : a)) });
 
-  const run = async () => {
-    const names = artists.map((a) => a.trim()).filter(Boolean);
+  const run = async (override?: string[]) => {
+    const source = override ?? artists;
+    const names = source.map((a) => a.trim()).filter(Boolean);
     if (names.length === 0) {
-      toast.error("Add at least one artist to blend.");
+      setError("Add at least one artist to blend.");
       return;
     }
+    setError(null);
     setLoading(true);
+    setStage("Assessing artist familiarity…");
+    const timer = setTimeout(() => setStage("Reconciling conflicting elements…"), 3500);
     try {
       const res = await forge({
         data: { task: "blend", routing, apiKey, payload: { artists: names, sliders } },
       });
       const blend = JSON.parse(res.json) as BlendResult;
-      setResult(blend);
-      if (blend.recommendedSliders) {
-        setSliders({
-          energy: blend.recommendedSliders.energy ?? sliders.energy,
-          complexity: blend.recommendedSliders.complexity ?? sliders.complexity,
-          brightness: blend.recommendedSliders.brightness ?? sliders.brightness,
-        });
-      }
+      onChange({
+        artists: override ?? artists,
+        sliders: {
+          energy: blend.recommendedSliders?.energy ?? sliders.energy,
+          complexity: blend.recommendedSliders?.complexity ?? sliders.complexity,
+          brightness: blend.recommendedSliders?.brightness ?? sliders.brightness,
+        },
+        result: blend,
+      });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Blend failed.");
+      setError(e instanceof Error ? e.message : "Blend failed.");
     } finally {
+      clearTimeout(timer);
+      setStage("");
       setLoading(false);
     }
   };
@@ -100,6 +103,7 @@ export function BandBlender({
     <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <div className="space-y-5">
         <Panel title="Band Lookup" subtitle="Blend up to three artists into one produceable style.">
+          {error ? <ErrorNote message={error} onRetry={() => void run()} /> : null}
           <div className="space-y-3">
             {artists.map((a, i) => (
               <div key={i} className="relative">
@@ -131,23 +135,27 @@ export function BandBlender({
                   max={100}
                   step={1}
                   onValueChange={(v) =>
-                    setSliders((prev) => ({ ...prev, [s.key]: v[0] ?? prev[s.key] }))
+                    onChange({
+                      ...value,
+                      sliders: { ...sliders, [s.key]: v[0] ?? sliders[s.key] },
+                    })
                   }
                 />
               </div>
             ))}
-            {result?.sliderNotes ? (
-              <p className="text-xs text-muted-foreground italic">{result.sliderNotes}</p>
-            ) : null}
+            <p className="text-xs text-muted-foreground italic">
+              {result?.sliderNotes ??
+                "Move these before re-running — the blend is rebuilt around your targets."}
+            </p>
           </div>
 
           <Button
-            onClick={run}
+            onClick={() => void run()}
             disabled={loading}
-            className="mt-5 h-11 w-full gap-2 font-display tracking-wide glow-violet"
+            className="glow-primary mt-5 h-11 w-full gap-2 font-display tracking-wide"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
-            {loading ? "Blending…" : "Run Blend"}
+            {loading ? stage || "Blending…" : result ? "Re-run With These Sliders" : "Run Blend"}
           </Button>
         </Panel>
       </div>
@@ -199,12 +207,25 @@ export function BandBlender({
           </>
         ) : (
           <Panel title="Style Breakdown" subtitle="Awaiting input.">
-            <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border text-center">
+            <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border px-6 text-center">
               <Radar className="size-8 text-muted-foreground" />
-              <p className="max-w-xs text-sm text-muted-foreground">
-                Enter one to three artists and run the blend to get genre, tempo, instrumentation,
-                vocals, mood and a copy-ready style tag prompt.
+              <p className="max-w-md text-sm text-muted-foreground">
+                Name one to three artists — the more specific the better. Try a contrast the model
+                has to reconcile, like{" "}
+                <span className="text-foreground">Johnny Cash + Burial</span>, rather than three
+                artists from the same shelf.
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onChange({ ...value, artists: DEMO });
+                  void run(DEMO);
+                }}
+                className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
+              >
+                <Wand className="size-3.5" /> Try a demo blend
+              </Button>
             </div>
           </Panel>
         )}
