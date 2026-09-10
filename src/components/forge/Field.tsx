@@ -1,7 +1,23 @@
+import { AlertTriangle, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+      <p className="min-w-0 flex-1 text-xs leading-relaxed text-foreground/90">{message}</p>
+      {onRetry ? (
+        <Button size="sm" variant="outline" onClick={onRetry} className="h-7 gap-1.5 text-xs">
+          <RotateCw className="size-3" /> Retry
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
 export function Panel({
   title,
