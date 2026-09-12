@@ -70,21 +70,26 @@ export function WorkspaceBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
 
-  // Debounced autosave of the whole workspace state.
+  // Debounced autosave of the whole workspace state. The first time a signed-in
+  // user puts real work in, the session is created automatically.
   useEffect(() => {
-    if (!session || !currentId) return;
+    if (!session) return;
+    if (!currentId && !hasContent(state)) return;
     if (skipNext.current) {
       skipNext.current = false;
       return;
     }
     setStatus("saving");
     const t = setTimeout(() => {
-      save({ data: { id: currentId, name, state } })
-        .then(() => {
-          setStatus("saved");
-          void refresh();
-        })
-        .catch(() => setStatus("idle"));
+      const op = currentId
+        ? save({ data: { id: currentId, name, state } })
+        : create({ data: { name, state } }).then((row) => {
+            setCurrentId((row as Row).id);
+          });
+      op.then(() => {
+        setStatus("saved");
+        void refresh();
+      }).catch(() => setStatus("idle"));
     }, 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
