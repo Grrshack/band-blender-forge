@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "./auth";
-import { exportBrief, mergeState, type ForgeState } from "./types";
+import { exportBrief, hasContent, mergeState, type ForgeState } from "./types";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

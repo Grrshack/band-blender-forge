@@ -71,6 +71,20 @@ export const emptyState = (): ForgeState => ({
   critique: { lyrics: "", notes: "", result: null },
 });
 
+export function hasContent(s: ForgeState): boolean {
+  return Boolean(
+    s.blend.artists.some((a) => a.trim()) ||
+      s.blend.result ||
+      s.lyrics.theme.trim() ||
+      s.lyrics.sections.length ||
+      s.compare.lyrics.trim() ||
+      s.compare.tags.trim() ||
+      s.compare.result ||
+      s.critique.lyrics.trim() ||
+      s.critique.result,
+  );
+}
+
 export function mergeState(raw: unknown): ForgeState {
   const base = emptyState();
   if (!raw || typeof raw !== "object") return base;
