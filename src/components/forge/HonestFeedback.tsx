@@ -136,7 +136,9 @@ export function HonestFeedback({
 
       <Panel
         title="The Verdict"
-        subtitle={result?.verdict ? undefined : "Scores, clichés, prosody and what to fix first."}
+        subtitle={
+          result?.verdict ? "Scored, quoted and prioritised." : "Scores, clichés, prosody and what to fix first."
+        }
         action={plain ? <CopyButton value={plain} label="Copy notes" /> : undefined}
       >
         {result ? (

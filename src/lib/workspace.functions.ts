@@ -56,12 +56,12 @@ export const saveWorkspace = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
-    if (data.name !== undefined) patch["name"] = data.name;
-    if (data.state !== undefined) patch["state"] = data.state;
     const { error } = await context.supabase
       .from("workspaces")
-      .update(patch)
+      .update({
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.state !== undefined ? { state: data.state } : {}),
+      })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
