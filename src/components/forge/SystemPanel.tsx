@@ -16,7 +16,7 @@ export function SystemPanel() {
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3">
       <div className="pointer-events-auto w-full max-w-3xl">
         {open ? (
-          <div className="panel-surface glow-violet mb-2 p-4">
+          <div className="panel-surface glow-primary mb-2 p-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -77,9 +77,10 @@ export function SystemPanel() {
             <p className="hairline-top mt-4 flex items-start gap-2 pt-3 text-[11px] leading-relaxed text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-signal-high" />
               <span>
-                This application holds zero persistent state. It runs purely on client-side state and
-                a stateless serverless function at request time. No lyrics, keys, or lookups are
-                saved to any database, and nothing survives closing this tab.
+                Signed out, nothing leaves this tab. Signed in, only the sessions and presets you
+                save are stored, they are private to your account, and you can delete any of them at
+                any time. Your API key is never stored — it lives in this browser tab only and is
+                sent straight to the model at request time. No audio is ever uploaded.
               </span>
             </p>
           </div>
