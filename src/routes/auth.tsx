@@ -53,14 +53,20 @@ function AuthPage() {
         if (error) throw error;
         navigate({ to: "/" });
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast.success("Account created. You're signed in.");
-        navigate({ to: "/" });
+        if (data.session) {
+          toast.success("Account created. You're signed in.");
+          navigate({ to: "/" });
+        } else {
+          toast.success("Check your email to confirm your account before signing in.");
+          setMode("in");
+          setPassword("");
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign-in failed.");
