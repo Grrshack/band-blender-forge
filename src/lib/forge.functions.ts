@@ -100,6 +100,13 @@ function extractJson(text: string): unknown {
   }
 }
 
+class RateLimitError extends Error {
+  constructor() {
+    super("Rate limited by the model provider. Wait a moment and try again.");
+    this.name = "RateLimitError";
+  }
+}
+
 function failure(status: number, provider: string, message: string): Error {
   if (status === 401 || status === 403) {
     return new Error(
@@ -112,12 +119,27 @@ function failure(status: number, provider: string, message: string): Error {
     return new Error(`Out of AI credits. ${message}`);
   }
   if (status === 429) {
-    return new Error("Rate limited by the model provider. Wait a moment and try again.");
+    return new RateLimitError();
   }
   return new Error(message || `Model request failed (${status}).`);
 }
 
-async function callAnthropic(apiKey: string, routing: Routing, user: string) {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Retries a call up to 5 attempts on rate limiting, waiting 2s, 4s, 8s, 16s. */
+async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const delays = [2000, 4000, 8000, 16000];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!(e instanceof RateLimitError) || attempt >= delays.length) throw e;
+      await sleep(delays[attempt]!);
+    }
+  }
+}
+
+async function callAnthropic(apiKey: string, routing: Routing, user: string, maxTokens: number) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -127,7 +149,7 @@ async function callAnthropic(apiKey: string, routing: Routing, user: string) {
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODELS[routing],
-      max_tokens: 3000,
+      max_tokens: maxTokens,
       system: SYSTEM,
       messages: [{ role: "user", content: user }],
     }),
@@ -140,7 +162,7 @@ async function callAnthropic(apiKey: string, routing: Routing, user: string) {
   return json.content?.map((c) => c.text ?? "").join("") ?? "";
 }
 
-async function callGateway(key: string, routing: Routing, user: string) {
+async function callGateway(key: string, routing: Routing, user: string, maxTokens: number) {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -150,6 +172,7 @@ async function callGateway(key: string, routing: Routing, user: string) {
     },
     body: JSON.stringify({
       model: GATEWAY_MODELS[routing],
+      max_tokens: maxTokens,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content: user },
@@ -172,22 +195,29 @@ export const runForge = createServerFn({ method: "POST" })
     const user = prompt(data.task, data.payload);
     const userKey = data.apiKey?.trim();
 
-    let raw: string;
-    let provider: "anthropic" | "built-in";
-
-    if (userKey) {
-      raw = await callAnthropic(userKey, data.routing, user);
-      provider = "anthropic";
-    } else {
-      const gatewayKey = process.env["LOVABLE_API_KEY"];
-      if (!gatewayKey) {
-        throw new Error(
-          "No Anthropic API key set and no built-in AI available. Add a key in the System panel.",
-        );
-      }
-      raw = await callGateway(gatewayKey, data.routing, user);
-      provider = "built-in";
+    const provider: "anthropic" | "built-in" = userKey ? "anthropic" : "built-in";
+    const gatewayKey = process.env["LOVABLE_API_KEY"];
+    if (!userKey && !gatewayKey) {
+      throw new Error(
+        "No Anthropic API key set and no built-in AI available. Add a key in the System panel.",
+      );
     }
 
-    return { provider, json: JSON.stringify(extractJson(raw)) };
+    const attempt = (maxTokens: number) =>
+      withRateLimitRetry(() =>
+        userKey
+          ? callAnthropic(userKey, data.routing, user, maxTokens)
+          : callGateway(gatewayKey!, data.routing, user, maxTokens),
+      );
+
+    try {
+      const raw = await attempt(3000);
+      return { provider, json: JSON.stringify(extractJson(raw)) };
+    } catch (e) {
+      const truncated = e instanceof Error && e.message.includes("could not be parsed");
+      if (!truncated) throw e;
+      // The response was likely cut off — retry once with more room to finish.
+      const raw = await attempt(8000);
+      return { provider, json: JSON.stringify(extractJson(raw)) };
+    }
   });
