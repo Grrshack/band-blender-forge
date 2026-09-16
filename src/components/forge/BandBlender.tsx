@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Radar, Sparkles, Wand } from "lucide-react";
+import { Info, Loader2, Radar, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -9,15 +9,33 @@ import type { BlendResult, BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { runForge } from "@/lib/forge.functions";
 import { cn } from "@/lib/utils";
 
 export type { BlendResult } from "./types";
 
 const SLIDERS = [
-  { key: "energy", label: "Energy" },
-  { key: "complexity", label: "Complexity" },
-  { key: "brightness", label: "Brightness" },
+  {
+    key: "energy",
+    label: "Energy",
+    hint: "How intense and driving the track feels — low is sparse and restrained, high is aggressive and relentless.",
+  },
+  {
+    key: "complexity",
+    label: "Complexity",
+    hint: "How intricate the arrangement is — low is simple and repetitive, high is layered and technical.",
+  },
+  {
+    key: "brightness",
+    label: "Brightness",
+    hint: "The overall tonal character — low is dark and bass-heavy, high is crisp and shimmering.",
+  },
 ] as const;
 
 const DEMO = ["Portishead", "Massive Attack", "FKA twigs"];
@@ -126,7 +144,25 @@ export function BandBlender({
             {SLIDERS.map((s) => (
               <div key={s.key}>
                 <div className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                  <span>{s.label}</span>
+                  <span className="flex items-center gap-1.5">
+                    {s.label}
+                    <TooltipProvider delayDuration={150}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`What does ${s.label.toLowerCase()} mean?`}
+                            className="text-muted-foreground/70 transition-colors hover:text-accent"
+                          >
+                            <Info className="size-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-64 text-xs leading-relaxed">
+                          {s.hint}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </span>
                   <span className="text-accent">{sliders[s.key]}</span>
                 </div>
                 <Slider
