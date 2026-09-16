@@ -37,6 +37,10 @@ function prompt(task: string, payload: Record<string, unknown>): string {
       return `Blend these artists into one coherent, produceable style for AI music generation.
 Input: ${p}
 The "sliders" values are user-set 0-100 targets; honour them and reflect them in the output.
+Slider definitions (interpret user values against these exact meanings):
+- energy: How intense and driving the track feels — low is sparse and restrained, high is aggressive and relentless.
+- complexity: How intricate the arrangement is — low is simple and repetitive, high is layered and technical.
+- brightness: The overall tonal character — low is dark and bass-heavy, high is crisp and shimmering.
 Assess your own real familiarity with each named artist honestly.
 Return JSON exactly:
 {"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. High artist familiarity"},
