@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AudioLines, BookMarked, Gauge, Search, Sliders, Wand2 } from "lucide-react";
+import { AudioLines, AudioWaveform, BookMarked, Gauge, Search, Sliders, Wand2 } from "lucide-react";
 import { useState } from "react";
 
 import { AuthProvider } from "@/components/forge/auth";
@@ -7,6 +7,7 @@ import { BandBlender } from "@/components/forge/BandBlender";
 import { ComparableArtists } from "@/components/forge/ComparableArtists";
 import { HonestFeedback } from "@/components/forge/HonestFeedback";
 import { LyricForge } from "@/components/forge/LyricForge";
+import { MasteringLab } from "@/components/forge/MasteringLab";
 import { PromptLibrary } from "@/components/forge/PromptLibrary";
 import { SettingsProvider } from "@/components/forge/settings";
 import { SystemPanel } from "@/components/forge/SystemPanel";
@@ -42,6 +43,7 @@ const TABS = [
   { value: "lyrics", label: "Lyric Forge", icon: Wand2 },
   { value: "compare", label: "Comparables", icon: Search },
   { value: "feedback", label: "Honest Feedback", icon: Gauge },
+  { value: "master", label: "Mastering", icon: AudioWaveform },
   { value: "library", label: "Prompt Library", icon: BookMarked },
 ];
 
@@ -136,6 +138,9 @@ function Index() {
                   onChange={(v) => patch("critique", v)}
                   lyrics={state.lyrics}
                 />
+              </TabsContent>
+              <TabsContent value="master" className="mt-0">
+                <MasteringLab />
               </TabsContent>
               <TabsContent value="library" className="mt-0">
                 <PromptLibrary onApply={applyPreset} />
