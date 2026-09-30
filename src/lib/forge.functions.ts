@@ -1,20 +1,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { runPipeline } from "@/lib/forge-pipeline";
+import { lookupArtists } from "@/lib/musicbrainz";
+import { optionalSupabaseAuth } from "@/lib/optional-auth";
+import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
+import { SYSTEM } from "@/lib/forge-prompts";
+
 const RoutingSchema = z.enum(["fast", "craft"]);
 
+/** Generous for a song brief plus context, small enough to stop abuse. */
+const MAX_PAYLOAD_CHARS = 60_000;
+
 const InputSchema = z.object({
-  task: z.enum(["blend", "lyrics", "regenLine", "regenSection", "compare", "critique"]),
+  task: z.enum(["blend", "lyrics", "regenLine", "regenSection", "compare", "critique", "fixTake"]),
   routing: RoutingSchema.default("fast"),
-  apiKey: z.string().trim().optional(),
-  payload: z.record(z.any()),
+  apiKey: z.string().trim().max(300).optional(),
+  payload: z
+    .record(z.any())
+    .refine((p) => JSON.stringify(p).length <= MAX_PAYLOAD_CHARS, "That input is too large."),
 });
 
 type Routing = z.infer<typeof RoutingSchema>;
 
 const ANTHROPIC_MODELS: Record<Routing, string> = {
-  fast: "claude-3-5-haiku-latest",
-  craft: "claude-sonnet-4-5",
+  fast: "claude-haiku-4-5-20251001",
+  craft: "claude-sonnet-5-5",
 };
 
 const GATEWAY_MODELS: Record<Routing, string> = {
@@ -22,76 +33,14 @@ const GATEWAY_MODELS: Record<Routing, string> = {
   craft: "google/gemini-3.1-pro-preview",
 };
 
-const SYSTEM = `You are a pre-production planning engine for AI music generation (Suno-style).
-You are ruthlessly specific. You never produce generic AI-slop language.
-Banned lyric crutches: "neon lights", "concrete jungle", "shadows dance", "broken wings",
-"burning bright", "fading light", "we are the ones", "chasing dreams", "heart of gold",
-"tears like rain", "rise from the ashes", "electric feel".
-Prioritise hook catchiness, syllabic rhythm and singability over end-rhyme.
-Always reply with ONLY raw JSON. No markdown fences, no commentary.`;
-
-function prompt(task: string, payload: Record<string, unknown>): string {
-  const p = JSON.stringify(payload);
-  switch (task) {
-    case "blend":
-      return `Blend these artists into one coherent, produceable style for AI music generation.
-Input: ${p}
-The "sliders" values are user-set 0-100 targets; honour them and reflect them in the output.
-Slider definitions (interpret user values against these exact meanings):
-- energy: How intense and driving the track feels — low is sparse and restrained, high is aggressive and relentless.
-- complexity: How intricate the arrangement is — low is simple and repetitive, high is layered and technical.
-- brightness: The overall tonal character — low is dark and bass-heavy, high is crisp and shimmering.
-Assess your own real familiarity with each named artist honestly.
-Return JSON exactly:
-{"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. High artist familiarity"},
-"genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
-"vocals":"string","mood":"string",
-"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood",
-"reconciliation":"2-4 sentences explaining exactly how conflicting elements of the chosen artists are fused, naming the specific conflicts and the resolution",
-"recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
-"sliderNotes":"one sentence on why those values suit this blend"}`;
-    case "lyrics":
-      return `Write song lyrics for this brief.
-Input: ${p}
-Rules: hooks must be rhythmically repeatable and easy to sing; concrete images and specific nouns only;
-avoid banned crutch phrases; vary line lengths; the chorus hook must land in its first 5 words.
-Return JSON exactly:
-{"title":"string","sections":[{"tag":"[Verse 1]","lines":["line","line"]}]}
-Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro] as appropriate.`;
-    case "regenLine":
-      return `Rewrite ONE lyric line inside an existing song, keeping syllable count and rhythm close, keeping meaning coherent with neighbours, and avoiding clichés.
-Input: ${p}
-Return JSON exactly: {"line":"the new line"}`;
-    case "regenSection":
-      return `Rewrite ONE section of an existing song. Keep locked lines EXACTLY as given (they are marked locked).
-Input: ${p}
-Return JSON exactly: {"tag":"[Chorus]","lines":["line","line"]}
-Return the same number of lines, in order, with locked lines unchanged.`;
-    case "compare":
-      return `Reverse-lookup: given user lyrics and/or style tags, name real-world recording artists whose tone matches.
-Input: ${p}
-Return JSON exactly:
-{"summary":"one sentence describing the detected tone",
-"artists":[{"name":"real artist","match":0-100,"reasoning":["specific bullet","specific bullet","specific bullet"]}]}
-Return 3 or 4 artists, real and verifiable, most similar first.`;
-    case "critique":
-      return `You are a blunt A&R critic. Give honest, specific, unflattering-where-deserved feedback on this song draft.
-Input: ${p}
-No praise padding, no hedging, no "great start". Quote exact lines when criticising. Every criticism carries a concrete fix.
-Return JSON exactly:
-{"verdict":"2-3 sentences, brutally direct overall judgement",
-"scores":[{"label":"Hook strength","score":0-10,"note":"one sentence"},{"label":"Imagery","score":0-10,"note":"..."},{"label":"Singability","score":0-10,"note":"..."},{"label":"Structure","score":0-10,"note":"..."},{"label":"Originality","score":0-10,"note":"..."}],
-"cliches":[{"line":"the exact offending line","why":"why it is worn out","fix":"a specific rewritten line"}],
-"prosody":[{"line":"the exact line","note":"why it is awkward to sing and how to re-stress it"}],
-"fixFirst":["most important fix","second","third"]}
-Return every score. Return an empty array where nothing qualifies.`;
-    default:
-      throw new Error("Unknown task");
-  }
-}
+/** Writing quality is the product, so these always use the stronger model, whatever the toggle says. */
+const CRAFT_TASKS = new Set(["lyrics", "regenLine", "regenSection", "critique", "fixTake"]);
 
 function extractJson(text: string): unknown {
-  const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const cleaned = text
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "")
+    .trim();
   try {
     return JSON.parse(cleaned);
   } catch {
@@ -194,34 +143,60 @@ async function callGateway(key: string, routing: Routing, user: string, maxToken
 }
 
 export const runForge = createServerFn({ method: "POST" })
+  .middleware([optionalSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
-  .handler(async ({ data }) => {
-    const user = prompt(data.task, data.payload);
+  .handler(async ({ data, context }) => {
     const userKey = data.apiKey?.trim();
-
     const provider: "anthropic" | "built-in" = userKey ? "anthropic" : "built-in";
     const gatewayKey = process.env["LOVABLE_API_KEY"];
+
     if (!userKey && !gatewayKey) {
       throw new Error(
         "No Anthropic API key set and no built-in AI available. Add a key in the System panel.",
       );
     }
 
-    const attempt = (maxTokens: number) =>
+    // The built-in model is paid for by the site owner: require sign-in and rate-limit it.
+    // Callers who bring their own key spend their own credits and are not restricted.
+    if (!userKey) {
+      if (!context.userId || !context.supabase) {
+        throw new Error(
+          "Sign in to use the built-in model, or add your own Anthropic API key in System & Credentials.",
+        );
+      }
+      const usage = await consumeUsage(context.supabase, context.userId, data.task);
+      if (!usage.allowed) {
+        throw new Error(
+          `You've used the ${BUILT_IN_CALLS_PER_HOUR} built-in model calls allowed per hour. Try again later, or add your own Anthropic API key in System & Credentials.`,
+        );
+      }
+    }
+
+    const routing: Routing = CRAFT_TASKS.has(data.task) ? "craft" : data.routing;
+
+    const call = (text: string, maxTokens: number) =>
       withRateLimitRetry(() =>
         userKey
-          ? callAnthropic(userKey, data.routing, user, maxTokens)
-          : callGateway(gatewayKey!, data.routing, user, maxTokens),
+          ? callAnthropic(userKey, routing, text, maxTokens)
+          : callGateway(gatewayKey!, routing, text, maxTokens),
       );
 
-    try {
-      const raw = await attempt(3000);
-      return { provider, json: JSON.stringify(extractJson(raw)) };
-    } catch (e) {
-      const truncated = e instanceof Error && e.message.includes("could not be parsed");
-      if (!truncated) throw e;
-      // The response was likely cut off — retry once with more room to finish.
-      const raw = await attempt(8000);
-      return { provider, json: JSON.stringify(extractJson(raw)) };
-    }
+    const ask = async (text: string): Promise<Record<string, unknown>> => {
+      try {
+        return extractJson(await call(text, 3000)) as Record<string, unknown>;
+      } catch (e) {
+        const truncated = e instanceof Error && e.message.includes("could not be parsed");
+        if (!truncated) throw e;
+        // The response was likely cut off — retry once with more room to finish.
+        return extractJson(await call(text, 8000)) as Record<string, unknown>;
+      }
+    };
+
+    const contact = process.env["MUSICBRAINZ_CONTACT"];
+    const result = await runPipeline(data.task, data.payload, {
+      ask,
+      lookup: (names) => lookupArtists(names, contact ? { contact } : {}),
+    });
+
+    return { provider, json: JSON.stringify(result) };
   });

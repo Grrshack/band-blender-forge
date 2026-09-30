@@ -1,9 +1,10 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Info, Loader2, Radar, Sparkles, Wand } from "lucide-react";
+import { Info, Loader2, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
+import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
 import type { BlendResult, BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { runForge } from "@/lib/forge.functions";
+import { vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
 export type { BlendResult } from "./types";
@@ -65,10 +67,12 @@ export function BandBlender({
   value,
   onChange,
   onSendToForge,
+  onOpenSunoSheet,
 }: {
   value: BlendSlice;
   onChange: (next: BlendSlice) => void;
   onSendToForge: (blend: BlendResult) => void;
+  onOpenSunoSheet: () => void;
 }) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
@@ -90,8 +94,9 @@ export function BandBlender({
     }
     setError(null);
     setLoading(true);
-    setStage("Assessing artist familiarity…");
-    const timer = setTimeout(() => setStage("Reconciling conflicting elements…"), 3500);
+    setStage("Checking artists against MusicBrainz…");
+    const t1 = setTimeout(() => setStage("Assessing artist familiarity…"), 3500);
+    const t2 = setTimeout(() => setStage("Reconciling conflicting elements…"), 7000);
     try {
       const res = await forge({
         data: { task: "blend", routing, apiKey, payload: { artists: names, sliders } },
@@ -109,7 +114,8 @@ export function BandBlender({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blend failed.");
     } finally {
-      clearTimeout(timer);
+      clearTimeout(t1);
+      clearTimeout(t2);
       setStage("");
       setLoading(false);
     }
@@ -203,17 +209,46 @@ export function BandBlender({
               title="Style Breakdown"
               subtitle="Coherent, production-ready parameters."
               action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onSendToForge(result)}
-                  className="gap-1.5 border-primary/50 bg-primary/10 text-xs hover:bg-primary/20"
-                >
-                  <Sparkles className="size-3.5" /> Send to Lyric Forge
-                </Button>
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onOpenSunoSheet}
+                    className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
+                  >
+                    <Send className="size-3.5" /> Suno Sheet
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSendToForge(result)}
+                    className="gap-1.5 border-primary/50 bg-primary/10 text-xs hover:bg-primary/20"
+                  >
+                    <Sparkles className="size-3.5" /> Send to Lyric Forge
+                  </Button>
+                </div>
               }
             >
               <ConfidenceLamp level={level} note={result.confidence?.note ?? ""} />
+              {result.grounding?.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {result.grounding.map((g) => (
+                    <MbBadge key={g.name} info={g} showName />
+                  ))}
+                </div>
+              ) : null}
+              {result.styleWarnings?.length ? (
+                <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-signal-mid/50 bg-signal-mid/10 px-3 py-2 text-xs">
+                  <ShieldAlert className="mt-0.5 size-4 shrink-0 text-signal-mid" />
+                  <p className="leading-relaxed text-foreground/90">
+                    Suno blocks artist names, so these were stripped from the style fields:{" "}
+                    <span className="font-mono text-signal-mid">
+                      {result.styleWarnings.join(", ")}
+                    </span>
+                    . Re-run the blend if the style now reads oddly.
+                  </p>
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <ReadoutField label="Genre" value={result.genre ?? "—"} />
                 <ReadoutField label="Tempo" value={result.tempo ?? "—"} />
@@ -229,6 +264,27 @@ export function BandBlender({
                   accent
                 />
               </div>
+              {result.vocalPrompt ? (
+                <div className="mt-3 rounded-lg border border-border bg-card/40 p-3">
+                  <div className="mb-2.5 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                      Vocal Prompt
+                    </span>
+                    <CopyButton value={vocalString(result.vocalPrompt)} label="Copy vocal line" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ReadoutField label="Voice" value={result.vocalPrompt.voice ?? "—"} />
+                    <ReadoutField label="Delivery" value={result.vocalPrompt.delivery ?? "—"} />
+                    <ReadoutField label="Harmonies" value={result.vocalPrompt.harmonies ?? "—"} />
+                    <ReadoutField label="Effects" value={result.vocalPrompt.effects ?? "—"} />
+                  </div>
+                </div>
+              ) : null}
+              {result.excludeStyles ? (
+                <div className="mt-3">
+                  <ReadoutField label="Exclude Styles" value={result.excludeStyles} mono />
+                </div>
+              ) : null}
             </Panel>
 
             <Panel

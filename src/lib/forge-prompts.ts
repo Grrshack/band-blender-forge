@@ -1,0 +1,109 @@
+import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
+import { STYLE_TARGET } from "@/lib/suno";
+
+export const SYSTEM = `You are a pre-production planning engine for AI music generation (Suno-style).
+You are ruthlessly specific. You never produce generic AI-slop language.
+Banned lyric crutches (never use these or close variants): ${bannedListForPrompt()}.
+Prioritise hook catchiness, syllabic rhythm and singability over end-rhyme.
+Suno rejects real artist names, so NEVER write a real artist, band, producer, label or song title
+into any style, genre, vocal or exclude field. Describe the sound instead: genre, tempo, instruments,
+vocal timbre and delivery, production traits. Only a "reconciliation" explanation may name artists.
+Always reply with ONLY raw JSON. No markdown fences, no commentary.`;
+
+export function prompt(task: string, payload: Record<string, unknown>): string {
+  const p = JSON.stringify(payload);
+  switch (task) {
+    case "blend":
+      return `Blend these artists into one coherent, produceable style for AI music generation.
+Input: ${p}
+The "sliders" values are user-set 0-100 targets; honour them and reflect them in the output.
+Slider definitions (interpret user values against these exact meanings):
+- energy: How intense and driving the track feels — low is sparse and restrained, high is aggressive and relentless.
+- complexity: How intricate the arrangement is — low is simple and repetitive, high is layered and technical.
+- brightness: The overall tonal character — low is dark and bass-heavy, high is crisp and shimmering.
+Assess your own real familiarity with each named artist honestly.
+Input may include "reference": real MusicBrainz data per artist (status found / not_found / unavailable, plus community genre tags). Treat tags for "found" artists as ground truth for genre; if an artist is "not_found", say so in confidence.note and lower your confidence.
+Return JSON exactly:
+{"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. High artist familiarity"},
+"genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
+"vocals":"one-sentence summary of the vocal sound","mood":"string",
+"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${STYLE_TARGET} characters.",
+"vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},
+"excludeStyles":"3-8 comma-separated traits to keep OUT of this sound (for Suno's Exclude styles box), e.g. 'autotune, trap hi-hats, EDM drop'",
+"reconciliation":"2-4 sentences explaining exactly how conflicting elements of the chosen artists are fused, naming the specific conflicts and the resolution",
+"recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
+"sliderNotes":"one sentence on why those values suit this blend"}
+HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.`;
+    case "lyrics":
+      return `Write song lyrics for this brief.
+Input: ${p}
+Rules: hooks must be rhythmically repeatable and easy to sing; concrete images and specific nouns only;
+avoid banned crutch phrases; vary line lengths; the chorus hook must land in its first 5 words.
+Suno reads bracketed performance cues, so use them with purpose, not on every section:
+- "cue" is an optional 1-4 word delivery direction for that section, e.g. "Whispered, sparse" or "Belted, full band".
+- Include at most two instrumental sections (e.g. [Guitar Solo], [Instrumental Break]) with "lines":[] when the song needs one.
+- Put ad-libs in parentheses inside a line only where they strengthen the hook, e.g. "(hey!)".
+- Match cues to the linked style's vocal prompt; never put genre or instrument descriptions inside lyric lines.
+Return JSON exactly:
+{"title":"string, max 60 characters","sections":[{"tag":"[Verse 1]","cue":"optional short direction","lines":["line","line"]}]}
+Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro] as appropriate.`;
+    case "regenLine":
+      return `Rewrite ONE lyric line inside an existing song, keeping syllable count and rhythm close, keeping meaning coherent with neighbours, and avoiding clichés.
+Input: ${p}
+Return JSON exactly: {"line":"the new line"}`;
+    case "regenSection":
+      return `Rewrite ONE section of an existing song. Keep locked lines EXACTLY as given (they are marked locked).
+Input: ${p}
+Return JSON exactly: {"tag":"[Chorus]","lines":["line","line"]}
+Return the same number of lines, in order, with locked lines unchanged.`;
+    case "compare":
+      return `Reverse-lookup: given user lyrics and/or style tags, name real-world recording artists whose tone matches.
+Input: ${p}
+Return JSON exactly:
+{"summary":"one sentence describing the detected tone",
+"artists":[{"name":"real artist","match":0-100,"reasoning":["specific bullet","specific bullet","specific bullet"]}]}
+Return 3 or 4 artists, real and verifiable, most similar first.`;
+    case "critique":
+      return `You are a blunt A&R critic. Give honest, specific, unflattering-where-deserved feedback on this song draft.
+Input: ${p}
+No praise padding, no hedging, no "great start". Quote exact lines when criticising. Every criticism carries a concrete fix.
+Return JSON exactly:
+{"verdict":"2-3 sentences, brutally direct overall judgement",
+"scores":[{"label":"Hook strength","score":0-10,"note":"one sentence"},{"label":"Imagery","score":0-10,"note":"..."},{"label":"Singability","score":0-10,"note":"..."},{"label":"Structure","score":0-10,"note":"..."},{"label":"Originality","score":0-10,"note":"..."}],
+"cliches":[{"line":"the exact offending line","why":"why it is worn out","fix":"a specific rewritten line"}],
+"prosody":[{"line":"the exact line","note":"why it is awkward to sing and how to re-stress it"}],
+"fixFirst":["most important fix","second","third"]}
+Return every score. Return an empty array where nothing qualifies.`;
+    case "fixTake":
+      return `You are a Suno prompt doctor. The user generated a take that came out wrong. Diagnose the PROMPT-side causes and revise the style prompt.
+Input: ${p}
+Rules:
+- Change only what the complaints justify; keep everything else identical so the next take isolates the fix. Change at most 3 things.
+- Be honest: Suno is stochastic and some problems (e.g. a voice that sounds synthetic) cannot be fully fixed by prompting. Say so in the diagnosis when it applies.
+- Common prompt-side causes: contradictory tags, too many tags diluting each other, genre words buried late, negatives written inside the style box instead of Exclude styles, conflicting tempo or energy words, instrument lists that crowd the mix.
+- styleTag: the full revised style prompt, max ${STYLE_TARGET} characters, genre and mood first, NO real artist, band, producer, label or song names.
+- excludeStyles: the full revised comma-separated exclude list, no artist names.
+- lyricFixes: only if the complaints or lyrics justify it; quote the exact original line or section tag.
+Return JSON exactly:
+{"diagnosis":"2-3 plain sentences naming the most likely prompt-side causes",
+"changes":[{"change":"what you changed in the prompt","why":"which complaint it targets"}],
+"styleTag":"string","excludeStyles":"string",
+"lyricFixes":[{"line":"exact original line or [Section Tag]","fix":"specific rewrite or structural change"}],
+"tryNext":"one sentence: what to change FIRST if the next take is still off"}`;
+    default:
+      throw new Error("Unknown task");
+  }
+}
+
+/** Asks for replacements of specific lines that contain worn-out phrases. */
+export function clicheFixPrompt(
+  hits: ClicheHit[],
+  context: { theme?: string; styleTag?: string },
+): string {
+  return `Rewrite ONLY the listed lyric lines. Each contains a worn-out phrase.
+Replace the image with something concrete and specific, keep the syllable count and rhythm close, and stay coherent with the song.
+Song subject: ${context.theme ?? ""}
+Style: ${context.styleTag ?? ""}
+Lines to rewrite: ${JSON.stringify(hits.map((h) => ({ si: h.si, li: h.li, line: h.line, banned: h.phrase })))}
+Return JSON exactly: {"rewrites":[{"si":0,"li":1,"line":"new line"}]}`;
+}

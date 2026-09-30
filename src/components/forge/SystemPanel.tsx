@@ -74,6 +74,13 @@ export function SystemPanel() {
               </div>
             </div>
 
+            <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+              Lyrics, line rewrites, critiques and take-fixes always use the stronger model,
+              whatever the switch says. Without your own key the built-in model requires sign-in and
+              is limited per hour. Artist names are looked up on MusicBrainz, an open music
+              database, to check they exist.
+            </p>
+
             <p className="hairline-top mt-4 flex items-start gap-2 pt-3 text-[11px] leading-relaxed text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-signal-high" />
               <span>

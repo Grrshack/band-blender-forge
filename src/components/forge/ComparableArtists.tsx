@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
+import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
 import type { CompareResult, CompareSlice } from "./types";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,9 @@ export function ComparableArtists({
             className="glow-primary h-11 w-full gap-2 font-display tracking-wide"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-            {loading ? "Matching tone against real catalogues…" : "Find Comparable Artists"}
+            {loading
+              ? "Matching tone, then verifying the artists exist…"
+              : "Find Comparable Artists"}
           </Button>
         </div>
       </Panel>
@@ -113,6 +116,11 @@ export function ComparableArtists({
                     />
                   </div>
                 </div>
+                {a.mb ? (
+                  <div className="mt-2">
+                    <MbBadge info={a.mb} />
+                  </div>
+                ) : null}
                 <ul className="mt-3 space-y-1.5">
                   {(a.reasoning ?? []).map((r, j) => (
                     <li key={j} className="flex gap-2 text-sm text-foreground/85">

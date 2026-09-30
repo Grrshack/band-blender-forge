@@ -1,3 +1,15 @@
+import { composeSunoLyrics, vocalString } from "@/lib/suno";
+
+/** What MusicBrainz said about an artist. "unavailable" means the lookup failed — NOT that the artist doesn't exist. */
+export type MbInfo = {
+  name: string;
+  status: "found" | "not_found" | "unavailable";
+  matchedName?: string | undefined;
+  tags: string[];
+  country?: string | undefined;
+  type?: string | undefined;
+};
+
 export type BlendResult = {
   confidence?: { level?: string; note?: string };
   genre?: string;
@@ -9,14 +21,23 @@ export type BlendResult = {
   reconciliation?: string;
   recommendedSliders?: { energy?: number; complexity?: number; brightness?: number };
   sliderNotes?: string;
+  /** Vocals split into the parts Suno responds to. */
+  vocalPrompt?: { voice?: string; delivery?: string; harmonies?: string; effects?: string };
+  /** Goes in Suno's "Exclude styles" box. */
+  excludeStyles?: string;
+  /** Artist names that had to be stripped from the style fields after generation. */
+  styleWarnings?: string[];
+  /** Real-data check of the input artists. */
+  grounding?: MbInfo[];
 };
 
 export type Line = { text: string; locked: boolean; previous?: string };
-export type Section = { tag: string; lines: Line[] };
+/** `cue` is a performance direction Suno reads, e.g. "Whispered, sparse". Empty `lines` = instrumental section. */
+export type Section = { tag: string; cue?: string | undefined; lines: Line[] };
 
 export type CompareResult = {
   summary?: string;
-  artists?: Array<{ name?: string; match?: number; reasoning?: string[] }>;
+  artists?: Array<{ name?: string; match?: number; reasoning?: string[]; mb?: MbInfo }>;
 };
 
 export type CritiqueResult = {
@@ -25,6 +46,24 @@ export type CritiqueResult = {
   cliches?: Array<{ line?: string; why?: string; fix?: string }>;
   prosody?: Array<{ line?: string; note?: string }>;
   fixFirst?: string[];
+};
+
+export type FixResult = {
+  diagnosis?: string;
+  changes?: Array<{ change?: string; why?: string }>;
+  styleTag?: string;
+  excludeStyles?: string;
+  lyricFixes?: Array<{ line?: string; fix?: string }>;
+  tryNext?: string;
+  styleWarnings?: string[];
+};
+
+export type FixSlice = {
+  symptoms: string[];
+  notes: string;
+  result: FixResult | null;
+  /** The style/exclude text that was replaced by "Apply", so it can be undone. */
+  undo: { styleTag: string; excludeStyles: string } | null;
 };
 
 export type BlendSlice = {
@@ -58,6 +97,7 @@ export type ForgeState = {
   lyrics: LyricSlice;
   compare: CompareSlice;
   critique: CritiqueSlice;
+  fix: FixSlice;
 };
 
 export const emptyState = (): ForgeState => ({
@@ -69,19 +109,23 @@ export const emptyState = (): ForgeState => ({
   lyrics: { theme: "", hook: "", notes: "", title: "", sections: [] },
   compare: { lyrics: "", tags: "", result: null },
   critique: { lyrics: "", notes: "", result: null },
+  fix: { symptoms: [], notes: "", result: null, undo: null },
 });
 
 export function hasContent(s: ForgeState): boolean {
   return Boolean(
     s.blend.artists.some((a) => a.trim()) ||
-      s.blend.result ||
-      s.lyrics.theme.trim() ||
-      s.lyrics.sections.length ||
-      s.compare.lyrics.trim() ||
-      s.compare.tags.trim() ||
-      s.compare.result ||
-      s.critique.lyrics.trim() ||
-      s.critique.result,
+    s.blend.result ||
+    s.lyrics.theme.trim() ||
+    s.lyrics.sections.length ||
+    s.compare.lyrics.trim() ||
+    s.compare.tags.trim() ||
+    s.compare.result ||
+    s.critique.lyrics.trim() ||
+    s.critique.result ||
+    s.fix.notes.trim() ||
+    s.fix.symptoms.length ||
+    s.fix.result,
   );
 }
 
@@ -94,6 +138,7 @@ export function mergeState(raw: unknown): ForgeState {
     lyrics: { ...base.lyrics, ...(s.lyrics ?? {}) },
     compare: { ...base.compare, ...(s.compare ?? {}) },
     critique: { ...base.critique, ...(s.critique ?? {}) },
+    fix: { ...base.fix, ...(s.fix ?? {}) },
   };
 }
 
@@ -112,6 +157,8 @@ export function exportBrief(name: string, state: ForgeState): string {
         `Mood: ${b.mood ?? "—"}`,
         ``,
         `Style tag: ${b.styleTag ?? "—"}`,
+        ...(vocalString(b.vocalPrompt) ? [`Vocal prompt: ${vocalString(b.vocalPrompt)}`] : []),
+        ...(b.excludeStyles ? [`Exclude styles: ${b.excludeStyles}`] : []),
         ``,
         `Reconciliation: ${b.reconciliation ?? "—"}`,
       ].join("\n"),
@@ -119,18 +166,17 @@ export function exportBrief(name: string, state: ForgeState): string {
   }
   if (state.lyrics.sections.length) {
     out.push(`\n## Lyrics — ${state.lyrics.title || "Untitled"}`);
-    out.push(
-      state.lyrics.sections
-        .map((s) => `${s.tag}\n${s.lines.map((l) => l.text).join("\n")}`)
-        .join("\n\n"),
-    );
+    out.push(composeSunoLyrics(state.lyrics.sections));
   }
   const artistsOut = state.compare.result?.artists ?? [];
   if (artistsOut.length) {
     out.push(`\n## Comparable artists`);
     out.push(
       artistsOut
-        .map((a) => `${a.name} (${a.match ?? "—"}%)\n${(a.reasoning ?? []).map((r) => `- ${r}`).join("\n")}`)
+        .map(
+          (a) =>
+            `${a.name} (${a.match ?? "—"}%)\n${(a.reasoning ?? []).map((r) => `- ${r}`).join("\n")}`,
+        )
         .join("\n\n"),
     );
   }
@@ -143,6 +189,11 @@ export function exportBrief(name: string, state: ForgeState): string {
     if (c.fixFirst?.length) {
       out.push(`Fix first:\n${c.fixFirst.map((f, i) => `${i + 1}. ${f}`).join("\n")}`);
     }
+  }
+  const f = state.fix.result;
+  if (f?.diagnosis) {
+    out.push(`\n## Last take diagnosis\n${f.diagnosis}`);
+    if (f.tryNext) out.push(`Try next: ${f.tryNext}`);
   }
   return out.join("\n");
 }

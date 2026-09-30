@@ -1,5 +1,15 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Lock, LockOpen, RefreshCw, Undo2, Wand2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Loader2,
+  Lock,
+  LockOpen,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Undo2,
+  Wand2,
+} from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -10,14 +20,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { runForge } from "@/lib/forge.functions";
+import { countSyllables, findCliches, isSyllableOutlier } from "@/lib/cliches";
+import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
-function toPlain(sections: Section[], title: string) {
-  const body = sections
-    .map((s) => `${s.tag}\n${s.lines.map((l) => l.text).join("\n")}`)
-    .join("\n\n");
-  return title ? `${title}\n\n${body}` : body;
+/** Estimated syllables, plus a flag for worn-out phrases and lines far off the section's typical length. */
+function LineMarkers({
+  text,
+  locked,
+  all,
+  index,
+}: {
+  text: string;
+  locked: boolean;
+  all: string[];
+  index: number;
+}) {
+  const counts = all.map((t) => countSyllables(t));
+  const syllables = counts[index] ?? 0;
+  const outlier = isSyllableOutlier(counts, index);
+  const worn = locked ? [] : findCliches(text);
+  return (
+    <div className="mr-1 flex items-center gap-1.5">
+      {worn.length ? (
+        <span
+          title={`Worn-out phrase: "${worn[0]}". Regenerate or rewrite this line.`}
+          className="text-signal-mid"
+        >
+          <AlertTriangle className="size-3.5" />
+        </span>
+      ) : null}
+      <span
+        title={
+          outlier
+            ? "Much longer or shorter than the other lines here — may be hard to sing in time."
+            : "Estimated syllables"
+        }
+        className={cn(
+          "font-mono text-[10px] tabular-nums",
+          outlier ? "rounded bg-signal-mid/15 px-1 text-signal-mid" : "text-muted-foreground/70",
+        )}
+      >
+        {syllables || ""}
+      </span>
+    </div>
+  );
 }
+
+const QUICK_SECTIONS = [
+  "[Guitar Solo]",
+  "[Instrumental Break]",
+  "[Drop]",
+  "[Breakdown]",
+  "[Outro]",
+];
 
 export function LyricForge({
   value,
@@ -42,6 +98,7 @@ export function LyricForge({
     genre: blend?.genre ?? "",
     vocals: blend?.vocals ?? "",
     mood: blend?.mood ?? "",
+    vocalPrompt: vocalString(blend?.vocalPrompt),
   };
 
   const generate = async () => {
@@ -62,12 +119,13 @@ export function LyricForge({
       });
       const out = JSON.parse(res.json) as {
         title?: string;
-        sections?: Array<{ tag?: string; lines?: string[] }>;
+        sections?: Array<{ tag?: string; cue?: string; lines?: string[] }>;
       };
       set({
         title: out.title ?? "",
         sections: (out.sections ?? []).map((s) => ({
           tag: s.tag ?? "[Section]",
+          ...(s.cue ? { cue: s.cue } : {}),
           lines: (s.lines ?? []).map((t) => ({ text: t, locked: false })),
         })),
       });
@@ -79,6 +137,13 @@ export function LyricForge({
   };
 
   const patchSections = (fn: (s: Section[]) => Section[]) => set({ sections: fn(sections) });
+
+  const setCue = (si: number, cue: string) =>
+    patchSections((prev) => prev.map((s, i) => (i === si ? { ...s, cue } : s)));
+
+  const addSection = (tag: string) => patchSections((prev) => [...prev, { tag, lines: [] }]);
+
+  const removeSection = (si: number) => patchSections((prev) => prev.filter((_, i) => i !== si));
 
   const toggleLock = (si: number, li: number) =>
     patchSections((prev) =>
@@ -97,7 +162,11 @@ export function LyricForge({
               ...s,
               lines: s.lines.map((l, j) =>
                 j === li
-                  ? { ...l, text, ...(keepPrevious !== undefined ? { previous: keepPrevious } : {}) }
+                  ? {
+                      ...l,
+                      text,
+                      ...(keepPrevious !== undefined ? { previous: keepPrevious } : {}),
+                    }
                   : l,
               ),
             }
@@ -112,9 +181,7 @@ export function LyricForge({
           ? {
               ...s,
               lines: s.lines.map((l, j) =>
-                j === li && l.previous !== undefined
-                  ? { text: l.previous, locked: l.locked }
-                  : l,
+                j === li && l.previous !== undefined ? { text: l.previous, locked: l.locked } : l,
               ),
             }
           : s,
@@ -166,10 +233,11 @@ export function LyricForge({
             notes,
             style: styleContext,
             sectionTag: section.tag,
+            cue: section.cue ?? "",
             lines: section.lines.map((l) => ({ text: l.text, locked: l.locked })),
             otherSections: sections
               .filter((_, i) => i !== si)
-              .map((s) => ({ tag: s.tag, lines: s.lines.map((l) => l.text) })),
+              .map((s) => ({ tag: s.tag, cue: s.cue ?? "", lines: s.lines.map((l) => l.text) })),
           },
         },
       });
@@ -263,7 +331,7 @@ export function LyricForge({
         subtitle={title || "Section tags, per-line lock, rewrite and undo."}
         action={
           sections.length ? (
-            <CopyButton value={toPlain(sections, title)} label="Copy song" />
+            <CopyButton value={composeSunoLyrics(sections)} label="Copy for Suno" />
           ) : undefined
         }
       >
@@ -276,23 +344,48 @@ export function LyricForge({
                     {s.tag}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <Button
+                    {s.lines.length ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy === `s-${si}`}
+                        onClick={() => void regenSection(si)}
+                        className="h-7 gap-1.5 px-2 text-[11px] text-muted-foreground hover:text-primary"
+                      >
+                        <RefreshCw
+                          className={cn("size-3.5", busy === `s-${si}` && "animate-spin")}
+                        />
+                        <span className="hidden sm:inline">Regenerate section</span>
+                      </Button>
+                    ) : null}
+                    <CopyButton value={composeSunoLyrics([s])} size="icon" />
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy === `s-${si}`}
-                      onClick={() => void regenSection(si)}
-                      className="h-7 gap-1.5 px-2 text-[11px] text-muted-foreground hover:text-primary"
+                      onClick={() => removeSection(si)}
+                      title="Remove section"
+                      className="rounded p-1.5 text-muted-foreground transition-colors hover:text-destructive"
                     >
-                      <RefreshCw className={cn("size-3.5", busy === `s-${si}` && "animate-spin")} />
-                      <span className="hidden sm:inline">Regenerate section</span>
-                    </Button>
-                    <CopyButton
-                      value={`${s.tag}\n${s.lines.map((l) => l.text).join("\n")}`}
-                      size="icon"
-                    />
+                      <Trash2 className="size-3.5" />
+                    </button>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 border-b border-border/60 px-3 py-1.5">
+                  <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                    Cue
+                  </span>
+                  <input
+                    value={s.cue ?? ""}
+                    onChange={(e) => setCue(si, e.target.value)}
+                    placeholder="Whispered, sparse  (Suno reads this as [cue])"
+                    className="min-w-0 flex-1 bg-transparent py-1 text-xs text-accent italic outline-none placeholder:text-muted-foreground/60 placeholder:not-italic"
+                  />
+                </div>
+                {s.lines.length === 0 ? (
+                  <p className="px-3 py-3 text-xs text-muted-foreground">
+                    Instrumental section — no lyrics. Suno plays it from the tag and cue.
+                  </p>
+                ) : null}
                 <ul className="divide-y divide-border/60">
                   {s.lines.map((l, li) => (
                     <li
@@ -312,6 +405,12 @@ export function LyricForge({
                         )}
                       />
                       <div className="ml-auto flex items-center">
+                        <LineMarkers
+                          text={l.text}
+                          locked={l.locked}
+                          all={s.lines.map((x) => x.text)}
+                          index={li}
+                        />
                         <button
                           type="button"
                           onClick={() => toggleLock(si, li)}
@@ -356,13 +455,29 @@ export function LyricForge({
                 </ul>
               </div>
             ))}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="mr-1 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                Add section
+              </span>
+              {QUICK_SECTIONS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => addSection(t)}
+                  className="flex items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-1 font-mono text-[10px] tracking-wider text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent"
+                >
+                  <Plus className="size-3" />
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="flex h-72 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-6 text-center">
             <Wand2 className="size-8 text-muted-foreground" />
             <p className="max-w-sm text-sm text-muted-foreground">
-              Lyrics arrive split into [Verse 1], [Pre-Chorus], [Chorus] and more — every line gets a
-              lock toggle, a one-click rewrite and an undo.
+              Lyrics arrive split into [Verse 1], [Pre-Chorus], [Chorus] and more — every line gets
+              a lock toggle, a one-click rewrite and an undo.
             </p>
             <p className="max-w-sm text-xs text-muted-foreground">
               Good subject: "the last shift before a diner closes for good". Weak subject: "love and

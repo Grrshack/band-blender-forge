@@ -1,15 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AudioLines, AudioWaveform, BookMarked, Gauge, Search, Sliders, Wand2 } from "lucide-react";
+import {
+  AudioLines,
+  AudioWaveform,
+  BookMarked,
+  Gauge,
+  Search,
+  Send,
+  Sliders,
+  Stethoscope,
+  Wand2,
+} from "lucide-react";
 import { useState } from "react";
 
 import { AuthProvider } from "@/components/forge/auth";
 import { BandBlender } from "@/components/forge/BandBlender";
 import { ComparableArtists } from "@/components/forge/ComparableArtists";
+import { FixTake } from "@/components/forge/FixTake";
 import { HonestFeedback } from "@/components/forge/HonestFeedback";
 import { LyricForge } from "@/components/forge/LyricForge";
 import { MasteringLab } from "@/components/forge/MasteringLab";
 import { PromptLibrary } from "@/components/forge/PromptLibrary";
 import { SettingsProvider } from "@/components/forge/settings";
+import { SunoSheet } from "@/components/forge/SunoSheet";
 import { SystemPanel } from "@/components/forge/SystemPanel";
 import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
@@ -41,6 +53,8 @@ export const Route = createFileRoute("/")({
 const TABS = [
   { value: "blend", label: "Band Blender", icon: Sliders },
   { value: "lyrics", label: "Lyric Forge", icon: Wand2 },
+  { value: "suno", label: "Suno Sheet", icon: Send },
+  { value: "fix", label: "Fix a Take", icon: Stethoscope },
   { value: "compare", label: "Comparables", icon: Search },
   { value: "feedback", label: "Honest Feedback", icon: Gauge },
   { value: "master", label: "Mastering", icon: AudioWaveform },
@@ -120,6 +134,7 @@ function Index() {
                   value={state.blend}
                   onChange={(v) => patch("blend", v)}
                   onSendToForge={() => setTab("lyrics")}
+                  onOpenSunoSheet={() => setTab("suno")}
                 />
               </TabsContent>
               <TabsContent value="lyrics" className="mt-0">
@@ -127,6 +142,24 @@ function Index() {
                   value={state.lyrics}
                   onChange={(v) => patch("lyrics", v)}
                   blend={state.blend.result}
+                />
+              </TabsContent>
+              <TabsContent value="suno" className="mt-0">
+                <SunoSheet
+                  blend={state.blend}
+                  lyrics={state.lyrics}
+                  onBlend={(v) => patch("blend", v)}
+                  onLyrics={(v) => patch("lyrics", v)}
+                  onOpenForge={() => setTab("lyrics")}
+                />
+              </TabsContent>
+              <TabsContent value="fix" className="mt-0">
+                <FixTake
+                  blend={state.blend}
+                  lyrics={state.lyrics}
+                  value={state.fix}
+                  onChange={(v) => patch("fix", v)}
+                  onBlend={(v) => patch("blend", v)}
                 />
               </TabsContent>
               <TabsContent value="compare" className="mt-0">
