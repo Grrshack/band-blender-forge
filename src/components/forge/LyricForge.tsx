@@ -14,6 +14,7 @@ import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
+import { LengthPlanner } from "./LengthPlanner";
 import { useSettings } from "./settings";
 import type { BlendResult, LyricSlice, Section } from "./types";
 import { Button } from "@/components/ui/button";
@@ -114,7 +115,13 @@ export function LyricForge({
           task: "lyrics",
           routing,
           apiKey,
-          payload: { theme, hookIdea: hook, notes, style: styleContext },
+          payload: {
+            theme,
+            hookIdea: hook,
+            notes,
+            style: styleContext,
+            ...(value.structure ? { structure: value.structure } : {}),
+          },
         },
       });
       const out = JSON.parse(res.json) as {
@@ -314,6 +321,11 @@ export function LyricForge({
               {blend?.styleTag ?? "No blend linked — run Band Lookup to inherit a style."}
             </p>
           </div>
+
+          <LengthPlanner
+            structure={value.structure ?? ""}
+            onStructure={(text) => set({ structure: text })}
+          />
 
           <Button
             onClick={() => void generate()}

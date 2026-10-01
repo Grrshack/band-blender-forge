@@ -4,6 +4,7 @@ import { z } from "zod";
 import { runPipeline } from "@/lib/forge-pipeline";
 import { lookupArtists } from "@/lib/musicbrainz";
 import { optionalSupabaseAuth } from "@/lib/optional-auth";
+import { chooseProvider } from "@/lib/provider";
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
 import { SYSTEM } from "@/lib/forge-prompts";
 
@@ -13,7 +14,16 @@ const RoutingSchema = z.enum(["fast", "craft"]);
 const MAX_PAYLOAD_CHARS = 60_000;
 
 const InputSchema = z.object({
-  task: z.enum(["blend", "lyrics", "regenLine", "regenSection", "compare", "critique", "fixTake"]),
+  task: z.enum([
+    "blend",
+    "lyrics",
+    "regenLine",
+    "regenSection",
+    "compare",
+    "critique",
+    "fixTake",
+    "variants",
+  ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),
   payload: z
@@ -34,7 +44,14 @@ const GATEWAY_MODELS: Record<Routing, string> = {
 };
 
 /** Writing quality is the product, so these always use the stronger model, whatever the toggle says. */
-const CRAFT_TASKS = new Set(["lyrics", "regenLine", "regenSection", "critique", "fixTake"]);
+const CRAFT_TASKS = new Set([
+  "lyrics",
+  "regenLine",
+  "regenSection",
+  "critique",
+  "fixTake",
+  "variants",
+]);
 
 function extractJson(text: string): unknown {
   const cleaned = text
@@ -146,19 +163,21 @@ export const runForge = createServerFn({ method: "POST" })
   .middleware([optionalSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const userKey = data.apiKey?.trim();
-    const provider: "anthropic" | "built-in" = userKey ? "anthropic" : "built-in";
-    const gatewayKey = process.env["LOVABLE_API_KEY"];
-
-    if (!userKey && !gatewayKey) {
+    const choice = chooseProvider({
+      userKey: data.apiKey,
+      serverAnthropicKey: process.env["ANTHROPIC_API_KEY"],
+      gatewayKey: process.env["LOVABLE_API_KEY"],
+    });
+    if (!choice) {
       throw new Error(
         "No Anthropic API key set and no built-in AI available. Add a key in the System panel.",
       );
     }
+    const provider: "anthropic" | "built-in" = choice.ownerPays ? "built-in" : "anthropic";
 
-    // The built-in model is paid for by the site owner: require sign-in and rate-limit it.
+    // A model the site owner pays for requires sign-in and is rate-limited.
     // Callers who bring their own key spend their own credits and are not restricted.
-    if (!userKey) {
+    if (choice.ownerPays) {
       if (!context.userId || !context.supabase) {
         throw new Error(
           "Sign in to use the built-in model, or add your own Anthropic API key in System & Credentials.",
@@ -176,9 +195,9 @@ export const runForge = createServerFn({ method: "POST" })
 
     const call = (text: string, maxTokens: number) =>
       withRateLimitRetry(() =>
-        userKey
-          ? callAnthropic(userKey, routing, text, maxTokens)
-          : callGateway(gatewayKey!, routing, text, maxTokens),
+        choice.via === "anthropic"
+          ? callAnthropic(choice.key, routing, text, maxTokens)
+          : callGateway(choice.key, routing, text, maxTokens),
       );
 
     const ask = async (text: string): Promise<Record<string, unknown>> => {

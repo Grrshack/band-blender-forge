@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
+import { ReferenceMatch } from "./ReferenceMatch";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -28,9 +29,18 @@ import {
   MasterChain,
   PRESETS,
   renderMaster,
+  sliceBuffer,
   type MasterParams,
 } from "@/lib/audio/mastering-chain";
-import { applyGain, dbToLin, encodeWav, linToDb, measureLoudness } from "@/lib/audio/mastering-dsp";
+import {
+  applyGain,
+  dbToLin,
+  encodeWav,
+  linToDb,
+  matchGains,
+  measureLoudness,
+  measureTruePeak,
+} from "@/lib/audio/mastering-dsp";
 import { cn } from "@/lib/utils";
 
 const MAX_FILE_MB = 250;
@@ -38,7 +48,7 @@ const FMIN = 20;
 const FMAX = 20000;
 
 type Song = { name: string; size: number; buffer: AudioBuffer };
-type Result = { lufs: number; peakDb: number; makeupDb: number; bits: number; file: string };
+type Result = { lufs: number; truePeakDb: number; makeupDb: number; bits: number; file: string };
 type Audio = {
   ctx: AudioContext;
   chain: MasterChain;
@@ -127,6 +137,9 @@ export function MasteringLab() {
   const [dragging, setDragging] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [bypass, setBypass] = useState(false);
+  const [matchOn, setMatchOn] = useState(true);
+  const [matching, setMatching] = useState(false);
+  const [match, setMatch] = useState<{ dryDb: number; wetDb: number; diffDb: number } | null>(null);
   const [position, setPosition] = useState(0);
   const [exporting, setExporting] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -140,6 +153,7 @@ export function MasteringLab() {
   const songRef = useRef<Song | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const origLoudnessRef = useRef<{ song: Song; lufs: number } | null>(null);
 
   paramsRef.current = params;
   songRef.current = song;
@@ -234,13 +248,59 @@ export function MasteringLab() {
     audioRef.current?.chain.update(params);
   }, [params]);
 
+  // Level-match the A/B: measure a 30 s excerpt of the original and of the processed
+  // version (debounced while sliders move), then lower whichever is louder.
+  useEffect(() => {
+    if (!song || !matchOn) {
+      setMatch(null);
+      setMatching(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setMatching(true);
+      try {
+        const excerpt = sliceBuffer(song.buffer, 30);
+        const fs = excerpt.sampleRate;
+        if (origLoudnessRef.current?.song !== song) {
+          const left = excerpt.getChannelData(0);
+          const right = excerpt.getChannelData(excerpt.numberOfChannels > 1 ? 1 : 0);
+          origLoudnessRef.current = { song, lufs: measureLoudness([left, right], fs).lufs };
+        }
+        const pcm = await renderMaster(excerpt, { ...params, makeupDb: 0 });
+        if (cancelled) return;
+        setMatch(matchGains(origLoudnessRef.current.lufs, measureLoudness(pcm, fs).lufs));
+      } catch {
+        if (!cancelled) setMatch(null);
+      } finally {
+        if (!cancelled) setMatching(false);
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [song, params, matchOn]);
+
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
     const t = a.ctx.currentTime;
-    a.dry.gain.setTargetAtTime(bypass ? 1 : 0, t, 0.015);
-    a.wet.gain.setTargetAtTime(bypass ? 0 : 1, t, 0.015);
-  }, [bypass]);
+    const dryDb = matchOn && match ? match.dryDb : 0;
+    const wetDb = matchOn && match ? match.wetDb : 0;
+    a.dry.gain.setTargetAtTime(bypass ? dbToLin(dryDb) : 0, t, 0.05);
+    a.wet.gain.setTargetAtTime(bypass ? 0 : dbToLin(wetDb), t, 0.05);
+  }, [bypass, matchOn, match, song]);
+
+  const matchStatus = !matchOn
+    ? "off — the louder one will sound better"
+    : matching || !match
+      ? "measuring…"
+      : Math.abs(match.diffDb) < 0.3
+        ? "already level-matched"
+        : match.diffDb > 0
+          ? `mastered is ${match.diffDb.toFixed(1)} LU louder — turned down to match`
+          : `original is ${(-match.diffDb).toFixed(1)} LU louder — turned down to match`;
 
   /* ---------- spectrum + EQ curve ---------- */
 
@@ -434,14 +494,16 @@ export function MasteringLab() {
         }
       }
 
-      setExporting("Final check…");
+      setExporting("Checking true peak…");
       await tick();
       const ceiling = dbToLin(params.ceilingDb);
       let m = measureLoudness(pcm, fs);
-      if (m.samplePeak > ceiling) {
-        // the limiter can overshoot by a fraction of a dB; pull it under the ceiling
-        applyGain(pcm, ceiling / m.samplePeak);
+      let truePeak = measureTruePeak(pcm);
+      if (truePeak > ceiling) {
+        // the limiter can overshoot, and the waveform can peak between samples; pull it under the ceiling
+        applyGain(pcm, ceiling / truePeak);
         m = measureLoudness(pcm, fs);
+        truePeak = measureTruePeak(pcm);
       }
 
       setExporting("Encoding WAV…");
@@ -459,7 +521,7 @@ export function MasteringLab() {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
-      setResult({ lufs: m.lufs, peakDb: linToDb(m.samplePeak), makeupDb, bits: bitDepth, file });
+      setResult({ lufs: m.lufs, truePeakDb: linToDb(truePeak), makeupDb, bits: bitDepth, file });
       if (autoClear) clearSong();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");
@@ -840,10 +902,17 @@ export function MasteringLab() {
                   ))}
                 </div>
               </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-xs text-foreground/90">
+                  <Switch checked={matchOn} onCheckedChange={setMatchOn} />
+                  Match loudness when comparing
+                </label>
+                <span className="font-mono text-[10px] text-muted-foreground">{matchStatus}</span>
+              </div>
               <p className="text-[10px] text-muted-foreground">
-                A/B isn't loudness-matched — a louder version will always sound better. Judge by
-                switching at the same volume knob and listening for what changed, not what got
-                louder.
+                The match is estimated from a 30-second sample, so the A/B tells you about tone, not
+                volume. It only affects this preview — the downloaded file is not level-matched to
+                the original.
               </p>
 
               <div className="grid gap-4 rounded-lg border border-border bg-card/50 p-4 sm:grid-cols-2">
@@ -886,6 +955,8 @@ export function MasteringLab() {
                 </label>
               </div>
 
+              <ReferenceMatch song={song.buffer} params={params} onApply={patch} />
+
               <Button
                 onClick={() => void exportMaster()}
                 disabled={!!exporting}
@@ -916,9 +987,11 @@ export function MasteringLab() {
                 </div>
                 <div>
                   <span className="block text-[9px] tracking-[0.18em] text-muted-foreground uppercase">
-                    Sample peak
+                    True peak
                   </span>
-                  {Number.isFinite(result.peakDb) ? `${result.peakDb.toFixed(1)} dBFS` : "—"}
+                  {Number.isFinite(result.truePeakDb)
+                    ? `${result.truePeakDb.toFixed(1)} dBFS`
+                    : "—"}
                 </div>
                 <div>
                   <span className="block text-[9px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -939,8 +1012,9 @@ export function MasteringLab() {
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-signal-high" />
             <span>
               Everything runs locally in your browser with the Web Audio API. Closing or reloading
-              the tab also discards the file. Loudness is measured to ITU-R BS.1770; peak is
-              sample-peak, not true-peak, so leave the ceiling at −1 dBFS or lower for streaming.
+              the tab also discards the file. Loudness is measured to ITU-R BS.1770 and the peak is
+              checked as true peak (4× oversampled), so the ceiling holds between samples too. Leave
+              it at −1 dBFS or lower for streaming.
             </span>
           </p>
         </div>

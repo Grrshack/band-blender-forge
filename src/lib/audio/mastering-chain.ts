@@ -377,6 +377,25 @@ export class MasterChain {
 }
 
 /**
+ * The middle `seconds` of a buffer (or the whole thing if it is shorter). Used to
+ * estimate loudness cheaply instead of rendering a full song on every tweak.
+ */
+export function sliceBuffer(buffer: AudioBuffer, seconds: number): AudioBuffer {
+  const len = Math.floor(seconds * buffer.sampleRate);
+  if (buffer.length <= len) return buffer;
+  const start = Math.floor((buffer.length - len) / 2);
+  const out = new AudioBuffer({
+    numberOfChannels: buffer.numberOfChannels,
+    length: len,
+    sampleRate: buffer.sampleRate,
+  });
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    out.copyToChannel(buffer.getChannelData(c).subarray(start, start + len), c);
+  }
+  return out;
+}
+
+/**
  * Renders `buffer` through the chain offline and returns the processed stereo PCM.
  * Always renders 2 channels (mono sources are upmixed).
  */

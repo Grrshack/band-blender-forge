@@ -1,4 +1,5 @@
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
+import type { Take } from "@/lib/takes";
 
 /** What MusicBrainz said about an artist. "unavailable" means the lookup failed — NOT that the artist doesn't exist. */
 export type MbInfo = {
@@ -8,6 +9,15 @@ export type MbInfo = {
   tags: string[];
   country?: string | undefined;
   type?: string | undefined;
+};
+
+/** One of the three alternative style prompts (safe / experimental / hybrid). */
+export type StyleVariant = {
+  label: string;
+  angle: string;
+  styleTag: string;
+  excludeStyles: string;
+  vocalLine: string;
 };
 
 export type BlendResult = {
@@ -29,6 +39,7 @@ export type BlendResult = {
   styleWarnings?: string[];
   /** Real-data check of the input artists. */
   grounding?: MbInfo[];
+  variants?: StyleVariant[];
 };
 
 export type Line = { text: string; locked: boolean; previous?: string };
@@ -78,6 +89,8 @@ export type LyricSlice = {
   notes: string;
   title: string;
   sections: Section[];
+  /** Plain-text song-length plan that steers generation (see the length planner). */
+  structure?: string | undefined;
 };
 
 export type CompareSlice = {
@@ -98,6 +111,8 @@ export type ForgeState = {
   compare: CompareSlice;
   critique: CritiqueSlice;
   fix: FixSlice;
+  /** Log of generated takes, newest last. */
+  takes: Take[];
 };
 
 export const emptyState = (): ForgeState => ({
@@ -110,6 +125,7 @@ export const emptyState = (): ForgeState => ({
   compare: { lyrics: "", tags: "", result: null },
   critique: { lyrics: "", notes: "", result: null },
   fix: { symptoms: [], notes: "", result: null, undo: null },
+  takes: [],
 });
 
 export function hasContent(s: ForgeState): boolean {
@@ -125,7 +141,8 @@ export function hasContent(s: ForgeState): boolean {
     s.critique.result ||
     s.fix.notes.trim() ||
     s.fix.symptoms.length ||
-    s.fix.result,
+    s.fix.result ||
+    s.takes.length,
   );
 }
 
@@ -139,6 +156,7 @@ export function mergeState(raw: unknown): ForgeState {
     compare: { ...base.compare, ...(s.compare ?? {}) },
     critique: { ...base.critique, ...(s.critique ?? {}) },
     fix: { ...base.fix, ...(s.fix ?? {}) },
+    takes: Array.isArray(s.takes) ? s.takes : base.takes,
   };
 }
 

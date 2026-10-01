@@ -10,7 +10,7 @@ import {
   Stethoscope,
   Wand2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AuthProvider } from "@/components/forge/auth";
 import { BandBlender } from "@/components/forge/BandBlender";
@@ -21,12 +21,14 @@ import { LyricForge } from "@/components/forge/LyricForge";
 import { MasteringLab } from "@/components/forge/MasteringLab";
 import { PromptLibrary } from "@/components/forge/PromptLibrary";
 import { SettingsProvider } from "@/components/forge/settings";
+import { SharedView } from "@/components/forge/SharedView";
 import { SunoSheet } from "@/components/forge/SunoSheet";
 import { SystemPanel } from "@/components/forge/SystemPanel";
 import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
+import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -64,6 +66,21 @@ const TABS = [
 function Index() {
   const [tab, setTab] = useState("blend");
   const [state, setState] = useState<ForgeState>(emptyState);
+  const [shared, setShared] = useState<SharePayload | null>(null);
+
+  // A link like /#share=... opens a read-only view. The data lives in the link itself.
+  useEffect(() => {
+    const read = () => {
+      const token = tokenFromHash(window.location.hash);
+      if (!token) return;
+      void decodeShare(token).then((p) => {
+        if (p) setShared(p);
+      });
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
 
   const patch = <K extends keyof ForgeState>(key: K, value: ForgeState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
@@ -89,6 +106,27 @@ function Index() {
     }
     setTab("lyrics");
   };
+
+  if (shared) {
+    return (
+      <AuthProvider>
+        <SettingsProvider>
+          <SharedView
+            payload={shared}
+            onClose={() => {
+              window.history.replaceState(
+                null,
+                "",
+                window.location.pathname + window.location.search,
+              );
+              setShared(null);
+            }}
+          />
+          <Toaster />
+        </SettingsProvider>
+      </AuthProvider>
+    );
+  }
 
   return (
     <AuthProvider>
@@ -160,6 +198,8 @@ function Index() {
                   value={state.fix}
                   onChange={(v) => patch("fix", v)}
                   onBlend={(v) => patch("blend", v)}
+                  takes={state.takes}
+                  onTakes={(v) => patch("takes", v)}
                 />
               </TabsContent>
               <TabsContent value="compare" className="mt-0">

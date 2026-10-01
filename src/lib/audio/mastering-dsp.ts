@@ -140,6 +140,25 @@ export function applyGain(channels: Float32Array[], linear: number): void {
   for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] = ch[i]! * linear;
 }
 
+/**
+ * Gains that level-match an A/B comparison. The louder side is turned DOWN to the
+ * quieter one; nothing is ever boosted (a boost could clip the preview).
+ * Non-finite loudness (silence, too-short audio) returns no change.
+ */
+export function matchGains(
+  originalLufs: number,
+  processedLufs: number,
+  maxDb = 12,
+): { dryDb: number; wetDb: number; diffDb: number } {
+  if (!Number.isFinite(originalLufs) || !Number.isFinite(processedLufs)) {
+    return { dryDb: 0, wetDb: 0, diffDb: 0 };
+  }
+  const diff = Math.max(-maxDb, Math.min(maxDb, processedLufs - originalLufs));
+  return diff > 0
+    ? { dryDb: 0, wetDb: -diff, diffDb: diff }
+    : { dryDb: diff, wetDb: 0, diffDb: diff };
+}
+
 export const dbToLin = (db: number) => Math.pow(10, db / 20);
 export const linToDb = (lin: number) => (lin > 0 ? 20 * Math.log10(lin) : -Infinity);
 
@@ -197,4 +216,70 @@ export function encodeWav(
     }
   }
   return new Uint8Array(buf);
+}
+
+/* ------------------------------------------------------------------ */
+/* True peak                                                           */
+/* ------------------------------------------------------------------ */
+
+const TP_TAPS = 12; // per phase, as in BS.1770's 4x oversampling filter
+const TP_PHASES = [1, 2, 3] as const; // phase 0 is the original sample
+
+/** Windowed-sinc interpolation coefficients for the three in-between phases. */
+const TP_COEFFS: Float64Array[] = TP_PHASES.map((p) => {
+  const c = new Float64Array(TP_TAPS);
+  const frac = p / 4;
+  for (let j = 0; j < TP_TAPS; j++) {
+    const k = j - (TP_TAPS / 2 - 1); // -5 .. +6
+    const x = k - frac;
+    const sinc = x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+    const w =
+      0.42 +
+      0.5 * Math.cos((Math.PI * x) / (TP_TAPS / 2)) +
+      0.08 * Math.cos((2 * Math.PI * x) / (TP_TAPS / 2)); // Blackman
+    c[j] = sinc * w;
+  }
+  return c;
+});
+
+/**
+ * True peak: the highest level the reconstructed waveform reaches between samples, from a
+ * 4x oversampled estimate. Always >= sample peak. Returns a linear value.
+ * Regions well below the sample peak are skipped, since they cannot reach it.
+ */
+export function measureTruePeak(channels: Float32Array[]): number {
+  let samplePeak = 0;
+  for (const ch of channels)
+    for (let i = 0; i < ch.length; i++) {
+      const v = Math.abs(ch[i]!);
+      if (v > samplePeak) samplePeak = v;
+    }
+  if (samplePeak === 0) return 0;
+
+  const screen = samplePeak * 0.25;
+  let peak = samplePeak;
+  const half = TP_TAPS / 2;
+
+  for (const ch of channels) {
+    const n = ch.length;
+    for (let i = half; i < n - half; i++) {
+      // a window that never gets near the peak cannot produce an overshoot
+      if (
+        Math.abs(ch[i]!) < screen &&
+        Math.abs(ch[i + 1]!) < screen &&
+        Math.abs(ch[i - 1]!) < screen
+      ) {
+        continue;
+      }
+      for (let p = 0; p < 3; p++) {
+        const c = TP_COEFFS[p]!;
+        let acc = 0;
+        const base = i - (half - 1);
+        for (let j = 0; j < TP_TAPS; j++) acc += c[j]! * ch[base + j]!;
+        const a = Math.abs(acc);
+        if (a > peak) peak = a;
+      }
+    }
+  }
+  return peak;
 }

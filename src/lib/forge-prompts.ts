@@ -39,6 +39,7 @@ HARD RULE: every field except "reconciliation" must contain NO artist, band, pro
 Input: ${p}
 Rules: hooks must be rhythmically repeatable and easy to sing; concrete images and specific nouns only;
 avoid banned crutch phrases; vary line lengths; the chorus hook must land in its first 5 words.
+If "structure" is present in the input it is a plan: produce EXACTLY those sections, in that order, with exactly that many lyric lines in each (instrumental sections get "lines":[]). Do not add or drop sections.
 Suno reads bracketed performance cues, so use them with purpose, not on every section:
 - "cue" is an optional 1-4 word delivery direction for that section, e.g. "Whispered, sparse" or "Belted, full band".
 - Include at most two instrumental sections (e.g. [Guitar Solo], [Instrumental Break]) with "lines":[] when the song needs one.
@@ -79,6 +80,7 @@ Return every score. Return an empty array where nothing qualifies.`;
 Input: ${p}
 Rules:
 - Change only what the complaints justify; keep everything else identical so the next take isolates the fix. Change at most 3 things.
+- If "history" is present it lists earlier takes (oldest first) with 1-5 star ratings and notes. Use it: never repeat a change that coincided with a low rating, and keep what scored well.
 - Be honest: Suno is stochastic and some problems (e.g. a voice that sounds synthetic) cannot be fully fixed by prompting. Say so in the diagnosis when it applies.
 - Common prompt-side causes: contradictory tags, too many tags diluting each other, genre words buried late, negatives written inside the style box instead of Exclude styles, conflicting tempo or energy words, instrument lists that crowd the mix.
 - styleTag: the full revised style prompt, max ${STYLE_TARGET} characters, genre and mood first, NO real artist, band, producer, label or song names.
@@ -90,6 +92,16 @@ Return JSON exactly:
 "styleTag":"string","excludeStyles":"string",
 "lyricFixes":[{"line":"exact original line or [Section Tag]","fix":"specific rewrite or structural change"}],
 "tryNext":"one sentence: what to change FIRST if the next take is still off"}`;
+    case "variants":
+      return `Write three alternative Suno style prompts for the same song idea, so the user can generate three genuinely different takes.
+Input: ${p}
+The three variants, in this order:
+1. "Safe": stays closest to the current style; the most predictable take.
+2. "Experimental": change ONE dimension noticeably (tempo feel, lead instrument, production era or texture) while staying coherent.
+3. "Hybrid": fuse the style with ONE contrasting genre. Name the genre, never an artist.
+Rules: differences must be audible, not cosmetic — do not just reorder tags. Each styleTag is one comma-separated line, genre and mood first, max ${STYLE_TARGET} characters. NO real artist, band, producer, label or song names anywhere. Each excludeStyles is 3-8 comma-separated traits.
+Return JSON exactly:
+{"variants":[{"label":"Safe","angle":"one sentence: what is different about this take","styleTag":"string","excludeStyles":"string","vocalLine":"one short line describing the vocal"},{"label":"Experimental","angle":"","styleTag":"","excludeStyles":"","vocalLine":""},{"label":"Hybrid","angle":"","styleTag":"","excludeStyles":"","vocalLine":""}]}`;
     default:
       throw new Error("Unknown task");
   }

@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { Panel } from "./Field";
+import { ShareExport } from "./ShareExport";
+import { SoundProfiles } from "./SoundProfiles";
+import { StyleVariants } from "./StyleVariants";
 import type { BlendResult, BlendSlice, LyricSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,6 +209,8 @@ export function SunoSheet({
           </div>
         ) : null}
 
+        <SoundProfiles blend={blend} onBlend={onBlend} />
+
         <SunoBox
           label="Title"
           value={lyrics.title}
@@ -246,6 +251,8 @@ export function SunoSheet({
           }
         />
 
+        <StyleVariants blend={blend} onBlend={onBlend} />
+
         <SunoBox
           label="Exclude styles"
           value={exclude}
@@ -273,6 +280,18 @@ export function SunoSheet({
               Open Lyric Forge
             </Button>
           }
+        />
+
+        <ShareExport
+          disabled={!style.trim() && !lyricText.trim()}
+          payload={{
+            v: 1,
+            title: lyrics.title,
+            style,
+            exclude,
+            vocal,
+            lyrics: lyricText,
+          }}
         />
 
         <p className="hairline-top pt-3 text-[11px] leading-relaxed text-muted-foreground">

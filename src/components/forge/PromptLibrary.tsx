@@ -71,6 +71,7 @@ export function PromptLibrary({
     const q = query.trim().toLowerCase();
     return presets.filter(
       (p) =>
+        p.kind !== "profile" &&
         (kind === "all" || p.kind === kind) &&
         (!q ||
           p.title.toLowerCase().includes(q) ||

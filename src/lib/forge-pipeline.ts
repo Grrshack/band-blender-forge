@@ -7,7 +7,13 @@
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
 import { clicheFixPrompt, prompt } from "@/lib/forge-prompts";
 import type { ArtistLookup } from "@/lib/musicbrainz";
-import { enforceNoArtistNames } from "@/lib/suno";
+import {
+  SUNO_LIMITS,
+  enforceNoArtistNames,
+  findStyleLeaks,
+  fitToLimit,
+  scrubArtistNames,
+} from "@/lib/suno";
 
 type Json = Record<string, unknown>;
 
@@ -162,6 +168,58 @@ export async function runPipeline(task: string, payload: Json, deps: PipelineDep
       const names = strings(payload["artists"]).slice(0, 3);
       const result = await deps.ask(base);
       return enforceNoArtistNames(result, names, (feedback) => deps.ask(`${base}\n\n${feedback}`));
+    }
+
+    case "variants": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const text = (v: Json, k: string) => (typeof v[k] === "string" ? (v[k] as string) : "");
+      const listOf = (r: Json) =>
+        (Array.isArray(r["variants"]) ? (r["variants"] as unknown[]) : [])
+          .map((v) => obj(v))
+          .filter((v) => text(v, "styleTag").trim() !== "")
+          .slice(0, 3);
+      const leaksIn = (vs: Json[]) =>
+        vs.flatMap((v) =>
+          ["styleTag", "excludeStyles", "vocalLine"].flatMap((k) =>
+            findStyleLeaks(text(v, k), names),
+          ),
+        );
+
+      let result = await deps.ask(base);
+      let variants = listOf(result);
+      const leaks = [...new Set(leaksIn(variants))];
+      if (leaks.length) {
+        try {
+          const again = await deps.ask(
+            `${base}\n\nYour previous answer put these in a style field: ${leaks.map((l) => `"${l}"`).join(", ")}. Style fields must contain zero real artist, band, producer, label or song names. Rewrite the complete JSON describing sound only.`,
+          );
+          const retry = listOf(again);
+          if (retry.length) {
+            result = again;
+            variants = retry;
+          }
+        } catch {
+          /* scrub the original below */
+        }
+      }
+
+      const removed = new Set<string>();
+      const clean = (raw: string, max?: number) => {
+        const r = scrubArtistNames(raw, names);
+        r.removed.forEach((x) => removed.add(x));
+        return max ? fitToLimit(r.text, max) : r.text;
+      };
+      const out: Json = {
+        variants: variants.map((v) => ({
+          label: text(v, "label") || "Variant",
+          angle: text(v, "angle"),
+          styleTag: clean(text(v, "styleTag"), SUNO_LIMITS.style),
+          excludeStyles: clean(text(v, "excludeStyles"), SUNO_LIMITS.exclude),
+          vocalLine: clean(text(v, "vocalLine")),
+        })),
+      };
+      if (removed.size) out["styleWarnings"] = [...removed];
+      return out;
     }
 
     default:

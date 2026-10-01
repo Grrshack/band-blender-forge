@@ -94,7 +94,7 @@ export const createPreset = createServerFn({ method: "POST" })
       .object({
         title: z.string().trim().min(1).max(120),
         body: z.string().trim().min(1).max(4000),
-        kind: z.enum(["style", "lyric", "structure"]),
+        kind: z.enum(["style", "lyric", "structure", "profile"]),
         tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
       })
       .parse(i),
