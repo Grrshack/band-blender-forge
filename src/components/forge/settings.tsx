@@ -47,10 +47,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [routing]);
 
-  const value = useMemo(
-    () => ({ apiKey, setApiKey, routing, setRouting }),
-    [apiKey, routing],
-  );
+  const value = useMemo(() => ({ apiKey, setApiKey, routing, setRouting }), [apiKey, routing]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
