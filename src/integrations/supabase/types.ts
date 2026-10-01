@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          created_at: string
+          id: string
+          task: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prompt_presets: {
         Row: {
           body: string
@@ -79,7 +100,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      purge_ai_usage: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
