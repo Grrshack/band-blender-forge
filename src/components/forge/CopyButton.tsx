@@ -45,7 +45,9 @@ export function CopyButton({
       )}
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      {size === "sm" ? <span className="text-xs font-medium">{copied ? "Copied" : label}</span> : null}
+      {size === "sm" ? (
+        <span className="text-xs font-medium">{copied ? "Copied" : label}</span>
+      ) : null}
     </Button>
   );
 }

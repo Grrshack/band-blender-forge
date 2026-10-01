@@ -108,7 +108,10 @@ export function SystemPanel() {
               {routing === "fast" ? "FAST" : "CRAFT"}
             </span>
             <ChevronUp
-              className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
             />
           </span>
         </button>

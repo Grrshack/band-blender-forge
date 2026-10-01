@@ -128,8 +128,8 @@ export function HonestFeedback({
             {loading ? "Reading it line by line…" : "Tear It Apart"}
           </Button>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            No audio upload — describe the arrangement instead. The critique is only kept if you save
-            this session.
+            No audio upload — describe the arrangement instead. The critique is only kept if you
+            save this session.
           </p>
         </div>
       </Panel>
@@ -137,7 +137,9 @@ export function HonestFeedback({
       <Panel
         title="The Verdict"
         subtitle={
-          result?.verdict ? "Scored, quoted and prioritised." : "Scores, clichés, prosody and what to fix first."
+          result?.verdict
+            ? "Scored, quoted and prioritised."
+            : "Scores, clichés, prosody and what to fix first."
         }
         action={plain ? <CopyButton value={plain} label="Copy notes" /> : undefined}
       >

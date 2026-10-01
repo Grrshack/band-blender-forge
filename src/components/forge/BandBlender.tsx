@@ -10,12 +10,7 @@ import type { BlendResult, BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runForge } from "@/lib/forge.functions";
 import { vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
@@ -303,9 +298,8 @@ export function BandBlender({
               <Radar className="size-8 text-muted-foreground" />
               <p className="max-w-md text-sm text-muted-foreground">
                 Name one to three artists — the more specific the better. Try a contrast the model
-                has to reconcile, like{" "}
-                <span className="text-foreground">Johnny Cash + Burial</span>, rather than three
-                artists from the same shelf.
+                has to reconcile, like <span className="text-foreground">Johnny Cash + Burial</span>
+                , rather than three artists from the same shelf.
               </p>
               <Button
                 variant="outline"

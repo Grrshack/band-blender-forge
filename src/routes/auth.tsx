@@ -95,7 +95,9 @@ function AuthPage() {
             <AudioLines className="size-5 text-primary" />
           </span>
           <div>
-            <h1 className="neon-text font-display text-lg font-bold">Band Lookup &amp; Lyric Forge</h1>
+            <h1 className="neon-text font-display text-lg font-bold">
+              Band Lookup &amp; Lyric Forge
+            </h1>
             <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
               {mode === "in" ? "Sign in" : "Create account"}
             </p>

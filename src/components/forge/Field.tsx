@@ -39,9 +39,7 @@ export function Panel({
           <h2 className="font-display text-sm font-semibold tracking-[0.18em] text-foreground uppercase">
             {title}
           </h2>
-          {subtitle ? (
-            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-          ) : null}
+          {subtitle ? <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p> : null}
         </div>
         {action}
       </header>

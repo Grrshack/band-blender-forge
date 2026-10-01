@@ -27,11 +27,7 @@ const KINDS = [
   { key: "structure", label: "Structure" },
 ] as const;
 
-export function PromptLibrary({
-  onApply,
-}: {
-  onApply: (kind: string, body: string) => void;
-}) {
+export function PromptLibrary({ onApply }: { onApply: (kind: string, body: string) => void }) {
   const { session } = useAuth();
   const load = useServerFn(listPresets);
   const add = useServerFn(createPreset);
