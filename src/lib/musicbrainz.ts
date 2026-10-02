@@ -176,3 +176,96 @@ export async function lookupArtists(names: string[], opts: Options = {}): Promis
 export function clearLookupCache(): void {
   cache.clear();
 }
+
+// ─── Song / recording lookup ────────────────────────────────────────────────
+
+export type RecordingLookup = {
+  title: string;
+  artist: string;
+  status: LookupStatus;
+  matchedTitle?: string;
+  matchedArtist?: string;
+  tags: string[];
+  releaseYear?: string;
+};
+
+type MbRecording = {
+  title?: string;
+  score?: number;
+  "artist-credit"?: Array<{ name?: string; artist?: { name?: string } }>;
+  tags?: Array<{ name?: string; count?: number }>;
+  releases?: Array<{ date?: string }>;
+};
+
+/**
+ * Look up a specific song recording in MusicBrainz.
+ * Returns "not_found" when it genuinely isn't there (unknown release, typo, etc.).
+ * Returns "unavailable" only when the network request itself failed.
+ *
+ * Note: MusicBrainz recording data is far sparser than artist data — genre tags
+ * are often missing, and obscure or recent tracks frequently come back not_found.
+ */
+export async function lookupRecording(
+  title: string,
+  artist: string,
+  opts: Options = {},
+): Promise<RecordingLookup> {
+  const unavailable: RecordingLookup = { title, artist, status: "unavailable", tags: [] };
+  const notFound: RecordingLookup = { title, artist, status: "not_found", tags: [] };
+
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const timeoutMs = opts.timeoutMs ?? 5000;
+  const userAgent = opts.contact
+    ? `BandBlenderForge/1.0 ( ${opts.contact} )`
+    : "BandBlenderForge/1.0";
+
+  const titlePart = `recording:"${title.replace(/["\\/]/g, " ").trim()}"`;
+  const artistPart = artist.trim()
+    ? ` AND artist:"${artist.replace(/["\\/]/g, " ").trim()}"`
+    : "";
+  const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(titlePart + artistPart)}&fmt=json&limit=5`;
+
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(url, {
+      headers: { "User-Agent": userAgent, Accept: "application/json" },
+      signal: ctl.signal,
+    });
+    if (!res.ok) return unavailable;
+    const json = (await res.json()) as { recordings?: MbRecording[] };
+    if (!json || !Array.isArray(json.recordings) || json.recordings.length === 0) return notFound;
+
+    // Accept the top result if MusicBrainz gives it a strong score.
+    const best = json.recordings
+      .filter((r) => (r.score ?? 0) >= 80)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+    if (!best) return notFound;
+
+    const matchedTitle = best.title ?? title;
+    const matchedArtist =
+      best["artist-credit"]?.[0]?.name ??
+      best["artist-credit"]?.[0]?.artist?.name ??
+      artist;
+    const tags = (best.tags ?? [])
+      .filter((t) => t.name && (t.count ?? 0) > 0)
+      .sort((x, y) => (y.count ?? 0) - (x.count ?? 0))
+      .slice(0, 6)
+      .map((t) => t.name!);
+    const releaseYear = best.releases?.[0]?.date?.slice(0, 4);
+
+    return {
+      title,
+      artist,
+      status: "found",
+      matchedTitle,
+      matchedArtist,
+      tags,
+      ...(releaseYear ? { releaseYear } : {}),
+    };
+  } catch {
+    return unavailable;
+  } finally {
+    clearTimeout(timer);
+  }
+}

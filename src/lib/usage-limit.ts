@@ -11,7 +11,7 @@ export type UsageResult = {
 };
 
 /**
- * Counts this user's calls in the last hour and, if under the limit, records one more.
+ * Counts THIS USER's calls in the last hour and, if under the limit, records one more.
  * Fails OPEN: if the `ai_usage` table is missing (migration not applied yet) or the
  * database errors, the call is allowed — a missing migration must not take the app down.
  */
@@ -29,6 +29,7 @@ export async function consumeUsage(
   const counted = await supabase
     .from("ai_usage")
     .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)   // ← scoped to this user, not global
     .gte("created_at", since);
   if (counted.error) return { allowed: true, used: 0, failedOpen: true };
 

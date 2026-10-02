@@ -89,6 +89,48 @@ const normalize = (s: string) =>
 
 const NORMALIZED = BANNED_PHRASES.map((p) => ({ phrase: p, norm: ` ${normalize(p)} ` }));
 
+/**
+ * Words to soft-avoid across a session. Occasional use is fine; repeated reliance
+ * across multiple generations is flagged and passed back to the model as a soft avoid list.
+ * These are NOT hard-banned — the model is told to find alternatives when they've appeared before.
+ */
+export const OVERUSE_WATCH_WORDS: readonly string[] = [
+  "voice",
+  "underneath",
+  "shadow",
+  "shadows",
+  "silence",
+  "lost myself",
+  "find me",
+];
+
+/**
+ * Count how many times each watch word appears across a set of lyric lines.
+ * Returns only words that were found at least once.
+ */
+export function countWatchWordOccurrences(lines: string[]): Record<string, number> {
+  const text = lines.join(" ").toLowerCase();
+  const counts: Record<string, number> = {};
+  for (const w of OVERUSE_WATCH_WORDS) {
+    const re = new RegExp(`\\b${w.replace(/\s+/g, "\\s+")}\\b`, "gi");
+    const hits = text.match(re);
+    if (hits && hits.length > 0) counts[w] = hits.length;
+  }
+  return counts;
+}
+
+/** Merge two watch-word count maps (additive). */
+export function mergeWordCounts(
+  a: Record<string, number>,
+  b: Record<string, number>,
+): Record<string, number> {
+  const out = { ...a };
+  for (const [w, n] of Object.entries(b)) {
+    out[w] = (out[w] ?? 0) + n;
+  }
+  return out;
+}
+
 /** Banned phrases found in one line (empty = clean). */
 export function findCliches(line: string): string[] {
   const hay = ` ${normalize(line)} `;

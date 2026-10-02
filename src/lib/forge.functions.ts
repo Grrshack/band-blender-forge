@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { runPipeline } from "@/lib/forge-pipeline";
-import { lookupArtists } from "@/lib/musicbrainz";
+import { lookupArtists, lookupRecording } from "@/lib/musicbrainz";
 import { optionalSupabaseAuth } from "@/lib/optional-auth";
 import { chooseProvider } from "@/lib/provider";
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
@@ -16,6 +16,7 @@ const MAX_PAYLOAD_CHARS = 60_000;
 const InputSchema = z.object({
   task: z.enum([
     "blend",
+    "song",
     "lyrics",
     "regenLine",
     "regenSection",
@@ -212,9 +213,11 @@ export const runForge = createServerFn({ method: "POST" })
     };
 
     const contact = process.env["MUSICBRAINZ_CONTACT"];
+    const mbOpts = contact ? { contact } : {};
     const result = await runPipeline(data.task, data.payload, {
       ask,
-      lookup: (names) => lookupArtists(names, contact ? { contact } : {}),
+      lookup: (names) => lookupArtists(names, mbOpts),
+      lookupRecording: (title, artist) => lookupRecording(title, artist, mbOpts),
     });
 
     return { provider, json: JSON.stringify(result) };

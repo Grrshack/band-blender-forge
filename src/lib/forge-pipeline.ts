@@ -6,7 +6,7 @@
 
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
 import { clicheFixPrompt, prompt } from "@/lib/forge-prompts";
-import type { ArtistLookup } from "@/lib/musicbrainz";
+import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
 import {
   SUNO_LIMITS,
   enforceNoArtistNames,
@@ -22,6 +22,8 @@ export type PipelineDeps = {
   ask: (text: string) => Promise<Json>;
   /** Best-effort artist lookup. May throw; the pipeline then proceeds ungrounded. */
   lookup: (names: string[]) => Promise<ArtistLookup[]>;
+  /** Best-effort recording lookup. May throw; the pipeline then proceeds ungrounded. */
+  lookupRecording?: (title: string, artist: string) => Promise<RecordingLookup>;
 };
 
 const strings = (x: unknown): string[] =>
@@ -162,6 +164,23 @@ export async function runPipeline(task: string, payload: Json, deps: PipelineDep
         return hit ? { ...obj(a), mb: slim(hit) } : a;
       });
       return result;
+    }
+
+    case "song": {
+      const title = typeof payload["title"] === "string" ? payload["title"] : "";
+      const artist = typeof payload["artist"] === "string" ? payload["artist"] : "";
+      let reference: RecordingLookup | null = null;
+      if (title && deps.lookupRecording) {
+        try {
+          reference = await deps.lookupRecording(title, artist);
+        } catch {
+          // proceeds ungrounded
+        }
+      }
+      const withRef = reference
+        ? { ...payload, reference: { ...reference } }
+        : payload;
+      return deps.ask(prompt("song", withRef));
     }
 
     case "fixTake": {

@@ -34,11 +34,26 @@ Return JSON exactly:
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this blend"}
 HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.`;
-    case "lyrics":
+    case "lyrics": {
+      const avoidWords = Array.isArray(payload["avoidWords"])
+        ? (payload["avoidWords"] as string[])
+        : [];
+      const tagsOnly = payload["tagsOnly"] === true;
+      const avoidNote =
+        avoidWords.length > 0
+          ? `\nSoft-avoid these words (used too often in recent generations — find fresh alternatives): ${avoidWords.map((w) => `"${w}"`).join(", ")}.`
+          : "";
+      const tagsNote = tagsOnly
+        ? `\nTAGS-ONLY MODE: output section structure with NO lyric lines. Every section's "lines" array must be empty []. Generate a realistic song structure (tags, cues) only — the user will write the words.`
+        : "";
       return `Write song lyrics for this brief.
 Input: ${p}
 Rules: hooks must be rhythmically repeatable and easy to sing; concrete images and specific nouns only;
 avoid banned crutch phrases; vary line lengths; the chorus hook must land in its first 5 words.
+Hook-craft rules (apply to every chorus):
+- Favour open vowel sounds (ah, oh, ay, ee) on the syllable that lands on the strongest beat — these project further and read as catchier.
+- The chorus hook phrase must repeat at least twice within the chorus itself.
+- Apply the stranger test: would a stranger who heard this twice be able to sing back the hook? If not, simplify it.${avoidNote}${tagsNote}
 If "structure" is present in the input it is a plan: produce EXACTLY those sections, in that order, with exactly that many lyric lines in each (instrumental sections get "lines":[]). Do not add or drop sections.
 Suno reads bracketed performance cues, so use them with purpose, not on every section:
 - "cue" is an optional 1-4 word delivery direction for that section, e.g. "Whispered, sparse" or "Belted, full band".
@@ -48,6 +63,7 @@ Suno reads bracketed performance cues, so use them with purpose, not on every se
 Return JSON exactly:
 {"title":"string, max 60 characters","sections":[{"tag":"[Verse 1]","cue":"optional short direction","lines":["line","line"]}]}
 Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro] as appropriate.`;
+    }
     case "regenLine":
       return `Rewrite ONE lyric line inside an existing song, keeping syllable count and rhythm close, keeping meaning coherent with neighbours, and avoiding clichés.
 Input: ${p}
@@ -102,6 +118,24 @@ The three variants, in this order:
 Rules: differences must be audible, not cosmetic — do not just reorder tags. Each styleTag is one comma-separated line, genre and mood first, max ${STYLE_TARGET} characters. NO real artist, band, producer, label or song names anywhere. Each excludeStyles is 3-8 comma-separated traits.
 Return JSON exactly:
 {"variants":[{"label":"Safe","angle":"one sentence: what is different about this take","styleTag":"string","excludeStyles":"string","vocalLine":"one short line describing the vocal"},{"label":"Experimental","angle":"","styleTag":"","excludeStyles":"","vocalLine":""},{"label":"Hybrid","angle":"","styleTag":"","excludeStyles":"","vocalLine":""}]}`;
+    case "song":
+      return `Analyse the production style of ONE specific song for AI music generation (Suno-style).
+Input: ${p}
+The input has "title" (song name) and "artist" (performer), plus optional "reference" data from MusicBrainz if the recording was found.
+Focus on THIS SPECIFIC RECORDING's production style, not the artist's whole catalog — songs within a catalog often sound very different.
+If MusicBrainz status is "not_found" or "unavailable", lower your confidence and note that the style is inferred from training data.
+Assess your own real familiarity with this specific recording honestly.
+Return JSON exactly:
+{"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. Confident — well-known recording"},
+"genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
+"vocals":"one-sentence summary of the vocal sound","mood":"string",
+"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${STYLE_TARGET} characters.",
+"vocalPrompt":{"voice":"timbre and range","delivery":"phrasing and performance","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing"},
+"excludeStyles":"3-8 comma-separated traits to keep OUT of this sound",
+"reconciliation":"2-3 sentences describing the specific sonic character of this recording and what makes it distinctive from the artist's typical sound (if applicable). May name the song title and artist here only.",
+"recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
+"sliderNotes":"one sentence on why those values suit this recording"}
+HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names. Translate each influence into sonic description.`;
     default:
       throw new Error("Unknown task");
   }
