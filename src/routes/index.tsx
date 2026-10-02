@@ -153,10 +153,10 @@ function Index() {
       <SettingsProvider>
         <div className="min-h-screen pb-24">
           <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="glow-primary flex size-11 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
-                  <AudioLines className="size-5 text-primary" />
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="glow-primary relative flex size-12 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
+                  <AudioLines className="size-6 text-primary" />
                 </span>
                 <div>
                   <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -166,6 +166,17 @@ function Index() {
                     Pre-production console for AI music generation
                   </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="hidden flex-col items-end gap-1.5 sm:flex">
+                  <span className="rounded-full border border-border bg-card/50 px-2.5 py-0.5 font-mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase">
+                    08 modules live
+                  </span>
+                  <span className="rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 font-mono text-[9px] tracking-[0.18em] text-accent uppercase">
+                    AI ready
+                  </span>
+                </div>
+                <Equalizer />
               </div>
             </div>
           </header>
