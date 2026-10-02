@@ -28,6 +28,7 @@ import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 
 export const Route = createFileRoute("/")({
@@ -53,15 +54,34 @@ export const Route = createFileRoute("/")({
 });
 
 const TABS = [
-  { value: "blend", label: "Band Blender", icon: Sliders },
-  { value: "lyrics", label: "Lyric Forge", icon: Wand2 },
-  { value: "suno", label: "Suno Sheet", icon: Send },
-  { value: "fix", label: "Fix a Take", icon: Stethoscope },
-  { value: "compare", label: "Comparables", icon: Search },
-  { value: "feedback", label: "Honest Feedback", icon: Gauge },
-  { value: "master", label: "Mastering", icon: AudioWaveform },
-  { value: "library", label: "Prompt Library", icon: BookMarked },
+  { value: "blend", label: "Band Blender", icon: Sliders, desc: "Blend 1–3 artists into one producible style, tuned by energy, complexity and brightness." },
+  { value: "lyrics", label: "Lyric Forge", icon: Wand2, desc: "Forge hook-first lyrics section by section, with per-line lock and regeneration." },
+  { value: "suno", label: "Suno Sheet", icon: Send, desc: "Assemble the full prompt sheet, ready to paste straight into Suno." },
+  { value: "fix", label: "Fix a Take", icon: Stethoscope, desc: "Log real takes and tighten the prompt from what the model actually returned." },
+  { value: "compare", label: "Comparables", icon: Search, desc: "Drop in lyrics or style tags and find adjacent artists, with reasoning." },
+  { value: "feedback", label: "Honest Feedback", icon: Gauge, desc: "Blunt critique on lyrics and notes — scores, clichés and the three fixes that matter." },
+  { value: "master", label: "Mastering", icon: AudioWaveform, desc: "Plan the chain before you render — loudness targets, spectrum and references." },
+  { value: "library", label: "Prompt Library", icon: BookMarked, desc: "Reusable prompt presets with search and tags, ready to apply to any session." },
 ];
+
+function Equalizer() {
+  const bars = [0.35, 0.7, 0.5, 0.9, 0.6, 0.85, 0.4, 0.75, 0.55, 0.95, 0.45, 0.8];
+  return (
+    <div aria-hidden className="hidden items-end gap-1 sm:flex">
+      {bars.map((h, i) => (
+        <span
+          key={i}
+          className="w-1 origin-bottom animate-eq rounded-full bg-gradient-to-t from-primary/50 to-accent/80"
+          style={{
+            height: `${h * 28}px`,
+            animationDelay: `${i * 0.11}s`,
+            animationDuration: `${1 + (i % 4) * 0.18}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Index() {
   const [tab, setTab] = useState("blend");
