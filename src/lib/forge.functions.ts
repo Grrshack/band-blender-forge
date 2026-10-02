@@ -62,10 +62,16 @@ function extractJson(text: string): unknown {
   try {
     return JSON.parse(cleaned);
   } catch {
+    // First parse failed — try extracting just the {...} block.
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if (start !== -1 && end > start) {
-      return JSON.parse(cleaned.slice(start, end + 1));
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1));
+      } catch {
+        // Both attempts failed — fall through to the standard error so
+        // the retry in ask() always fires on any truncation or parse problem.
+      }
     }
     throw new Error("The model returned a response that could not be parsed.");
   }
@@ -201,9 +207,12 @@ export const runForge = createServerFn({ method: "POST" })
           : callGateway(choice.key, routing, text, maxTokens),
       );
 
+    // Lyrics tasks generate full song sections and need more room than a blend or critique.
+    const initialTokens = ["lyrics", "regenSection"].includes(data.task) ? 4000 : 3000;
+
     const ask = async (text: string): Promise<Record<string, unknown>> => {
       try {
-        return extractJson(await call(text, 3000)) as Record<string, unknown>;
+        return extractJson(await call(text, initialTokens)) as Record<string, unknown>;
       } catch (e) {
         const truncated = e instanceof Error && e.message.includes("could not be parsed");
         if (!truncated) throw e;
