@@ -75,26 +75,42 @@ export function BandBlender({
   const [stage, setStage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { artists, sliders, result } = value;
+  const { artists, sliders, result, lookupMode = "band", songTitle = "" } = value;
 
   const setArtist = (i: number, v: string) =>
     onChange({ ...value, artists: artists.map((a, idx) => (idx === i ? v : a)) });
 
   const run = async (override?: string[]) => {
+    const isSong = lookupMode === "song";
     const source = override ?? artists;
     const names = source.map((a) => a.trim()).filter(Boolean);
-    if (names.length === 0) {
+    if (!isSong && names.length === 0) {
       setError("Add at least one artist to blend.");
+      return;
+    }
+    if (isSong && !songTitle.trim()) {
+      setError("Enter a song title.");
       return;
     }
     setError(null);
     setLoading(true);
-    setStage("Checking artists against MusicBrainz…");
-    const t1 = setTimeout(() => setStage("Assessing artist familiarity…"), 3500);
-    const t2 = setTimeout(() => setStage("Reconciling conflicting elements…"), 7000);
+    setStage(
+      isSong ? "Looking up recording in MusicBrainz…" : "Checking artists against MusicBrainz…",
+    );
+    const t1 = setTimeout(
+      () => setStage(isSong ? "Analysing production style…" : "Assessing artist familiarity…"),
+      3500,
+    );
+    const t2 = setTimeout(
+      () => setStage(isSong ? "Building Suno prompt…" : "Reconciling conflicting elements…"),
+      7000,
+    );
     try {
+      const payload = isSong
+        ? { title: songTitle.trim(), artist: names[0] ?? "" }
+        : { artists: names, sliders };
       const res = await forge({
-        data: { task: "blend", routing, apiKey, payload: { artists: names, sliders } },
+        data: { task: isSong ? "song" : "blend", routing, apiKey, payload },
       });
       const blend = JSON.parse(res.json) as BlendResult;
       onChange({
@@ -105,6 +121,8 @@ export function BandBlender({
           brightness: blend.recommendedSliders?.brightness ?? sliders.brightness,
         },
         result: blend,
+        lookupMode,
+        songTitle,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blend failed.");
@@ -121,27 +139,77 @@ export function BandBlender({
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <div className="space-y-5">
-        <Panel title="Band Lookup" subtitle="Blend up to three artists into one produceable style.">
-          {error ? <ErrorNote message={error} onRetry={() => void run()} /> : null}
-          <div className="space-y-3">
-            {artists.map((a, i) => (
-              <div key={i} className="relative">
-                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">
-                  0{i + 1}
-                </span>
-                <Input
-                  value={a}
-                  onChange={(e) => setArtist(i, e.target.value)}
-                  placeholder={
-                    ["Primary artist", "Second artist (optional)", "Third artist (optional)"][i]
-                  }
-                  className="h-11 border-border bg-card/60 pl-10 focus-visible:ring-primary"
-                />
-              </div>
+        <Panel
+          title="Band Lookup"
+          subtitle={
+            lookupMode === "song"
+              ? "Analyse one specific song's production style."
+              : "Blend up to three artists into one produceable style."
+          }
+        >
+          {/* Mode toggle */}
+          <div className="mb-4 flex rounded-lg border border-border p-0.5">
+            {(["band", "song"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onChange({ ...value, lookupMode: m, result: null })}
+                className={cn(
+                  "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
+                  lookupMode === m
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {m === "band" ? "Band / Artist blend" : "Single song"}
+              </button>
             ))}
           </div>
 
-          <div className="mt-5 space-y-4">
+          {error ? <ErrorNote message={error} onRetry={() => void run()} /> : null}
+
+          {lookupMode === "song" ? (
+            <div className="space-y-3">
+              <Input
+                value={songTitle}
+                onChange={(e) => onChange({ ...value, songTitle: e.target.value })}
+                placeholder="Song title"
+                className="h-11 border-border bg-card/60 focus-visible:ring-primary"
+              />
+              <Input
+                value={artists[0] ?? ""}
+                onChange={(e) => setArtist(0, e.target.value)}
+                placeholder="Artist (optional — helps narrow the lookup)"
+                className="h-11 border-border bg-card/60 focus-visible:ring-primary"
+              />
+              <p className="flex items-start gap-1.5 text-[10px] leading-relaxed text-muted-foreground">
+                <ShieldAlert className="mt-0.5 size-3 shrink-0 text-signal-mid" />
+                MusicBrainz covers most released recordings but not all — recent, obscure, or
+                regional tracks often return &ldquo;not found.&rdquo; The style will still be
+                inferred from training data, but with lower confidence.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {artists.map((a, i) => (
+                <div key={i} className="relative">
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">
+                    0{i + 1}
+                  </span>
+                  <Input
+                    value={a}
+                    onChange={(e) => setArtist(i, e.target.value)}
+                    placeholder={
+                      ["Primary artist", "Second artist (optional)", "Third artist (optional)"][i]
+                    }
+                    className="h-11 border-border bg-card/60 pl-10 focus-visible:ring-primary"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className={cn("mt-5 space-y-4", lookupMode === "song" && "hidden")}>
             {SLIDERS.map((s) => (
               <div key={s.key}>
                 <div className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -192,7 +260,15 @@ export function BandBlender({
             className="glow-primary mt-5 h-11 w-full gap-2 font-display tracking-wide"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
-            {loading ? stage || "Blending…" : result ? "Re-run With These Sliders" : "Run Blend"}
+            {loading
+              ? stage || (lookupMode === "song" ? "Analysing…" : "Blending…")
+              : lookupMode === "song"
+                ? result
+                  ? "Re-analyse"
+                  : "Analyse Song"
+                : result
+                  ? "Re-run With These Sliders"
+                  : "Run Blend"}
           </Button>
         </Panel>
       </div>

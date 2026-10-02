@@ -19,9 +19,16 @@ import { useSettings } from "./settings";
 import type { BlendResult, LyricSlice, Section } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { runForge } from "@/lib/forge.functions";
-import { countSyllables, findCliches, isSyllableOutlier } from "@/lib/cliches";
+import {
+  countSyllables,
+  countWatchWordOccurrences,
+  findCliches,
+  isSyllableOutlier,
+  mergeWordCounts,
+} from "@/lib/cliches";
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +98,7 @@ export function LyricForge({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { theme, hook, notes, title, sections } = value;
+  const { theme, hook, notes, title, sections, tagsOnly = false, recentWords = {} } = value;
   const set = (patch: Partial<LyricSlice>) => onChange({ ...value, ...patch });
 
   const styleContext = {
@@ -121,6 +128,15 @@ export function LyricForge({
             notes,
             style: styleContext,
             ...(value.structure ? { structure: value.structure } : {}),
+            ...(tagsOnly ? { tagsOnly: true } : {}),
+            // Words used >= 2 times in previous generations get soft-avoided
+            ...(Object.keys(recentWords).length > 0
+              ? {
+                  avoidWords: Object.entries(recentWords)
+                    .filter(([, n]) => n >= 2)
+                    .map(([w]) => w),
+                }
+              : {}),
           },
         },
       });
@@ -128,13 +144,18 @@ export function LyricForge({
         title?: string;
         sections?: Array<{ tag?: string; cue?: string; lines?: string[] }>;
       };
+      const newSections = (out.sections ?? []).map((s) => ({
+        tag: s.tag ?? "[Section]",
+        ...(s.cue ? { cue: s.cue } : {}),
+        lines: (s.lines ?? []).map((t) => ({ text: t, locked: false })),
+      }));
+      // Track watch-word usage across generations for soft-avoidance next time
+      const allLines = newSections.flatMap((s) => s.lines.map((l) => l.text));
+      const newCounts = countWatchWordOccurrences(allLines);
       set({
         title: out.title ?? "",
-        sections: (out.sections ?? []).map((s) => ({
-          tag: s.tag ?? "[Section]",
-          ...(s.cue ? { cue: s.cue } : {}),
-          lines: (s.lines ?? []).map((t) => ({ text: t, locked: false })),
-        })),
+        sections: newSections,
+        recentWords: mergeWordCounts(recentWords, newCounts),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed.");
@@ -327,13 +348,34 @@ export function LyricForge({
             onStructure={(text) => set({ structure: text })}
           />
 
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5">
+            <div>
+              <span className="block text-xs font-medium text-foreground/90">
+                Structure only
+              </span>
+              <span className="block text-[10px] text-muted-foreground">
+                Generate section tags and cues — I&apos;ll write the words myself.
+              </span>
+            </div>
+            <Switch
+              checked={tagsOnly}
+              onCheckedChange={(v) => onChange({ ...value, tagsOnly: v })}
+            />
+          </label>
+
           <Button
             onClick={() => void generate()}
             disabled={loading}
             className="glow-primary h-11 w-full gap-2 font-display tracking-wide"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
-            {loading ? "Forging hooks and verses…" : "Forge Lyrics"}
+            {loading
+              ? tagsOnly
+                ? "Building structure…"
+                : "Forging hooks and verses…"
+              : tagsOnly
+                ? "Build Structure"
+                : "Forge Lyrics"}
           </Button>
         </div>
       </Panel>

@@ -81,6 +81,10 @@ export type BlendSlice = {
   artists: string[];
   sliders: { energy: number; complexity: number; brightness: number };
   result: BlendResult | null;
+  /** "band" blends multiple artists; "song" analyses one specific recording. */
+  lookupMode: "band" | "song";
+  /** Used only when lookupMode === "song". */
+  songTitle: string;
 };
 
 export type LyricSlice = {
@@ -91,6 +95,13 @@ export type LyricSlice = {
   sections: Section[];
   /** Plain-text song-length plan that steers generation (see the length planner). */
   structure?: string | undefined;
+  /** Generate section structure only — no lyric lines. User writes the words. */
+  tagsOnly: boolean;
+  /**
+   * Running count of watch-words seen across lyric generations this session.
+   * Words with count >= 2 are soft-avoided in the next generation.
+   */
+  recentWords: Record<string, number>;
 };
 
 export type CompareSlice = {
@@ -120,8 +131,10 @@ export const emptyState = (): ForgeState => ({
     artists: ["", "", ""],
     sliders: { energy: 60, complexity: 50, brightness: 55 },
     result: null,
+    lookupMode: "band",
+    songTitle: "",
   },
-  lyrics: { theme: "", hook: "", notes: "", title: "", sections: [] },
+  lyrics: { theme: "", hook: "", notes: "", title: "", sections: [], tagsOnly: false, recentWords: {} },
   compare: { lyrics: "", tags: "", result: null },
   critique: { lyrics: "", notes: "", result: null },
   fix: { symptoms: [], notes: "", result: null, undo: null },
