@@ -28,6 +28,7 @@ import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 
 export const Route = createFileRoute("/")({
@@ -53,15 +54,34 @@ export const Route = createFileRoute("/")({
 });
 
 const TABS = [
-  { value: "blend", label: "Band Blender", icon: Sliders },
-  { value: "lyrics", label: "Lyric Forge", icon: Wand2 },
-  { value: "suno", label: "Suno Sheet", icon: Send },
-  { value: "fix", label: "Fix a Take", icon: Stethoscope },
-  { value: "compare", label: "Comparables", icon: Search },
-  { value: "feedback", label: "Honest Feedback", icon: Gauge },
-  { value: "master", label: "Mastering", icon: AudioWaveform },
-  { value: "library", label: "Prompt Library", icon: BookMarked },
+  { value: "blend", label: "Band Blender", icon: Sliders, desc: "Blend 1–3 artists into one producible style, tuned by energy, complexity and brightness." },
+  { value: "lyrics", label: "Lyric Forge", icon: Wand2, desc: "Forge hook-first lyrics section by section, with per-line lock and regeneration." },
+  { value: "suno", label: "Suno Sheet", icon: Send, desc: "Assemble the full prompt sheet, ready to paste straight into Suno." },
+  { value: "fix", label: "Fix a Take", icon: Stethoscope, desc: "Log real takes and tighten the prompt from what the model actually returned." },
+  { value: "compare", label: "Comparables", icon: Search, desc: "Drop in lyrics or style tags and find adjacent artists, with reasoning." },
+  { value: "feedback", label: "Honest Feedback", icon: Gauge, desc: "Blunt critique on lyrics and notes — scores, clichés and the three fixes that matter." },
+  { value: "master", label: "Mastering", icon: AudioWaveform, desc: "Plan the chain before you render — loudness targets, spectrum and references." },
+  { value: "library", label: "Prompt Library", icon: BookMarked, desc: "Reusable prompt presets with search and tags, ready to apply to any session." },
 ];
+
+function Equalizer() {
+  const bars = [0.35, 0.7, 0.5, 0.9, 0.6, 0.85, 0.4, 0.75, 0.55, 0.95, 0.45, 0.8];
+  return (
+    <div aria-hidden className="hidden items-end gap-1 sm:flex">
+      {bars.map((h, i) => (
+        <span
+          key={i}
+          className="w-1 origin-bottom animate-eq rounded-full bg-gradient-to-t from-primary/50 to-accent/80"
+          style={{
+            height: `${h * 28}px`,
+            animationDelay: `${i * 0.11}s`,
+            animationDuration: `${1 + (i % 4) * 0.18}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Index() {
   const [tab, setTab] = useState("blend");
@@ -133,10 +153,10 @@ function Index() {
       <SettingsProvider>
         <div className="min-h-screen pb-24">
           <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="glow-primary flex size-11 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
-                  <AudioLines className="size-5 text-primary" />
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <span className="glow-primary relative flex size-12 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
+                  <AudioLines className="size-6 text-primary" />
                 </span>
                 <div>
                   <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -147,6 +167,17 @@ function Index() {
                   </p>
                 </div>
               </div>
+              <div className="flex items-center gap-4">
+                <div className="hidden flex-col items-end gap-1.5 sm:flex">
+                  <span className="rounded-full border border-border bg-card/50 px-2.5 py-0.5 font-mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase">
+                    08 modules live
+                  </span>
+                  <span className="rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 font-mono text-[9px] tracking-[0.18em] text-accent uppercase">
+                    AI ready
+                  </span>
+                </div>
+                <Equalizer />
+              </div>
             </div>
           </header>
 
@@ -155,12 +186,15 @@ function Index() {
 
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="mb-5 h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border bg-panel/70 p-1">
-                {TABS.map((t) => (
+                {TABS.map((t, i) => (
                   <TabsTrigger
                     key={t.value}
                     value={t.value}
-                    className="gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
+                    className="group gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                   >
+                    <span className="font-mono text-[9px] text-muted-foreground/50 group-data-[state=active]:text-primary/70">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
                     <t.icon className="size-3.5" />
                     {t.label}
                   </TabsTrigger>
@@ -219,6 +253,39 @@ function Index() {
                 <PromptLibrary onApply={applyPreset} />
               </TabsContent>
             </Tabs>
+
+            <section className="mt-10">
+              <div className="mb-4 flex items-center gap-3">
+                <h2 className="font-mono text-[11px] tracking-[0.24em] text-muted-foreground uppercase">
+                  The full rack
+                </h2>
+                <span className="hairline-top h-px flex-1" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {TABS.map((t, i) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTab(t.value)}
+                    className={cn(
+                      "panel-surface group p-4 text-left transition-all hover:border-primary/50 hover:glow-primary",
+                      tab === t.value && "border-primary/60 glow-primary",
+                    )}
+                  >
+                    <div className="flex items-start justify-between">
+                      <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-card/60 transition-colors group-hover:border-primary/40">
+                        <t.icon className="size-4 text-primary transition-colors group-hover:text-accent" />
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground/50">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <p className="mt-3 font-display text-sm font-semibold tracking-tight">{t.label}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
           </main>
 
           <SystemPanel />

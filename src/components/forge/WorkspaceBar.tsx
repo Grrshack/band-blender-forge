@@ -269,7 +269,11 @@ export function WorkspaceBar({
         </>
       ) : (
         <>
-          <span className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+          <span className="flex items-center gap-2 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal-high opacity-60" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-signal-high" />
+            </span>
             Working locally — nothing is saved
           </span>
           <div className="ml-auto flex items-center gap-1.5">
