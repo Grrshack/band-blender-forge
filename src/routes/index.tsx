@@ -186,12 +186,15 @@ function Index() {
 
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="mb-5 h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border bg-panel/70 p-1">
-                {TABS.map((t) => (
+                {TABS.map((t, i) => (
                   <TabsTrigger
                     key={t.value}
                     value={t.value}
-                    className="gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
+                    className="group gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                   >
+                    <span className="font-mono text-[9px] text-muted-foreground/50 group-data-[state=active]:text-primary/70">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
                     <t.icon className="size-3.5" />
                     {t.label}
                   </TabsTrigger>
@@ -250,6 +253,39 @@ function Index() {
                 <PromptLibrary onApply={applyPreset} />
               </TabsContent>
             </Tabs>
+
+            <section className="mt-10">
+              <div className="mb-4 flex items-center gap-3">
+                <h2 className="font-mono text-[11px] tracking-[0.24em] text-muted-foreground uppercase">
+                  The full rack
+                </h2>
+                <span className="hairline-top h-px flex-1" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {TABS.map((t, i) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTab(t.value)}
+                    className={cn(
+                      "panel-surface group p-4 text-left transition-all hover:border-primary/50 hover:glow-primary",
+                      tab === t.value && "border-primary/60 glow-primary",
+                    )}
+                  >
+                    <div className="flex items-start justify-between">
+                      <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-card/60 transition-colors group-hover:border-primary/40">
+                        <t.icon className="size-4 text-primary transition-colors group-hover:text-accent" />
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground/50">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <p className="mt-3 font-display text-sm font-semibold tracking-tight">{t.label}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
           </main>
 
           <SystemPanel />
