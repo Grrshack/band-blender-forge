@@ -28,6 +28,7 @@ import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 
@@ -151,28 +152,28 @@ function Index() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <div className="min-h-screen pb-24">
-          <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
+        <div className="studio min-h-screen pb-24">
+          <header className="mx-auto max-w-7xl px-4 pt-9 pb-6 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <span className="glow-primary relative flex size-12 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
-                  <AudioLines className="size-6 text-primary" />
+                <span className="glow-primary relative flex size-14 shrink-0 items-center justify-center rounded-lg bg-primary">
+                  <AudioLines className="size-7 text-primary-foreground" />
                 </span>
                 <div>
-                  <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                    Band Lookup &amp; Lyric Forge
+                  <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">
+                    Band Lookup <span className="text-primary">&amp;</span> Lyric Forge
                   </h1>
-                  <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Pre-production console for AI music generation
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="hidden flex-col items-end gap-1.5 sm:flex">
-                  <span className="rounded-full border border-border bg-card/50 px-2.5 py-0.5 font-mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase">
+                  <span className="font-mono text-[10px] text-muted-foreground uppercase">
                     08 modules live
                   </span>
-                  <span className="rounded-full border border-accent/30 bg-accent/10 px-2.5 py-0.5 font-mono text-[9px] tracking-[0.18em] text-accent uppercase">
+                  <span className="font-mono text-xs text-primary uppercase">
                     AI ready
                   </span>
                 </div>
@@ -181,16 +182,16 @@ function Index() {
             </div>
           </header>
 
-          <main className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6">
+          <main className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6">
             <WorkspaceBar state={state} onLoadState={setState} />
 
             <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="mb-5 h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border bg-panel/70 p-1">
+              <TabsList className="mb-7 h-auto w-full flex-wrap justify-start gap-2 rounded-none border-0 bg-transparent p-0">
                 {TABS.map((t, i) => (
                   <TabsTrigger
                     key={t.value}
                     value={t.value}
-                    className="group gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
+                    className="group min-h-10 flex-none gap-2 rounded-md border border-border/60 bg-panel/70 px-3 py-2 text-xs font-medium transition-all data-[state=active]:border-primary/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-none"
                   >
                     <span className="font-mono text-[9px] text-muted-foreground/50 group-data-[state=active]:text-primary/70">
                       {String(i + 1).padStart(2, "0")}
@@ -254,7 +255,7 @@ function Index() {
               </TabsContent>
             </Tabs>
 
-            <section className="mt-10">
+            <section className="pt-8">
               <div className="mb-4 flex items-center gap-3">
                 <h2 className="font-mono text-[11px] tracking-[0.24em] text-muted-foreground uppercase">
                   The full rack
@@ -263,18 +264,19 @@ function Index() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {TABS.map((t, i) => (
-                  <button
+                  <Button
                     key={t.value}
                     type="button"
+                    variant="ghost"
                     onClick={() => setTab(t.value)}
                     className={cn(
-                      "panel-surface group p-4 text-left transition-all hover:border-primary/50 hover:glow-primary",
-                      tab === t.value && "border-primary/60 glow-primary",
+                      "group block h-auto whitespace-normal rounded-lg border border-border/60 bg-panel/60 p-5 text-left transition-all hover:border-primary/50 hover:bg-panel",
+                      tab === t.value && "border-primary/60 bg-primary/5",
                     )}
                   >
                     <div className="flex items-start justify-between">
                       <span className="flex size-9 items-center justify-center rounded-lg border border-border bg-card/60 transition-colors group-hover:border-primary/40">
-                        <t.icon className="size-4 text-primary transition-colors group-hover:text-accent" />
+                        <t.icon className="size-4 text-primary transition-colors group-hover:text-foreground" />
                       </span>
                       <span className="font-mono text-[10px] text-muted-foreground/50">
                         {String(i + 1).padStart(2, "0")}
@@ -282,7 +284,7 @@ function Index() {
                     </div>
                     <p className="mt-3 font-display text-sm font-semibold tracking-tight">{t.label}</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.desc}</p>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </section>

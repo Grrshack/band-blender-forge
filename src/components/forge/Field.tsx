@@ -33,10 +33,10 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("panel-surface p-5", className)}>
-      <header className="mb-4 flex items-start justify-between gap-3">
+    <section className={cn("panel-surface p-5 sm:p-6", className)}>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
         <div>
-          <h2 className="font-display text-sm font-semibold tracking-[0.18em] text-foreground uppercase">
+          <h2 className="font-display text-base font-semibold text-foreground">
             {title}
           </h2>
           {subtitle ? <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p> : null}
