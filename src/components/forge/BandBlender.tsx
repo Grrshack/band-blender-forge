@@ -137,9 +137,10 @@ export function BandBlender({
   const level = (result?.confidence?.level ?? "medium").toLowerCase();
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+    <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
       <div className="space-y-5">
         <Panel
+          className="blend-controls"
           title="Band Lookup"
           subtitle={
             lookupMode === "song"
@@ -150,19 +151,20 @@ export function BandBlender({
           {/* Mode toggle */}
           <div className="mb-4 flex rounded-lg border border-border p-0.5">
             {(["band", "song"] as const).map((m) => (
-              <button
+              <Button
                 key={m}
                 type="button"
+                variant="ghost"
                 onClick={() => onChange({ ...value, lookupMode: m, result: null })}
                 className={cn(
                   "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
                   lookupMode === m
-                    ? "bg-primary/20 text-primary"
+                    ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {m === "band" ? "Band / Artist blend" : "Single song"}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -209,10 +211,10 @@ export function BandBlender({
             </div>
           )}
 
-          <div className={cn("mt-5 space-y-4", lookupMode === "song" && "hidden")}>
+          <div className={cn("mt-8 space-y-6", lookupMode === "song" && "hidden")}>
             {SLIDERS.map((s) => (
               <div key={s.key}>
-                <div className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                <div className="mb-3 flex items-center justify-between text-xs font-semibold text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     {s.label}
                     <TooltipProvider delayDuration={150}>
@@ -232,7 +234,7 @@ export function BandBlender({
                       </Tooltip>
                     </TooltipProvider>
                   </span>
-                  <span className="text-accent">{sliders[s.key]}</span>
+                  <span className="font-mono text-primary">{sliders[s.key]}</span>
                 </div>
                 <Slider
                   value={[sliders[s.key]]}
@@ -257,7 +259,7 @@ export function BandBlender({
           <Button
             onClick={() => void run()}
             disabled={loading}
-            className="glow-primary mt-5 h-11 w-full gap-2 font-display tracking-wide"
+            className="glow-primary mt-8 min-h-12 h-auto w-full gap-2 whitespace-normal py-3 font-display font-semibold"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
             {loading
@@ -273,7 +275,7 @@ export function BandBlender({
         </Panel>
       </div>
 
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         {result ? (
           <>
             <Panel
@@ -369,9 +371,10 @@ export function BandBlender({
             </Panel>
           </>
         ) : (
-          <Panel title="Style Breakdown" subtitle="Awaiting input.">
-            <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border px-6 text-center">
-              <Radar className="size-8 text-muted-foreground" />
+          <Panel title="Style Breakdown" className="flex h-full min-h-[440px] flex-col" action={<span className="font-mono text-xs text-muted-foreground">Awaiting input</span>}>
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 px-3 py-10 text-center">
+              <span className="flex size-24 items-center justify-center rounded-full border border-dashed border-primary/40 bg-primary/5"><Radar className="size-10 text-primary" /></span>
+              <h3 className="font-display text-2xl font-semibold text-foreground">Awaiting Sonic Blueprint</h3>
               <p className="max-w-md text-sm text-muted-foreground">
                 Name one to three artists — the more specific the better. Try a contrast the model
                 has to reconcile, like <span className="text-foreground">Johnny Cash + Burial</span>
@@ -384,7 +387,7 @@ export function BandBlender({
                   onChange({ ...value, artists: DEMO });
                   void run(DEMO);
                 }}
-                className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
+                className="mt-2 h-10 gap-2 border-border bg-secondary/40 text-xs text-foreground hover:bg-secondary"
               >
                 <Wand className="size-3.5" /> Try a demo blend
               </Button>
