@@ -85,6 +85,8 @@ export type BlendSlice = {
   lookupMode: "band" | "song";
   /** Used only when lookupMode === "song". */
   songTitle: string;
+  /** Which Suno generation to target — affects style tag length and format. */
+  sunoVersion: "mini" | "v6" | "pro";
 };
 
 export type LyricSlice = {
@@ -97,6 +99,8 @@ export type LyricSlice = {
   structure?: string | undefined;
   /** Generate section structure only — no lyric lines. User writes the words. */
   tagsOnly: boolean;
+  /** Manually pasted Suno style prompt when no blend is linked. */
+  manualStyle: string;
   /**
    * Running count of watch-words seen across lyric generations this session.
    * Words with count >= 2 are soft-avoided in the next generation.
@@ -133,8 +137,9 @@ export const emptyState = (): ForgeState => ({
     result: null,
     lookupMode: "band",
     songTitle: "",
+    sunoVersion: "v6",
   },
-  lyrics: { theme: "", hook: "", notes: "", title: "", sections: [], tagsOnly: false, recentWords: {} },
+  lyrics: { theme: "", hook: "", notes: "", title: "", sections: [], tagsOnly: false, manualStyle: "", recentWords: {} },
   compare: { lyrics: "", tags: "", result: null },
   critique: { lyrics: "", notes: "", result: null },
   fix: { symptoms: [], notes: "", result: null, undo: null },

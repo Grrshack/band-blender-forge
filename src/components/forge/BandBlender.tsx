@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Info, Loader2, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
+import { Clipboard, Info, Loader2, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runForge } from "@/lib/forge.functions";
-import { vocalString } from "@/lib/suno";
+import { SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
 export type { BlendResult } from "./types";
@@ -36,6 +36,47 @@ const SLIDERS = [
 ] as const;
 
 const DEMO = ["Portishead", "Massive Attack", "FKA twigs"];
+
+/** Pre-computed demo result shown before the user runs their first blend. */
+const DEMO_BLEND: BlendResult = {
+  confidence: { level: "high", note: "Demo result — replace with your own artists above" },
+  genre: "Trip-hop / Art Pop",
+  tempo: "70–88 BPM, dragging half-time feel",
+  instrumentation: "Samplers, live strings, sub-heavy 808s, orchestral stabs, Rhodes piano",
+  vocals: "Breathy alto, close-miked, intimate phrasing with occasional processed falsetto",
+  mood: "Melancholic, cinematic, unsettled intimacy",
+  styleTag:
+    "trip-hop, dark art-pop, cinematic mood, 80bpm, sub bass, orchestral samples, breathy alto, lo-fi production, melancholic, introspective",
+  vocalPrompt: {
+    voice: "Warm breathy alto with restrained upper range",
+    delivery: "Close-miked, half-spoken verses building to a contained belted chorus",
+    harmonies: "Sparse high harmonics, single tracked at key phrase endings",
+    effects: "Tape saturation, subtle pitch correction, long reverb tail on sustains",
+  },
+  excludeStyles: "euphoric, energetic, upbeat, acoustic folk, bright mix, arena rock",
+  reconciliation:
+    "The first artist's jazz-tinged sample manipulation and the second's dub-influenced sub pressure form the rhythmic foundation, while the third's avant-garde production sensibility — negative space and textural contrast — governs arrangement decisions. Vocal approach conflicts are resolved by favouring intimacy over cinematic distance, while keeping dense layering intact underneath.",
+  recommendedSliders: { energy: 35, complexity: 72, brightness: 28 },
+  sliderNotes: "Low energy and brightness reflect the slow, dark character; high complexity captures the layered production.",
+};
+
+const PRESETS: { label: string; emoji: string; artists: string[] }[] = [
+  { label: "Dark Cinematic Trap", emoji: "🌑", artists: ["James Blake", "Travis Scott", "Arca"] },
+  { label: "90s Grunge Revival", emoji: "🎸", artists: ["Nirvana", "Hole", "Pixies"] },
+  { label: "Hyperpop", emoji: "⚡", artists: ["100 gecs", "Charli XCX", "SOPHIE"] },
+  { label: "Lo-fi Jazz Hip-hop", emoji: "🌿", artists: ["Nujabes", "J Dilla", "Toro y Moi"] },
+  { label: "Orchestral Metal", emoji: "🔥", artists: ["Rammstein", "Hans Zimmer", "Gojira"] },
+];
+
+/** Formats blend output into one pasteable block for Suno's custom mode. */
+function formatForSuno(result: BlendResult): string {
+  const parts: string[] = [];
+  if (result.styleTag) parts.push(`Style: ${result.styleTag}`);
+  const vocal = vocalString(result.vocalPrompt);
+  if (vocal) parts.push(`Vocal style: ${vocal}`);
+  if (result.excludeStyles) parts.push(`Exclude: ${result.excludeStyles}`);
+  return parts.join("\n\n");
+}
 
 function ConfidenceLamp({ level, note }: { level: string; note: string }) {
   const tone =
@@ -75,7 +116,7 @@ export function BandBlender({
   const [stage, setStage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { artists, sliders, result, lookupMode = "band", songTitle = "" } = value;
+  const { artists, sliders, result, lookupMode = "band", songTitle = "", sunoVersion = "v6" } = value;
 
   const setArtist = (i: number, v: string) =>
     onChange({ ...value, artists: artists.map((a, idx) => (idx === i ? v : a)) });
@@ -108,7 +149,7 @@ export function BandBlender({
     try {
       const payload = isSong
         ? { title: songTitle.trim(), artist: names[0] ?? "" }
-        : { artists: names, sliders };
+        : { artists: names, sliders, sunoVersion };
       const res = await forge({
         data: { task: isSong ? "song" : "blend", routing, apiKey, payload },
       });
@@ -123,6 +164,7 @@ export function BandBlender({
         result: blend,
         lookupMode,
         songTitle,
+        sunoVersion,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blend failed.");
@@ -137,10 +179,9 @@ export function BandBlender({
   const level = (result?.confidence?.level ?? "medium").toLowerCase();
 
   return (
-    <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <div className="space-y-5">
         <Panel
-          className="blend-controls"
           title="Band Lookup"
           subtitle={
             lookupMode === "song"
@@ -151,20 +192,19 @@ export function BandBlender({
           {/* Mode toggle */}
           <div className="mb-4 flex rounded-lg border border-border p-0.5">
             {(["band", "song"] as const).map((m) => (
-              <Button
+              <button
                 key={m}
                 type="button"
-                variant="ghost"
                 onClick={() => onChange({ ...value, lookupMode: m, result: null })}
                 className={cn(
                   "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
                   lookupMode === m
-                    ? "bg-secondary text-foreground"
+                    ? "bg-primary/20 text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {m === "band" ? "Band / Artist blend" : "Single song"}
-              </Button>
+              </button>
             ))}
           </div>
 
@@ -211,10 +251,10 @@ export function BandBlender({
             </div>
           )}
 
-          <div className={cn("mt-8 space-y-6", lookupMode === "song" && "hidden")}>
+          <div className={cn("mt-5 space-y-4", lookupMode === "song" && "hidden")}>
             {SLIDERS.map((s) => (
               <div key={s.key}>
-                <div className="mb-3 flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                <div className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
                   <span className="flex items-center gap-1.5">
                     {s.label}
                     <TooltipProvider delayDuration={150}>
@@ -234,7 +274,7 @@ export function BandBlender({
                       </Tooltip>
                     </TooltipProvider>
                   </span>
-                  <span className="font-mono text-primary">{sliders[s.key]}</span>
+                  <span className="text-accent">{sliders[s.key]}</span>
                 </div>
                 <Slider
                   value={[sliders[s.key]]}
@@ -256,10 +296,61 @@ export function BandBlender({
             </p>
           </div>
 
+          {/* Suno version selector */}
+          {lookupMode === "band" && (
+            <div className="mt-5">
+              <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Suno version
+              </span>
+              <div className="flex rounded-lg border border-border p-0.5">
+                {(Object.keys(SUNO_VERSION_LABELS) as SunoVersion[]).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onChange({ ...value, sunoVersion: v })}
+                    className={cn(
+                      "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
+                      sunoVersion === v
+                        ? "bg-primary/20 text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {SUNO_VERSION_LABELS[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick-start presets */}
+          {lookupMode === "band" && !result && (
+            <div className="mt-4">
+              <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Quick start
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      onChange({ ...value, artists: [...p.artists, ""].slice(0, 3) });
+                      void run([...p.artists]);
+                    }}
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                  >
+                    <span>{p.emoji}</span>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Button
             onClick={() => void run()}
             disabled={loading}
-            className="glow-primary mt-8 min-h-12 h-auto w-full gap-2 whitespace-normal py-3 font-display font-semibold"
+            className="glow-primary mt-5 h-11 w-full gap-2 font-display tracking-wide"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Radar className="size-4" />}
             {loading
@@ -275,7 +366,7 @@ export function BandBlender({
         </Panel>
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="space-y-5">
         {result ? (
           <>
             <Panel
@@ -283,6 +374,15 @@ export function BandBlender({
               subtitle="Coherent, production-ready parameters."
               action={
                 <div className="flex flex-wrap justify-end gap-1.5">
+                  <CopyButton
+                    value={formatForSuno(result)}
+                    label={
+                      <span className="flex items-center gap-1">
+                        <Clipboard className="size-3" /> Copy for Suno
+                      </span>
+                    }
+                    className="gap-1.5 border-border text-xs"
+                  />
                   <Button
                     variant="outline"
                     size="sm"
@@ -371,28 +471,63 @@ export function BandBlender({
             </Panel>
           </>
         ) : (
-          <Panel title="Style Breakdown" className="flex h-full min-h-[440px] flex-col" action={<span className="font-mono text-xs text-muted-foreground">Awaiting input</span>}>
-            <div className="flex flex-1 flex-col items-center justify-center gap-5 px-3 py-10 text-center">
-              <span className="flex size-24 items-center justify-center rounded-full border border-dashed border-primary/40 bg-primary/5"><Radar className="size-10 text-primary" /></span>
-              <h3 className="font-display text-2xl font-semibold text-foreground">Awaiting Sonic Blueprint</h3>
-              <p className="max-w-md text-sm text-muted-foreground">
-                Name one to three artists — the more specific the better. Try a contrast the model
-                has to reconcile, like <span className="text-foreground">Johnny Cash + Burial</span>
-                , rather than three artists from the same shelf.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  onChange({ ...value, artists: DEMO });
-                  void run(DEMO);
-                }}
-                className="mt-2 h-10 gap-2 border-border bg-secondary/40 text-xs text-foreground hover:bg-secondary"
-              >
-                <Wand className="size-3.5" /> Try a demo blend
-              </Button>
+          <>
+            {/* Demo banner */}
+            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-xs text-muted-foreground">
+              <Wand className="size-3.5 shrink-0 text-primary" />
+              <span>
+                This is a demo blend —{" "}
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  onClick={() => {
+                    onChange({ ...value, artists: DEMO });
+                    void run(DEMO);
+                  }}
+                >
+                  run {DEMO.join(" + ")}
+                </button>{" "}
+                or type your own artists above.
+              </span>
             </div>
-          </Panel>
+            {/* Render demo result using same layout as a real result */}
+            <Panel
+              title="Style Breakdown"
+              subtitle="Demo result — run your own blend to replace this."
+              action={
+                <CopyButton
+                  value={formatForSuno(DEMO_BLEND)}
+                  label={
+                    <span className="flex items-center gap-1">
+                      <Clipboard className="size-3" /> Copy for Suno
+                    </span>
+                  }
+                  className="gap-1.5 border-border text-xs"
+                />
+              }
+            >
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <ReadoutField label="Genre" value={DEMO_BLEND.genre ?? "—"} />
+                <ReadoutField label="Tempo" value={DEMO_BLEND.tempo ?? "—"} />
+                <ReadoutField label="Instrumentation" value={DEMO_BLEND.instrumentation ?? "—"} />
+                <ReadoutField label="Vocals" value={DEMO_BLEND.vocals ?? "—"} />
+                <ReadoutField label="Mood" value={DEMO_BLEND.mood ?? "—"} />
+              </div>
+              <div className="mt-3">
+                <ReadoutField label="Suno Style Tag Prompt" value={DEMO_BLEND.styleTag ?? "—"} mono accent />
+              </div>
+              {DEMO_BLEND.excludeStyles && (
+                <div className="mt-3">
+                  <ReadoutField label="Exclude Styles" value={DEMO_BLEND.excludeStyles} mono />
+                </div>
+              )}
+            </Panel>
+            <Panel title="Blend Reconciliation Logic" subtitle="How the conflicting styles are fused.">
+              <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
+                {DEMO_BLEND.reconciliation}
+              </p>
+            </Panel>
+          </>
         )}
       </div>
     </div>

@@ -98,11 +98,12 @@ export function LyricForge({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { theme, hook, notes, title, sections, tagsOnly = false, recentWords = {} } = value;
+  const { theme, hook, notes, title, sections, tagsOnly = false, manualStyle = "", recentWords = {} } = value;
   const set = (patch: Partial<LyricSlice>) => onChange({ ...value, ...patch });
 
+  const hasBlend = Boolean(blend?.styleTag);
   const styleContext = {
-    styleTag: blend?.styleTag ?? "",
+    styleTag: blend?.styleTag ?? manualStyle,
     genre: blend?.genre ?? "",
     vocals: blend?.vocals ?? "",
     mood: blend?.mood ?? "",
@@ -110,10 +111,7 @@ export function LyricForge({
   };
 
   const generate = async () => {
-    if (!theme.trim()) {
-      setError("Describe what the song is about first.");
-      return;
-    }
+    // Theme is optional — model will choose a direction if left blank.
     setError(null);
     setLoading(true);
     try {
@@ -300,13 +298,14 @@ export function LyricForge({
         <div className="space-y-4">
           <div>
             <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-              Song subject
+              Song subject{" "}
+              <span className="normal-case text-muted-foreground/60">(optional — leave blank to let the model choose)</span>
             </span>
             <Textarea
               value={theme}
               onChange={(e) => set({ theme: e.target.value })}
               rows={4}
-              placeholder="A night-shift nurse driving home at 6am…"
+              placeholder="A night-shift nurse driving home at 6am… or leave blank for open direction"
               className="resize-y border-border bg-card/60 text-sm focus-visible:ring-primary"
             />
           </div>
@@ -334,14 +333,30 @@ export function LyricForge({
             />
           </div>
 
-          <div className="rounded-lg border border-border bg-card/50 p-3">
-            <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-              Linked style
-            </span>
-            <p className="mt-1 font-mono text-xs text-accent">
-              {blend?.styleTag ?? "No blend linked — run Band Lookup to inherit a style."}
-            </p>
-          </div>
+          {hasBlend ? (
+            <div className="rounded-lg border border-border bg-card/50 p-3">
+              <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Linked style
+              </span>
+              <p className="mt-1 font-mono text-xs text-accent">{blend!.styleTag}</p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-border bg-card/30 p-3">
+              <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                No blend linked
+              </span>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Run a Band Blend first to inherit a style automatically, or paste a Suno style
+                prompt below to use it directly.
+              </p>
+              <Textarea
+                className="mt-2 min-h-[64px] border-border bg-card/60 font-mono text-xs"
+                placeholder="Paste a Suno style prompt here, e.g. trip-hop, dark, 80bpm, orchestral samples…"
+                value={manualStyle}
+                onChange={(e) => set({ manualStyle: e.target.value })}
+              />
+            </div>
+          )}
 
           <LengthPlanner
             structure={value.structure ?? ""}
