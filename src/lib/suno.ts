@@ -12,6 +12,27 @@ export const SUNO_LIMITS = { style: 1000, exclude: 1000, lyrics: 5000, title: 10
 /** Keep the style prompt a little under the hard cap so edits have headroom. */
 export const STYLE_TARGET = 850;
 
+/** Suno generation versions supported for targeting. */
+export type SunoVersion = "mini" | "v6" | "pro";
+
+/** Per-version style tag character targets.
+ * - mini: shorter prompts, less complex model
+ * - v6:   balanced, natural language descriptions work well
+ * - pro:  near-full limit, supports richer detail
+ */
+export const STYLE_TARGET_FOR_VERSION: Record<SunoVersion, number> = {
+  mini: 400,
+  v6: 700,
+  pro: 950,
+};
+
+/** Human-readable labels for the version selector. */
+export const SUNO_VERSION_LABELS: Record<SunoVersion, string> = {
+  mini: "v6 Mini",
+  v6: "Suno v6",
+  pro: "v6 Pro",
+};
+
 type Json = Record<string, unknown>;
 
 /* ------------------------------------------------------------------ */

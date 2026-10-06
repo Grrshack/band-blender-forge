@@ -1,5 +1,5 @@
 import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
-import { STYLE_TARGET } from "@/lib/suno";
+import { STYLE_TARGET, STYLE_TARGET_FOR_VERSION, type SunoVersion } from "@/lib/suno";
 
 export const SYSTEM = `You are a pre-production planning engine for AI music generation (Suno-style).
 You are ruthlessly specific. You never produce generic AI-slop language.
@@ -13,8 +13,21 @@ Always reply with ONLY raw JSON. No markdown fences, no commentary.`;
 export function prompt(task: string, payload: Record<string, unknown>): string {
   const p = JSON.stringify(payload);
   switch (task) {
-    case "blend":
-      return `Blend these artists into one coherent, produceable style for AI music generation.
+    case "blend": {
+      const rawVersion = payload["sunoVersion"];
+      const version: SunoVersion =
+        rawVersion === "mini" || rawVersion === "pro" ? rawVersion : "v6";
+      const vTarget = STYLE_TARGET_FOR_VERSION[version];
+      const vLabel =
+        version === "mini" ? "Suno v6 Mini" : version === "pro" ? "Suno v6 Pro" : "Suno v6";
+      const vNote =
+        version === "mini"
+          ? "Keep the style tag concise and punchy — Mini responds better to short, direct prompts than long tag lists."
+          : version === "pro"
+            ? "Pro handles rich detail — use flowing descriptive phrases mixed with genre tags, and use the full character budget where it adds specificity."
+            : "v6 understands natural language well — mix descriptive phrases with genre tags rather than tag-only lists.";
+      return `Blend these artists into one coherent, produceable style for ${vLabel}.
+Target: ${vLabel}. ${vNote}
 Input: ${p}
 The "sliders" values are user-set 0-100 targets; honour them and reflect them in the output.
 Slider definitions (interpret user values against these exact meanings):
@@ -27,13 +40,14 @@ Return JSON exactly:
 {"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. High artist familiarity"},
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
-"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${STYLE_TARGET} characters.",
+"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${vTarget} characters.",
 "vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound (for Suno's Exclude styles box), e.g. 'autotune, trap hi-hats, EDM drop'",
 "reconciliation":"2-4 sentences explaining exactly how conflicting elements of the chosen artists are fused, naming the specific conflicts and the resolution",
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this blend"}
 HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.`;
+    }
     case "lyrics": {
       const avoidWords = Array.isArray(payload["avoidWords"])
         ? (payload["avoidWords"] as string[])

@@ -223,11 +223,29 @@ export const runForge = createServerFn({ method: "POST" })
 
     const contact = process.env["MUSICBRAINZ_CONTACT"];
     const mbOpts = contact ? { contact } : {};
-    const result = await runPipeline(data.task, data.payload, {
-      ask,
-      lookup: (names) => lookupArtists(names, mbOpts),
-      lookupRecording: (title, artist) => lookupRecording(title, artist, mbOpts),
-    });
+
+    let result: unknown;
+    try {
+      result = await runPipeline(data.task, data.payload, {
+        ask,
+        lookup: (names) => lookupArtists(names, mbOpts),
+        lookupRecording: (title, artist) => lookupRecording(title, artist, mbOpts),
+      });
+    } catch (e) {
+      // Best-effort error log — never let this throw and mask the original error.
+      if (context.supabase && context.userId) {
+        try {
+          await context.supabase.from("ai_errors").insert({
+            user_id: context.userId,
+            task: data.task,
+            error_message: e instanceof Error ? e.message : String(e),
+          });
+        } catch {
+          // swallow — logging failure must not overwrite the real error
+        }
+      }
+      throw e;
+    }
 
     return { provider, json: JSON.stringify(result) };
   });
