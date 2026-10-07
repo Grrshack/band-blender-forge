@@ -18,6 +18,7 @@ import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
 import type { BlendResult, BlendSlice } from "./types";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -631,7 +632,7 @@ export function BandBlender({
               const { slug } = await shareBlend({
                 data: {
                   artists: artists.filter(Boolean),
-                  blendData: result as Record<string, unknown>,
+                  blendData: JSON.parse(JSON.stringify(result)) as Record<string, Json>,
                 },
               });
               setShareSlug(slug);
