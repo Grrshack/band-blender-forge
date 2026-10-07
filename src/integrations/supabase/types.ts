@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_errors: {
+        Row: {
+          created_at: string
+          error_message: string
+          id: string
+          task: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          id?: string
+          task: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          id?: string
+          task?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_usage: {
         Row: {
           created_at: string
@@ -68,6 +92,98 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_upvotes: {
+        Row: {
+          created_at: string
+          prompt_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          prompt_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          prompt_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_upvotes_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "public_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_blends: {
+        Row: {
+          artists: string[]
+          blend_data: Json
+          created_at: string
+          id: string
+          slug: string
+          user_id: string | null
+        }
+        Insert: {
+          artists?: string[]
+          blend_data: Json
+          created_at?: string
+          id?: string
+          slug: string
+          user_id?: string | null
+        }
+        Update: {
+          artists?: string[]
+          blend_data?: Json
+          created_at?: string
+          id?: string
+          slug?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      public_prompts: {
+        Row: {
+          artists: string[] | null
+          created_at: string
+          exclude_styles: string | null
+          genre_tags: string[] | null
+          id: string
+          style_tag: string
+          title: string
+          upvotes: number
+          user_id: string | null
+          vocal_prompt: Json | null
+        }
+        Insert: {
+          artists?: string[] | null
+          created_at?: string
+          exclude_styles?: string | null
+          genre_tags?: string[] | null
+          id?: string
+          style_tag: string
+          title: string
+          upvotes?: number
+          user_id?: string | null
+          vocal_prompt?: Json | null
+        }
+        Update: {
+          artists?: string[] | null
+          created_at?: string
+          exclude_styles?: string | null
+          genre_tags?: string[] | null
+          id?: string
+          style_tag?: string
+          title?: string
+          upvotes?: number
+          user_id?: string | null
+          vocal_prompt?: Json | null
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           created_at: string
@@ -97,7 +213,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      usage_by_day: {
+        Row: {
+          calls: number | null
+          day: string | null
+          task: string | null
+        }
+        Relationships: []
+      }
+      usage_by_user: {
+        Row: {
+          calls_24h: number | null
+          calls_7d: number | null
+          last_call: string | null
+          total_calls: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       purge_ai_usage: { Args: never; Returns: undefined }
