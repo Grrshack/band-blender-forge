@@ -86,8 +86,9 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      // Dynamically import html2canvas — it's heavy and only needed here.
-      const { default: html2canvas } = await import("html2canvas");
+      // html2canvas-pro is used (not html2canvas) because the app's colours are
+      // oklch tokens and the original fork cannot parse modern color functions.
+      const { default: html2canvas } = await import("html2canvas-pro");
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: "#0d0d12",
         scale: 2,
