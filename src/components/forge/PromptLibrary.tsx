@@ -1,6 +1,7 @@
 import { useServerFn } from "@tanstack/react-start";
-import { BookMarked, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { BookMarked, ChevronUp, Clipboard, Globe, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { listPublicPrompts, submitPublicPrompt, toggleUpvote, type PublicPrompt } from "@/lib/community.functions";
 import { toast } from "sonner";
 
 import { useAuth } from "./auth";
@@ -32,6 +33,13 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
   const load = useServerFn(listPresets);
   const add = useServerFn(createPreset);
   const remove = useServerFn(deletePreset);
+  const loadCommunity = useServerFn(listPublicPrompts);
+  const submitPublic = useServerFn(submitPublicPrompt);
+  const upvote = useServerFn(toggleUpvote);
+
+  const [tab, setTab] = useState<"mine" | "community">("mine");
+  const [community, setCommunity] = useState<PublicPrompt[]>([]);
+  const [communityLoading, setCommunityLoading] = useState(false);
 
   const [presets, setPresets] = useState<Preset[]>([]);
   const [query, setQuery] = useState("");
@@ -131,7 +139,133 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
     );
   }
 
+  const loadCommunityPrompts = async () => {
+    setCommunityLoading(true);
+    try {
+      setCommunity(await loadCommunity({ data: { limit: 24, offset: 0 } }));
+    } finally {
+      setCommunityLoading(false);
+    }
+  };
+
+  const handleUpvote = async (prompt: PublicPrompt) => {
+    if (!session) return;
+    setCommunity((prev) =>
+      prev.map((p) =>
+        p.id === prompt.id
+          ? { ...p, upvotes: p.upvoted ? p.upvotes - 1 : p.upvotes + 1, upvoted: !p.upvoted }
+          : p,
+      ),
+    );
+    try {
+      await upvote({ data: { promptId: prompt.id, currentlyUpvoted: !!prompt.upvoted } });
+    } catch {
+      // revert on failure
+      setCommunity((prev) =>
+        prev.map((p) =>
+          p.id === prompt.id
+            ? { ...p, upvotes: prompt.upvotes, upvoted: prompt.upvoted }
+            : p,
+        ),
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "community" && community.length === 0) void loadCommunityPrompts();
+  }, [tab]);
+
   return (
+    <div className="space-y-4">
+      {/* Tab toggle */}
+      <div className="flex rounded-lg border border-border p-0.5">
+        {([["mine", BookMarked, "My Presets"], ["community", Globe, "Community"]] as const).map(
+          ([t, Icon, label]) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-mono text-[10px] uppercase tracking-wider transition-colors",
+                tab === t
+                  ? "bg-primary/20 text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-3" /> {label}
+            </button>
+          ),
+        )}
+      </div>
+
+      {tab === "community" && (
+        <div>
+          {communityLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : community.length === 0 ? (
+            <Panel title="Community Prompts" subtitle="No prompts submitted yet — be the first!">
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Submit a prompt from your blends to share it here.
+              </p>
+            </Panel>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {community.map((p) => (
+                <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card/50 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-medium text-sm text-foreground">{p.title}</div>
+                      {p.artists.length > 0 && (
+                        <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                          {p.artists.join(" × ")}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleUpvote(p)}
+                      className={cn(
+                        "flex flex-col items-center gap-0.5 rounded-lg border px-2 py-1.5 font-mono text-[10px] transition-colors",
+                        p.upvoted
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                      )}
+                    >
+                      <ChevronUp className="size-3" />
+                      {p.upvotes}
+                    </button>
+                  </div>
+                  <div className="rounded border border-primary/20 bg-primary/5 p-2">
+                    <p className="font-mono text-[10px] leading-relaxed text-foreground/80 line-clamp-3">
+                      {p.style_tag}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => { onApply("style", p.style_tag); }}
+                      className="flex-1 rounded border border-primary/30 bg-primary/5 py-1 font-mono text-[10px] text-primary hover:bg-primary/15 transition-colors"
+                    >
+                      Apply to blend
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard.writeText(p.style_tag)}
+                      className="rounded border border-border p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Clipboard className="size-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "mine" && (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <Panel title="Save a Preset" subtitle="Anything you find yourself typing twice.">
         {error ? <ErrorNote message={error} /> : null}
@@ -257,6 +391,8 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
           </div>
         )}
       </Panel>
+    </div>
+      )}
     </div>
   );
 }

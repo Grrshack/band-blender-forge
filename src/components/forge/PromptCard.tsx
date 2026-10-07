@@ -26,12 +26,14 @@ type Props = {
   data: PromptCardData;
   onClose: () => void;
   /** If provided, shows a "Share link" button */
-  shareSlug?: string | undefined;
+  shareSlug?: string;
   onShare?: () => Promise<void>;
   sharing?: boolean;
+  /** When true, renders as a page block instead of a fixed modal overlay. */
+  inline?: boolean;
 };
 
-export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props) {
+export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [copying, setCopying] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -86,9 +88,8 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      // html2canvas-pro is used (not html2canvas) because the app's colours are
-      // oklch tokens and the original fork cannot parse modern color functions.
-      const { default: html2canvas } = await import("html2canvas-pro");
+      // Dynamically import html2canvas — it's heavy and only needed here.
+      const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: "#0d0d12",
         scale: 2,
@@ -111,30 +112,19 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/blend/${shareSlug}`
     : null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-2xl flex-col gap-3">
+  const inner = (
+    <div className={cn("flex w-full max-w-2xl flex-col gap-3", inline && "mx-auto")}>
         {/* Actions toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
             Prompt card
           </span>
           <div className="flex flex-wrap gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyText}
-              className="gap-1.5 text-xs"
-            >
+            <Button variant="outline" size="sm" onClick={handleCopyText} className="gap-1.5 text-xs">
               <Clipboard className="size-3" />
               {copying ? "Copied!" : "Copy text"}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownloadText}
-              className="gap-1.5 text-xs"
-            >
+            <Button variant="outline" size="sm" onClick={handleDownloadText} className="gap-1.5 text-xs">
               <FileText className="size-3" /> Download .txt
             </Button>
             <Button
@@ -189,7 +179,7 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
               Band Blender Forge · Style Card
             </div>
             <h2 className="text-xl font-semibold leading-tight text-white">
-              {cardTitle ?? (artists.filter(Boolean).join(" × ") || "Custom Blend")}
+              {cardTitle ?? artists.filter(Boolean).join(" × ") || "Custom Blend"}
             </h2>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {targetGenre && (
@@ -275,20 +265,33 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
             suno-blender.lovable.app
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  if (inline) return inner;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      {inner}
     </div>
   );
 }
 
-function CardField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function CardField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="rounded border border-white/8 bg-white/3 p-2">
       <div className="mb-0.5 font-mono text-[9px] tracking-widest text-white/30 uppercase">
         {label}
       </div>
-      <p className={cn("text-[11px] leading-relaxed text-white/75", mono && "font-mono")}>
-        {value}
-      </p>
+      <p className={cn("text-[11px] leading-relaxed text-white/75", mono && "font-mono")}>{value}</p>
     </div>
   );
 }
