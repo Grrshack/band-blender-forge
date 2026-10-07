@@ -177,9 +177,7 @@ export async function runPipeline(task: string, payload: Json, deps: PipelineDep
           // proceeds ungrounded
         }
       }
-      const withRef = reference
-        ? { ...payload, reference: { ...reference } }
-        : payload;
+      const withRef = reference ? { ...payload, reference: { ...reference } } : payload;
       return deps.ask(prompt("song", withRef));
     }
 

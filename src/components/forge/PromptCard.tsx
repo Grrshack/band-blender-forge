@@ -119,11 +119,21 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
             Prompt card
           </span>
           <div className="flex flex-wrap gap-1.5">
-            <Button variant="outline" size="sm" onClick={handleCopyText} className="gap-1.5 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyText}
+              className="gap-1.5 text-xs"
+            >
               <Clipboard className="size-3" />
               {copying ? "Copied!" : "Copy text"}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadText} className="gap-1.5 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadText}
+              className="gap-1.5 text-xs"
+            >
               <FileText className="size-3" /> Download .txt
             </Button>
             <Button
@@ -269,21 +279,15 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
   );
 }
 
-function CardField({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function CardField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="rounded border border-white/8 bg-white/3 p-2">
       <div className="mb-0.5 font-mono text-[9px] tracking-widest text-white/30 uppercase">
         {label}
       </div>
-      <p className={cn("text-[11px] leading-relaxed text-white/75", mono && "font-mono")}>{value}</p>
+      <p className={cn("text-[11px] leading-relaxed text-white/75", mono && "font-mono")}>
+        {value}
+      </p>
     </div>
   );
 }

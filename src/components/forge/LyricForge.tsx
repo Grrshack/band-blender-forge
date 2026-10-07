@@ -98,7 +98,16 @@ export function LyricForge({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { theme, hook, notes, title, sections, tagsOnly = false, manualStyle = "", recentWords = {} } = value;
+  const {
+    theme,
+    hook,
+    notes,
+    title,
+    sections,
+    tagsOnly = false,
+    manualStyle = "",
+    recentWords = {},
+  } = value;
   const set = (patch: Partial<LyricSlice>) => onChange({ ...value, ...patch });
 
   const hasBlend = Boolean(blend?.styleTag);
@@ -299,7 +308,9 @@ export function LyricForge({
           <div>
             <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
               Song subject{" "}
-              <span className="normal-case text-muted-foreground/60">(optional — leave blank to let the model choose)</span>
+              <span className="normal-case text-muted-foreground/60">
+                (optional — leave blank to let the model choose)
+              </span>
             </span>
             <Textarea
               value={theme}
@@ -365,9 +376,7 @@ export function LyricForge({
 
           <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5">
             <div>
-              <span className="block text-xs font-medium text-foreground/90">
-                Structure only
-              </span>
+              <span className="block text-xs font-medium text-foreground/90">Structure only</span>
               <span className="block text-[10px] text-muted-foreground">
                 Generate section tags and cues — I&apos;ll write the words myself.
               </span>

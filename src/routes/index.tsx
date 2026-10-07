@@ -55,14 +55,54 @@ export const Route = createFileRoute("/")({
 });
 
 const TABS = [
-  { value: "blend", label: "Band Blender", icon: Sliders, desc: "Blend 1–3 artists into one producible style, tuned by energy, complexity and brightness." },
-  { value: "lyrics", label: "Lyric Forge", icon: Wand2, desc: "Forge hook-first lyrics section by section, with per-line lock and regeneration." },
-  { value: "suno", label: "Suno Sheet", icon: Send, desc: "Assemble the full prompt sheet, ready to paste straight into Suno." },
-  { value: "fix", label: "Fix a Take", icon: Stethoscope, desc: "Log real takes and tighten the prompt from what the model actually returned." },
-  { value: "compare", label: "Comparables", icon: Search, desc: "Drop in lyrics or style tags and find adjacent artists, with reasoning." },
-  { value: "feedback", label: "Honest Feedback", icon: Gauge, desc: "Blunt critique on lyrics and notes — scores, clichés and the three fixes that matter." },
-  { value: "master", label: "Mastering", icon: AudioWaveform, desc: "Plan the chain before you render — loudness targets, spectrum and references." },
-  { value: "library", label: "Prompt Library", icon: BookMarked, desc: "Reusable prompt presets with search and tags, ready to apply to any session." },
+  {
+    value: "blend",
+    label: "Band Blender",
+    icon: Sliders,
+    desc: "Blend 1–3 artists into one producible style, tuned by energy, complexity and brightness.",
+  },
+  {
+    value: "lyrics",
+    label: "Lyric Forge",
+    icon: Wand2,
+    desc: "Forge hook-first lyrics section by section, with per-line lock and regeneration.",
+  },
+  {
+    value: "suno",
+    label: "Suno Sheet",
+    icon: Send,
+    desc: "Assemble the full prompt sheet, ready to paste straight into Suno.",
+  },
+  {
+    value: "fix",
+    label: "Fix a Take",
+    icon: Stethoscope,
+    desc: "Log real takes and tighten the prompt from what the model actually returned.",
+  },
+  {
+    value: "compare",
+    label: "Comparables",
+    icon: Search,
+    desc: "Drop in lyrics or style tags and find adjacent artists, with reasoning.",
+  },
+  {
+    value: "feedback",
+    label: "Honest Feedback",
+    icon: Gauge,
+    desc: "Blunt critique on lyrics and notes — scores, clichés and the three fixes that matter.",
+  },
+  {
+    value: "master",
+    label: "Mastering",
+    icon: AudioWaveform,
+    desc: "Plan the chain before you render — loudness targets, spectrum and references.",
+  },
+  {
+    value: "library",
+    label: "Prompt Library",
+    icon: BookMarked,
+    desc: "Reusable prompt presets with search and tags, ready to apply to any session.",
+  },
 ];
 
 function Equalizer() {
@@ -173,9 +213,7 @@ function Index() {
                   <span className="font-mono text-[10px] text-muted-foreground uppercase">
                     08 modules live
                   </span>
-                  <span className="font-mono text-xs text-primary uppercase">
-                    AI ready
-                  </span>
+                  <span className="font-mono text-xs text-primary uppercase">AI ready</span>
                 </div>
                 <Equalizer />
               </div>
@@ -282,7 +320,9 @@ function Index() {
                         {String(i + 1).padStart(2, "0")}
                       </span>
                     </div>
-                    <p className="mt-3 font-display text-sm font-semibold tracking-tight">{t.label}</p>
+                    <p className="mt-3 font-display text-sm font-semibold tracking-tight">
+                      {t.label}
+                    </p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t.desc}</p>
                   </Button>
                 ))}

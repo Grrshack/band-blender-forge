@@ -29,7 +29,7 @@ export async function consumeUsage(
   const counted = await supabase
     .from("ai_usage")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)   // ← scoped to this user, not global
+    .eq("user_id", userId) // ← scoped to this user, not global
     .gte("created_at", since);
   if (counted.error) return { allowed: true, used: 0, failedOpen: true };
 

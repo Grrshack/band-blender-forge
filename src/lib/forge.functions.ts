@@ -273,7 +273,12 @@ const ShareSchema = z.object({
 function makeSlug(artists: string[]): string {
   const base = artists
     .slice(0, 2)
-    .map((a) => a.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 12))
+    .map((a) =>
+      a
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 12),
+    )
     .join("-");
   const rand = Math.random().toString(36).slice(2, 7);
   return `${base}-${rand}`;
