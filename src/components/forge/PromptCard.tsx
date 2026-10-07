@@ -98,8 +98,8 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
       a.download = `${artists.filter(Boolean).join("-").toLowerCase().replace(/\s+/g, "-") || "blend"}-prompt-card.png`;
       a.href = canvas.toDataURL("image/png");
       a.click();
-    } catch {
-      // html2canvas not installed or failed — fall back to text download
+    } catch (err) {
+      console.error("[png-export]", err);
       handleDownloadText();
     } finally {
       setExporting(false);
