@@ -73,7 +73,6 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
   };
 
   const handleDownloadText = () => {
-    console.log("[dbg] handleDownloadText called");
     const blob = new Blob([textContent], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -84,7 +83,6 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
 
   // ── PNG export via canvas ──────────────────────────────────────────────────
   const handleExportPng = async () => {
-    console.log("[dbg] handleExportPng start");
     if (!cardRef.current) return;
     setExporting(true);
     try {
@@ -96,13 +94,12 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
         useCORS: true,
         logging: false,
       });
-      console.log("[dbg] canvas ok", canvas.width, canvas.height);
       const a = document.createElement("a");
       a.download = `${artists.filter(Boolean).join("-").toLowerCase().replace(/\s+/g, "-") || "blend"}-prompt-card.png`;
       a.href = canvas.toDataURL("image/png");
       a.click();
-    } catch (err) {
-      console.error("[png-export]", err);
+    } catch {
+      // html2canvas not installed or failed — fall back to text download
       handleDownloadText();
     } finally {
       setExporting(false);
