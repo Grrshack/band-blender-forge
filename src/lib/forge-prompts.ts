@@ -26,8 +26,16 @@ export function prompt(task: string, payload: Record<string, unknown>): string {
           : version === "pro"
             ? "Pro handles rich detail — use flowing descriptive phrases mixed with genre tags, and use the full character budget where it adds specificity."
             : "v6 understands natural language well — mix descriptive phrases with genre tags rather than tag-only lists.";
+      const targetGenre =
+        typeof payload["targetGenre"] === "string" ? payload["targetGenre"].trim() : "";
+      const genreLock = payload["genreLock"] === true;
+      const genreNote = targetGenre
+        ? genreLock
+          ? `\nGENRE LOCK — HARD CONSTRAINT: The final style tag MUST be rooted in ${targetGenre}. Resolve all conflicting elements in favor of ${targetGenre} conventions. The genre field must list ${targetGenre} first.`
+          : `\nGenre bias: Lean the blend toward ${targetGenre}. Where artist elements conflict, favour ${targetGenre} conventions. You may still incorporate outside elements when they genuinely serve the blend.`
+        : "";
       return `Blend these artists into one coherent, produceable style for ${vLabel}.
-Target: ${vLabel}. ${vNote}
+Target: ${vLabel}. ${vNote}${genreNote}
 Input: ${p}
 The "sliders" values are user-set 0-100 targets; honour them and reflect them in the output.
 Slider definitions (interpret user values against these exact meanings):

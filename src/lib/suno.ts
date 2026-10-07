@@ -288,3 +288,41 @@ export function vocalString(vp: VocalPrompt | undefined): string {
     .filter((x) => x && !/^none\.?$/i.test(x))
     .join(", ");
 }
+
+// ─── Genre targeting ─────────────────────────────────────────────────────────
+
+export type GenreGroup = { label: string; genres: string[] };
+
+export const GENRE_GROUPS: GenreGroup[] = [
+  {
+    label: "Electronic",
+    genres: ["House", "Techno", "Drum & Bass", "Dubstep", "Ambient", "Synthwave", "Trip-hop", "IDM"],
+  },
+  {
+    label: "Hip-hop & R&B",
+    genres: ["Hip-hop", "Trap", "Drill", "R&B", "Neo-Soul", "Lo-fi Hip-hop", "Boom Bap"],
+  },
+  {
+    label: "Rock & Metal",
+    genres: ["Rock", "Indie Rock", "Alternative", "Metal", "Post-Rock", "Punk", "Grunge", "Shoegaze"],
+  },
+  {
+    label: "Pop",
+    genres: ["Pop", "Synth-pop", "Dream Pop", "Art Pop", "Hyperpop", "K-pop"],
+  },
+  {
+    label: "Folk & Country",
+    genres: ["Folk", "Indie Folk", "Country", "Americana", "Bluegrass", "Singer-Songwriter"],
+  },
+  {
+    label: "Jazz & Soul",
+    genres: ["Jazz", "Soul", "Funk", "Blues", "Gospel", "Nu-Jazz"],
+  },
+  {
+    label: "World & Classical",
+    genres: ["Classical", "Orchestral", "Cinematic", "Afrobeat", "Latin", "Reggae", "Bossa Nova"],
+  },
+];
+
+/** Flat sorted list for autocomplete / search. */
+export const ALL_GENRES: string[] = GENRE_GROUPS.flatMap((g) => g.genres).sort();

@@ -249,3 +249,54 @@ export const runForge = createServerFn({ method: "POST" })
 
     return { provider, json: JSON.stringify(result) };
   });
+
+// ─── Share blend ─────────────────────────────────────────────────────────────
+
+const ShareSchema = z.object({
+  artists: z.array(z.string()),
+  blendData: z.record(z.unknown()),
+});
+
+function makeSlug(artists: string[]): string {
+  const base = artists
+    .slice(0, 2)
+    .map((a) => a.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 12))
+    .join("-");
+  const rand = Math.random().toString(36).slice(2, 7);
+  return `${base}-${rand}`;
+}
+
+export const shareBlend = createServerFn({ method: "POST" })
+  .middleware([optionalSupabaseAuth])
+  .validator(ShareSchema)
+  .handler(async ({ data, context }) => {
+    if (!context.supabase || !context.userId) {
+      throw new Error("Sign in to share a blend.");
+    }
+    const slug = makeSlug(data.artists);
+    const { error } = await context.supabase.from("public_blends").insert({
+      slug,
+      user_id: context.userId,
+      artists: data.artists,
+      blend_data: data.blendData,
+    });
+    if (error) throw new Error("Could not save blend: " + error.message);
+    return { slug };
+  });
+
+export const getSharedBlend = createServerFn({ method: "GET" })
+  .validator(z.object({ slug: z.string() }))
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      process.env["SUPABASE_URL"] ?? "",
+      process.env["SUPABASE_ANON_KEY"] ?? "",
+    );
+    const { data: row, error } = await supabase
+      .from("public_blends")
+      .select("artists, blend_data, created_at")
+      .eq("slug", data.slug)
+      .single();
+    if (error || !row) throw new Error("Blend not found.");
+    return row as { artists: string[]; blend_data: unknown; created_at: string };
+  });
