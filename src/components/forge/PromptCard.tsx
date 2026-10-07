@@ -26,7 +26,7 @@ type Props = {
   data: PromptCardData;
   onClose: () => void;
   /** If provided, shows a "Share link" button */
-  shareSlug?: string;
+  shareSlug?: string | undefined;
   onShare?: () => Promise<void>;
   sharing?: boolean;
 };
@@ -178,7 +178,7 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing }: Props
               Band Blender Forge · Style Card
             </div>
             <h2 className="text-xl font-semibold leading-tight text-white">
-              {cardTitle ?? artists.filter(Boolean).join(" × ") || "Custom Blend"}
+              {cardTitle ?? (artists.filter(Boolean).join(" × ") || "Custom Blend")}
             </h2>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {targetGenre && (
