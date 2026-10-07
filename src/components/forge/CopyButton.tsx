@@ -1,5 +1,5 @@
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ export function CopyButton({
   size = "sm",
 }: {
   value: string;
-  label?: string;
+  label?: ReactNode;
   className?: string;
   size?: "sm" | "icon";
 }) {

@@ -296,7 +296,16 @@ export type GenreGroup = { label: string; genres: string[] };
 export const GENRE_GROUPS: GenreGroup[] = [
   {
     label: "Electronic",
-    genres: ["House", "Techno", "Drum & Bass", "Dubstep", "Ambient", "Synthwave", "Trip-hop", "IDM"],
+    genres: [
+      "House",
+      "Techno",
+      "Drum & Bass",
+      "Dubstep",
+      "Ambient",
+      "Synthwave",
+      "Trip-hop",
+      "IDM",
+    ],
   },
   {
     label: "Hip-hop & R&B",
@@ -304,7 +313,16 @@ export const GENRE_GROUPS: GenreGroup[] = [
   },
   {
     label: "Rock & Metal",
-    genres: ["Rock", "Indie Rock", "Alternative", "Metal", "Post-Rock", "Punk", "Grunge", "Shoegaze"],
+    genres: [
+      "Rock",
+      "Indie Rock",
+      "Alternative",
+      "Metal",
+      "Post-Rock",
+      "Punk",
+      "Grunge",
+      "Shoegaze",
+    ],
   },
   {
     label: "Pop",

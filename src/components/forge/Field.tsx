@@ -36,9 +36,7 @@ export function Panel({
     <section className={cn("panel-surface p-5 sm:p-6", className)}>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-4">
         <div>
-          <h2 className="font-display text-base font-semibold text-foreground">
-            {title}
-          </h2>
+          <h2 className="font-display text-base font-semibold text-foreground">{title}</h2>
           {subtitle ? <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p> : null}
         </div>
         {action}

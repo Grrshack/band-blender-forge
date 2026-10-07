@@ -220,9 +220,7 @@ export async function lookupRecording(
     : "BandBlenderForge/1.0";
 
   const titlePart = `recording:"${title.replace(/["\\/]/g, " ").trim()}"`;
-  const artistPart = artist.trim()
-    ? ` AND artist:"${artist.replace(/["\\/]/g, " ").trim()}"`
-    : "";
+  const artistPart = artist.trim() ? ` AND artist:"${artist.replace(/["\\/]/g, " ").trim()}"` : "";
   const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(titlePart + artistPart)}&fmt=json&limit=5`;
 
   const ctl = new AbortController();
@@ -244,9 +242,7 @@ export async function lookupRecording(
 
     const matchedTitle = best.title ?? title;
     const matchedArtist =
-      best["artist-credit"]?.[0]?.name ??
-      best["artist-credit"]?.[0]?.artist?.name ??
-      artist;
+      best["artist-credit"]?.[0]?.name ?? best["artist-credit"]?.[0]?.artist?.name ?? artist;
     const tags = (best.tags ?? [])
       .filter((t) => t.name && (t.count ?? 0) > 0)
       .sort((x, y) => (y.count ?? 0) - (x.count ?? 0))

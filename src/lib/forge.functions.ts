@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import type { Json } from "@/integrations/supabase/types";
 import { runPipeline } from "@/lib/forge-pipeline";
 import { lookupArtists, lookupRecording } from "@/lib/musicbrainz";
 import { optionalSupabaseAuth } from "@/lib/optional-auth";
@@ -252,15 +253,32 @@ export const runForge = createServerFn({ method: "POST" })
 
 // ─── Share blend ─────────────────────────────────────────────────────────────
 
+/** Any JSON value the database can store. */
+const JsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(JsonSchema),
+    z.record(JsonSchema),
+  ]),
+);
+
 const ShareSchema = z.object({
   artists: z.array(z.string()),
-  blendData: z.record(z.unknown()),
+  blendData: z.record(JsonSchema),
 });
 
 function makeSlug(artists: string[]): string {
   const base = artists
     .slice(0, 2)
-    .map((a) => a.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 12))
+    .map((a) =>
+      a
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 12),
+    )
     .join("-");
   const rand = Math.random().toString(36).slice(2, 7);
   return `${base}-${rand}`;
@@ -298,5 +316,5 @@ export const getSharedBlend = createServerFn({ method: "GET" })
       .eq("slug", data.slug)
       .single();
     if (error || !row) throw new Error("Blend not found.");
-    return row as { artists: string[]; blend_data: unknown; created_at: string };
+    return row as { artists: string[]; blend_data: Json; created_at: string };
   });

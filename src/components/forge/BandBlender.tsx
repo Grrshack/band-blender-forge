@@ -1,5 +1,16 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
+import {
+  Clipboard,
+  Info,
+  LayoutTemplate,
+  Loader2,
+  Lock,
+  Radar,
+  Send,
+  ShieldAlert,
+  Sparkles,
+  Wand,
+} from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -7,6 +18,7 @@ import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
 import type { BlendResult, BlendSlice } from "./types";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -60,7 +72,8 @@ const DEMO_BLEND: BlendResult = {
   reconciliation:
     "The first artist's jazz-tinged sample manipulation and the second's dub-influenced sub pressure form the rhythmic foundation, while the third's avant-garde production sensibility — negative space and textural contrast — governs arrangement decisions. Vocal approach conflicts are resolved by favouring intimacy over cinematic distance, while keeping dense layering intact underneath.",
   recommendedSliders: { energy: 35, complexity: 72, brightness: 28 },
-  sliderNotes: "Low energy and brightness reflect the slow, dark character; high complexity captures the layered production.",
+  sliderNotes:
+    "Low energy and brightness reflect the slow, dark character; high complexity captures the layered production.",
 };
 
 const PRESETS: { label: string; emoji: string; artists: string[] }[] = [
@@ -120,10 +133,14 @@ export function BandBlender({
   const [error, setError] = useState<string | null>(null);
 
   const {
-    artists, sliders, result,
-    lookupMode = "band", songTitle = "",
+    artists,
+    sliders,
+    result,
+    lookupMode = "band",
+    songTitle = "",
     sunoVersion = "v6",
-    targetGenre = "", genreLock = false,
+    targetGenre = "",
+    genreLock = false,
   } = value;
   const [showCard, setShowCard] = useState(false);
   const [shareSlug, setShareSlug] = useState<string | undefined>();
@@ -425,7 +442,10 @@ export function BandBlender({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => { setShareSlug(undefined); setShowCard(true); }}
+                    onClick={() => {
+                      setShareSlug(undefined);
+                      setShowCard(true);
+                    }}
                     className="gap-1.5 border-border text-xs"
                   >
                     <LayoutTemplate className="size-3" /> Prompt card
@@ -570,7 +590,12 @@ export function BandBlender({
                 <ReadoutField label="Mood" value={DEMO_BLEND.mood ?? "—"} />
               </div>
               <div className="mt-3">
-                <ReadoutField label="Suno Style Tag Prompt" value={DEMO_BLEND.styleTag ?? "—"} mono accent />
+                <ReadoutField
+                  label="Suno Style Tag Prompt"
+                  value={DEMO_BLEND.styleTag ?? "—"}
+                  mono
+                  accent
+                />
               </div>
               {DEMO_BLEND.excludeStyles && (
                 <div className="mt-3">
@@ -578,7 +603,10 @@ export function BandBlender({
                 </div>
               )}
             </Panel>
-            <Panel title="Blend Reconciliation Logic" subtitle="How the conflicting styles are fused.">
+            <Panel
+              title="Blend Reconciliation Logic"
+              subtitle="How the conflicting styles are fused."
+            >
               <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
                 {DEMO_BLEND.reconciliation}
               </p>
@@ -604,7 +632,7 @@ export function BandBlender({
               const { slug } = await shareBlend({
                 data: {
                   artists: artists.filter(Boolean),
-                  blendData: result as Record<string, unknown>,
+                  blendData: JSON.parse(JSON.stringify(result)) as Record<string, Json>,
                 },
               });
               setShareSlug(slug);
