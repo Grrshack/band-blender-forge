@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Clipboard, Info, Loader2, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
+import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -12,7 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runForge } from "@/lib/forge.functions";
-import { SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
+import { ALL_GENRES, SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
+import { PromptCard } from "./PromptCard";
+import { shareBlend } from "@/lib/forge.functions";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 export type { BlendResult } from "./types";
@@ -116,7 +119,15 @@ export function BandBlender({
   const [stage, setStage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { artists, sliders, result, lookupMode = "band", songTitle = "", sunoVersion = "v6" } = value;
+  const {
+    artists, sliders, result,
+    lookupMode = "band", songTitle = "",
+    sunoVersion = "v6",
+    targetGenre = "", genreLock = false,
+  } = value;
+  const [showCard, setShowCard] = useState(false);
+  const [shareSlug, setShareSlug] = useState<string | undefined>();
+  const [sharing, setSharing] = useState(false);
 
   const setArtist = (i: number, v: string) =>
     onChange({ ...value, artists: artists.map((a, idx) => (idx === i ? v : a)) });
@@ -149,7 +160,7 @@ export function BandBlender({
     try {
       const payload = isSong
         ? { title: songTitle.trim(), artist: names[0] ?? "" }
-        : { artists: names, sliders, sunoVersion };
+        : { artists: names, sliders, sunoVersion, targetGenre, genreLock };
       const res = await forge({
         data: { task: isSong ? "song" : "blend", routing, apiKey, payload },
       });
@@ -165,6 +176,8 @@ export function BandBlender({
         lookupMode,
         songTitle,
         sunoVersion,
+        targetGenre,
+        genreLock,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blend failed.");
@@ -296,6 +309,41 @@ export function BandBlender({
             </p>
           </div>
 
+          {/* Genre targeting */}
+          {lookupMode === "band" && (
+            <div className="mt-5">
+              <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Target genre <span className="normal-case">(optional)</span>
+              </span>
+              <div className="relative">
+                <input
+                  list="genre-list"
+                  value={targetGenre}
+                  onChange={(e) => onChange({ ...value, targetGenre: e.target.value })}
+                  placeholder="e.g. Hip-hop, Synthwave, Metal…"
+                  className="h-9 w-full rounded-md border border-border bg-card/60 px-3 font-mono text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <datalist id="genre-list">
+                  {ALL_GENRES.map((g) => (
+                    <option key={g} value={g} />
+                  ))}
+                </datalist>
+              </div>
+              {targetGenre && (
+                <label className="mt-2 flex cursor-pointer items-center gap-2">
+                  <Switch
+                    checked={genreLock}
+                    onCheckedChange={(v) => onChange({ ...value, genreLock: v })}
+                  />
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Lock className="size-3" />
+                    Genre lock — force all elements into {targetGenre}
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
+
           {/* Suno version selector */}
           {lookupMode === "band" && (
             <div className="mt-5">
@@ -374,6 +422,14 @@ export function BandBlender({
               subtitle="Coherent, production-ready parameters."
               action={
                 <div className="flex flex-wrap justify-end gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShareSlug(undefined); setShowCard(true); }}
+                    className="gap-1.5 border-border text-xs"
+                  >
+                    <LayoutTemplate className="size-3" /> Prompt card
+                  </Button>
                   <CopyButton
                     value={formatForSuno(result)}
                     label={
@@ -530,6 +586,40 @@ export function BandBlender({
           </>
         )}
       </div>
+
+      {/* Prompt card modal */}
+      {showCard && result && (
+        <PromptCard
+          data={{
+            artists: artists.filter(Boolean),
+            result,
+            targetGenre,
+            cardTitle: artists.filter(Boolean).join(" × "),
+          }}
+          shareSlug={shareSlug}
+          sharing={sharing}
+          onShare={async () => {
+            setSharing(true);
+            try {
+              const { slug } = await shareBlend({
+                data: {
+                  artists: artists.filter(Boolean),
+                  blendData: result as Record<string, unknown>,
+                },
+              });
+              setShareSlug(slug);
+            } catch {
+              // share failed silently — user can retry
+            } finally {
+              setSharing(false);
+            }
+          }}
+          onClose={() => {
+            setShowCard(false);
+            setShareSlug(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

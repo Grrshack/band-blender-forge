@@ -87,6 +87,10 @@ export type BlendSlice = {
   songTitle: string;
   /** Which Suno generation to target — affects style tag length and format. */
   sunoVersion: "mini" | "v6" | "pro";
+  /** Optional genre to bias the blend toward. Empty = no bias. */
+  targetGenre: string;
+  /** When true, the style tag must stay within the target genre family. */
+  genreLock: boolean;
 };
 
 export type LyricSlice = {
@@ -138,6 +142,8 @@ export const emptyState = (): ForgeState => ({
     lookupMode: "band",
     songTitle: "",
     sunoVersion: "v6",
+    targetGenre: "",
+    genreLock: false,
   },
   lyrics: { theme: "", hook: "", notes: "", title: "", sections: [], tagsOnly: false, manualStyle: "", recentWords: {} },
   compare: { lyrics: "", tags: "", result: null },
