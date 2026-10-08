@@ -7,9 +7,12 @@
  *  - Session export trigger
  */
 import { useRef, useState } from "react";
-import { Camera, Clipboard, Download, FileText, Share2, X } from "lucide-react";
+import { Camera, Clipboard, Download, FileText, Globe, Share2, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import type { BlendResult } from "./types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { submitPublicPrompt } from "@/lib/community.functions";
 import { vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +40,13 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
   const cardRef = useRef<HTMLDivElement>(null);
   const [copying, setCopying] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showCommunityForm, setShowCommunityForm] = useState(false);
+  const [communityTitle, setCommunityTitle] = useState(
+    data.artists.filter(Boolean).join(" × ") || "My blend",
+  );
+  const [communitySubmitting, setCommunitySubmitting] = useState(false);
+  const [communityDone, setCommunityDone] = useState(false);
+  const submitCommunity = useServerFn(submitPublicPrompt);
 
   const { artists, result, cardTitle, targetGenre } = data;
   const vocal = vocalString(result.vocalPrompt);
@@ -149,6 +159,20 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
                 {sharing ? "Sharing…" : "Get share link"}
               </Button>
             )}
+            {!communityDone && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCommunityForm((v) => !v)}
+                className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
+              >
+                <Globe className="size-3" />
+                {showCommunityForm ? "Cancel" : "Submit to community"}
+              </Button>
+            )}
+            {communityDone && (
+              <span className="font-mono text-[10px] text-accent">✓ Shared to community</span>
+            )}
             {shareUrl && (
               <Button
                 variant="outline"
@@ -166,6 +190,55 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
             </Button>
           </div>
         </div>
+
+        {/* Community submit form */}
+        {showCommunityForm && (
+          <div className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+            <p className="mb-3 font-mono text-[10px] tracking-widest text-accent/80 uppercase">
+              Share to community prompt library
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={communityTitle}
+                onChange={(e) => setCommunityTitle(e.target.value)}
+                placeholder="Card title…"
+                className="h-8 border-border bg-card/60 text-xs"
+              />
+              <Button
+                size="sm"
+                disabled={communitySubmitting || !communityTitle.trim()}
+                className="h-8 shrink-0 gap-1.5 text-xs"
+                onClick={async () => {
+                  if (!data.result.styleTag) return;
+                  setCommunitySubmitting(true);
+                  try {
+                    await submitCommunity({
+                      data: {
+                        title: communityTitle.trim(),
+                        style_tag: data.result.styleTag,
+                        vocal_prompt: data.result.vocalPrompt as Record<string, string> | undefined,
+                        exclude_styles: data.result.excludeStyles,
+                        artists: data.artists.filter(Boolean),
+                        genre_tags: data.targetGenre ? [data.targetGenre] : [],
+                      },
+                    });
+                    setCommunityDone(true);
+                    setShowCommunityForm(false);
+                  } catch {
+                    // leave form open on error
+                  } finally {
+                    setCommunitySubmitting(false);
+                  }
+                }}
+              >
+                {communitySubmitting ? "Submitting…" : "Submit"}
+              </Button>
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Your style tag and vocal prompt will be visible to all users.
+            </p>
+          </div>
+        )}
 
         {/* The card itself */}
         <div

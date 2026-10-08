@@ -39,6 +39,10 @@ export type BlendResult = {
   styleWarnings?: string[];
   /** Real-data check of the input artists. */
   grounding?: MbInfo[];
+  /** Suno v6 bracket vocal tags, e.g. "[Female Vocal], [Whisper]" */
+  voiceTags?: string;
+  /** Potential contradictions in the style tag the user should know about. */
+  contradictions?: string[];
   variants?: StyleVariant[];
 };
 
@@ -91,6 +95,8 @@ export type BlendSlice = {
   targetGenre: string;
   /** When true, the style tag must stay within the target genre family. */
   genreLock: boolean;
+  /** Optional era/decade to bias the blend toward. Empty = no bias. */
+  targetEra: string;
 };
 
 export type LyricSlice = {
@@ -144,17 +150,9 @@ export const emptyState = (): ForgeState => ({
     sunoVersion: "v6",
     targetGenre: "",
     genreLock: false,
+    targetEra: "",
   },
-  lyrics: {
-    theme: "",
-    hook: "",
-    notes: "",
-    title: "",
-    sections: [],
-    tagsOnly: false,
-    manualStyle: "",
-    recentWords: {},
-  },
+  lyrics: { theme: "", hook: "", notes: "", title: "", sections: [], tagsOnly: false, manualStyle: "", recentWords: {} },
   compare: { lyrics: "", tags: "", result: null },
   critique: { lyrics: "", notes: "", result: null },
   fix: { symptoms: [], notes: "", result: null, undo: null },

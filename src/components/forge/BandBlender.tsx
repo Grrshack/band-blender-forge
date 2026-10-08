@@ -1,16 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import {
-  Clipboard,
-  Info,
-  LayoutTemplate,
-  Loader2,
-  Lock,
-  Radar,
-  Send,
-  ShieldAlert,
-  Sparkles,
-  Wand,
-} from "lucide-react";
+import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -18,13 +7,12 @@ import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
 import type { BlendResult, BlendSlice } from "./types";
-import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { runForge } from "@/lib/forge.functions";
-import { ALL_GENRES, SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
+import { ALL_GENRES, ERA_OPTIONS, SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
 import { PromptCard } from "./PromptCard";
 import { shareBlend } from "@/lib/forge.functions";
 import { Switch } from "@/components/ui/switch";
@@ -72,8 +60,7 @@ const DEMO_BLEND: BlendResult = {
   reconciliation:
     "The first artist's jazz-tinged sample manipulation and the second's dub-influenced sub pressure form the rhythmic foundation, while the third's avant-garde production sensibility — negative space and textural contrast — governs arrangement decisions. Vocal approach conflicts are resolved by favouring intimacy over cinematic distance, while keeping dense layering intact underneath.",
   recommendedSliders: { energy: 35, complexity: 72, brightness: 28 },
-  sliderNotes:
-    "Low energy and brightness reflect the slow, dark character; high complexity captures the layered production.",
+  sliderNotes: "Low energy and brightness reflect the slow, dark character; high complexity captures the layered production.",
 };
 
 const PRESETS: { label: string; emoji: string; artists: string[] }[] = [
@@ -91,6 +78,7 @@ function formatForSuno(result: BlendResult): string {
   const vocal = vocalString(result.vocalPrompt);
   if (vocal) parts.push(`Vocal style: ${vocal}`);
   if (result.excludeStyles) parts.push(`Exclude: ${result.excludeStyles}`);
+  if (result.voiceTags) parts.push(`Voice tags (paste at top of lyrics): ${result.voiceTags}`);
   return parts.join("\n\n");
 }
 
@@ -133,14 +121,11 @@ export function BandBlender({
   const [error, setError] = useState<string | null>(null);
 
   const {
-    artists,
-    sliders,
-    result,
-    lookupMode = "band",
-    songTitle = "",
+    artists, sliders, result,
+    lookupMode = "band", songTitle = "",
     sunoVersion = "v6",
-    targetGenre = "",
-    genreLock = false,
+    targetGenre = "", genreLock = false,
+    targetEra = "",
   } = value;
   const [showCard, setShowCard] = useState(false);
   const [shareSlug, setShareSlug] = useState<string | undefined>();
@@ -177,7 +162,7 @@ export function BandBlender({
     try {
       const payload = isSong
         ? { title: songTitle.trim(), artist: names[0] ?? "" }
-        : { artists: names, sliders, sunoVersion, targetGenre, genreLock };
+        : { artists: names, sliders, sunoVersion, targetGenre, genreLock, targetEra };
       const res = await forge({
         data: { task: isSong ? "song" : "blend", routing, apiKey, payload },
       });
@@ -195,6 +180,7 @@ export function BandBlender({
         sunoVersion,
         targetGenre,
         genreLock,
+        targetEra,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blend failed.");
@@ -361,6 +347,38 @@ export function BandBlender({
             </div>
           )}
 
+          {/* Era targeting */}
+          {lookupMode === "band" && (
+            <div className="mt-5">
+              <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Era <span className="normal-case">(optional)</span>
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {ERA_OPTIONS.map((era) => (
+                  <button
+                    key={era.value}
+                    type="button"
+                    title={era.note}
+                    onClick={() =>
+                      onChange({
+                        ...value,
+                        targetEra: targetEra === era.value ? "" : era.value,
+                      })
+                    }
+                    className={cn(
+                      "rounded-full border px-3 py-1 font-mono text-[10px] transition-colors",
+                      targetEra === era.value
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                    )}
+                  >
+                    {era.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Suno version selector */}
           {lookupMode === "band" && (
             <div className="mt-5">
@@ -442,10 +460,7 @@ export function BandBlender({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setShareSlug(undefined);
-                      setShowCard(true);
-                    }}
+                    onClick={() => { setShareSlug(undefined); setShowCard(true); }}
                     className="gap-1.5 border-border text-xs"
                   >
                     <LayoutTemplate className="size-3" /> Prompt card
@@ -534,6 +549,33 @@ export function BandBlender({
                   <ReadoutField label="Exclude Styles" value={result.excludeStyles} mono />
                 </div>
               ) : null}
+              {result.voiceTags ? (
+                <div className="mt-3">
+                  <ReadoutField
+                    label="Voice Tags (paste at top of lyrics in Suno)"
+                    value={result.voiceTags}
+                    mono
+                    accent
+                  />
+                </div>
+              ) : null}
+              {result.contradictions && result.contradictions.length > 0 ? (
+                <div className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3">
+                  <div className="mb-1.5 font-mono text-[9px] tracking-widest text-yellow-500/80 uppercase">
+                    ⚠ Potential style tag conflicts
+                  </div>
+                  <ul className="space-y-1">
+                    {result.contradictions.map((c, i) => (
+                      <li key={i} className="text-xs text-yellow-200/80">
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1.5 font-mono text-[9px] text-muted-foreground">
+                    Suno may resolve these unpredictably — consider refining before generating.
+                  </p>
+                </div>
+              ) : null}
             </Panel>
 
             <Panel
@@ -590,12 +632,7 @@ export function BandBlender({
                 <ReadoutField label="Mood" value={DEMO_BLEND.mood ?? "—"} />
               </div>
               <div className="mt-3">
-                <ReadoutField
-                  label="Suno Style Tag Prompt"
-                  value={DEMO_BLEND.styleTag ?? "—"}
-                  mono
-                  accent
-                />
+                <ReadoutField label="Suno Style Tag Prompt" value={DEMO_BLEND.styleTag ?? "—"} mono accent />
               </div>
               {DEMO_BLEND.excludeStyles && (
                 <div className="mt-3">
@@ -603,10 +640,7 @@ export function BandBlender({
                 </div>
               )}
             </Panel>
-            <Panel
-              title="Blend Reconciliation Logic"
-              subtitle="How the conflicting styles are fused."
-            >
+            <Panel title="Blend Reconciliation Logic" subtitle="How the conflicting styles are fused.">
               <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
                 {DEMO_BLEND.reconciliation}
               </p>
@@ -632,7 +666,7 @@ export function BandBlender({
               const { slug } = await shareBlend({
                 data: {
                   artists: artists.filter(Boolean),
-                  blendData: JSON.parse(JSON.stringify(result)) as Record<string, Json>,
+                  blendData: result as Record<string, unknown>,
                 },
               });
               setShareSlug(slug);

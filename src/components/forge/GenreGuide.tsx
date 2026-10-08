@@ -180,6 +180,74 @@ const GENRE_CARDS: GenreCard[] = [
     ],
   },
   {
+    id: "phonk",
+    name: "Phonk",
+    emoji: "💀",
+    family: "Hip-hop & R&B",
+    bpm: "130–145 BPM (half-time feel)",
+    feel: "menacing, drifting, 808-heavy, Memphis underground",
+    instrumentation: "distorted 808 bass, trap hi-hats with drift, chopped vocal samples, dark piano or organ, vinyl crackle",
+    vocals: "low menacing delivery, pitch-shifted ad-libs, minimal lyrics, heavy reverb and distortion",
+    styleTemplate: "phonk, dark, 140bpm, distorted 808, trap hi-hats, chopped samples, menacing, Memphis underground, lo-fi",
+    exclude: "clean production, bright mix, melodic pop, acoustic instruments",
+    notes: "Phonk requires 'distorted 808' explicitly — generic 808 bass won't have the characteristic fuzz. 'Memphis underground' as a tag reliably pulls Suno toward the right aesthetic.",
+    exampleBlends: [
+      { artists: ["DJ Smokey", "Kordhell"], description: "Classic Memphis phonk with drifting hi-hats and distorted bass" },
+      { artists: ["Night Lovell", "BLADEE"], description: "Cloud rap meets phonk, atmospheric and alienated" },
+    ],
+  },
+  {
+    id: "afrobeats",
+    name: "Afrobeats",
+    emoji: "🌍",
+    family: "World & Classical",
+    bpm: "95–115 BPM",
+    feel: "percussive groove, syncopated, optimistic forward motion",
+    instrumentation: "talking drum, shekere, live bass, Fender Rhodes, layered percussion, brass accents",
+    vocals: "melodic Afropop delivery, call-and-response, Yoruba-influenced phrasing optional",
+    styleTemplate: "afrobeats, 105bpm, talking drum, layered percussion, melodic vocals, live bass, warm production, West African",
+    exclude: "trap hi-hats, distortion, cold electronic production, EDM drops",
+    notes: "Specify 'West African' or 'Nigerian' to anchor the feel. 'Layered percussion' is essential — without it Suno defaults to a generic drum machine feel instead of the characteristic handclap-and-drum texture.",
+    exampleBlends: [
+      { artists: ["Burna Boy", "Fela Kuti"], description: "Modern afrobeats rooted in Afrobeat's original political energy" },
+      { artists: ["Wizkid", "Tems"], description: "Contemporary melodic afrobeats with R&B influence" },
+    ],
+  },
+  {
+    id: "amapiano",
+    name: "Amapiano",
+    emoji: "🪗",
+    family: "Electronic",
+    bpm: "110–116 BPM",
+    feel: "slow-rolling groove, hypnotic log drum, South African township roots",
+    instrumentation: "log drum bass, piano chords, deep sub bass, cabasa or shaker, layered synths",
+    vocals: "conversational Zulu or Sotho-inflected delivery, chants, call-and-response",
+    styleTemplate: "amapiano, 112bpm, log drum, piano chords, deep bass, hypnotic groove, South African, township, layered synths",
+    exclude: "aggressive percussion, distortion, fast hi-hats, EDM drops",
+    notes: "'Log drum' is the defining tag — it's a specific low-mid bass drum pattern unique to amapiano. Without it Suno produces generic Afro house. Keep BPM between 110–116 strictly.",
+    exampleBlends: [
+      { artists: ["DJ Maphorisa", "Kabza De Small"], description: "Classic amapiano piano house with deep groove" },
+      { artists: ["Uncle Waffles", "Focalistic"], description: "High-energy amapiano with vocal chants" },
+    ],
+  },
+  {
+    id: "city-pop",
+    name: "City Pop",
+    emoji: "🌃",
+    family: "Pop",
+    bpm: "90–115 BPM",
+    feel: "breezy, nostalgic late-70s/80s Japanese, sophisticated adult contemporary",
+    instrumentation: "Fender Rhodes, acoustic guitar, fretless bass, orchestral strings, light percussion",
+    vocals: "smooth Japanese-style delivery, lush harmonies, breezy and effortless",
+    styleTemplate: "city pop, Japanese, 100bpm, Fender Rhodes, fretless bass, orchestral strings, breezy, nostalgic, 1980s, sophisticated",
+    exclude: "aggressive drums, distorted guitar, trap elements, lo-fi degradation",
+    notes: "'Japanese' + '1980s' together reliably anchor Suno in the city pop aesthetic. 'Fretless bass' is the key production signature — it distinguishes city pop from generic 80s pop immediately.",
+    exampleBlends: [
+      { artists: ["Mariya Takeuchi", "Tatsuro Yamashita"], description: "Definitive Japanese city pop, breezy and sophisticated" },
+      { artists: ["Miki Matsubara", "Minnie Riperton"], description: "City pop meets American soft soul" },
+    ],
+  },
+  {
     id: "cinematic",
     name: "Cinematic / Orchestral",
     emoji: "🎬",
@@ -198,7 +266,100 @@ const GENRE_CARDS: GenreCard[] = [
   },
 ];
 
+type UseCaseCard = {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  styleTemplate: string;
+  notes: string;
+};
+
+const USE_CASE_CARDS: UseCaseCard[] = [
+  {
+    id: "podcast-bg",
+    name: "Podcast Background",
+    emoji: "🎙️",
+    description: "Non-intrusive background music that supports speech without competing with it.",
+    styleTemplate: "ambient background, instrumental, 90bpm, soft piano, gentle pads, no percussion, warm, unobtrusive, podcast",
+    notes: "Keep energy low and avoid anything with a strong rhythmic hook — the music should be forgettable in the best way. 'No percussion' is critical, or add 'beatless' for a fully ambient feel.",
+  },
+  {
+    id: "youtube-intro",
+    name: "YouTube / Content Intro",
+    emoji: "▶️",
+    description: "Short punchy opener that grabs attention and sets the channel's tone in under 10 seconds.",
+    styleTemplate: "upbeat intro, energetic, 130bpm, electronic, bright, punchy, short, channel intro, positive energy",
+    notes: "Pair with a short duration request in Suno. 'Punchy' and 'bright' together tell Suno you want a quick energy spike, not a slow build.",
+  },
+  {
+    id: "lo-fi-study",
+    name: "Lo-fi Study / Focus",
+    emoji: "📚",
+    description: "Relaxed, repetitive background music for focus sessions — the genre that built YouTube's ambient music category.",
+    styleTemplate: "lo-fi hip-hop, chill, 75bpm, vinyl crackle, Rhodes piano, soft drums, relaxed, study, warm, repetitive",
+    notes: "'Vinyl crackle' is the non-negotiable lo-fi signal. 'Repetitive' tells Suno to loop rather than build — you want texture, not a journey.",
+  },
+  {
+    id: "workout",
+    name: "Workout / High Energy",
+    emoji: "💪",
+    description: "Driving BPM with relentless energy — keeps people moving without the mental overhead of lyrics.",
+    styleTemplate: "workout, high energy, 140bpm, electronic, driving, powerful, aggressive, pounding bass, motivational",
+    notes: "'Driving' + 'pounding bass' is the combination that tells Suno you need physical momentum rather than emotional expression. Front-load BPM — it's the most important variable here.",
+  },
+  {
+    id: "meditation",
+    name: "Meditation / Ambient",
+    emoji: "🧘",
+    description: "Slow, textural music for meditation, breathwork, or sleep — no pulse, evolving slowly.",
+    styleTemplate: "meditation, ambient, beatless, 60bpm, soft pads, nature sounds, calm, healing, slow evolving, no drums",
+    notes: "'Beatless' is essential — any rhythmic element will interrupt a meditative state. 'Evolving' tells Suno to move through textures rather than repeat.",
+  },
+  {
+    id: "cinematic-trailer",
+    name: "Cinematic Trailer",
+    emoji: "🎬",
+    description: "Epic tension-and-release structure with a big drop — designed for video intros, montages, and teasers.",
+    styleTemplate: "cinematic trailer, epic, orchestral, 90bpm, rising tension, big drop, brass, strings, powerful, dramatic, film score",
+    notes: "'Rising tension' + 'big drop' as a pair signals Suno to build and release rather than stay flat. Add 'trailer music' explicitly — it's a recognised sub-genre in Suno.",
+  },
+  {
+    id: "gaming",
+    name: "Gaming Background",
+    emoji: "🎮",
+    description: "Loopable background music that fits a game environment — tense, exploratory, or action-driven.",
+    styleTemplate: "video game music, chiptune, electronic, 120bpm, loopable, adventurous, 8-bit inspired, dynamic, exploration",
+    notes: "Specify the game mood: 'exploration' gives ambient loopable textures; 'battle' gives tense driving energy; 'boss fight' gives heavy and relentless. They produce very different results.",
+  },
+  {
+    id: "corporate",
+    name: "Corporate / Commercial",
+    emoji: "💼",
+    description: "Clean, positive background for business presentations, ads, or explainer videos.",
+    styleTemplate: "corporate, uplifting, acoustic guitar, light percussion, positive, professional, 100bpm, clean production, optimistic",
+    notes: "The dreaded but useful category. 'Acoustic guitar' + 'optimistic' reliably produces the clean, inoffensive corporate sound. Add 'no lyrics' if you want purely instrumental.",
+  },
+  {
+    id: "wedding",
+    name: "Wedding / Ceremony",
+    emoji: "💍",
+    description: "Romantic, elegant music for ceremony or reception — timeless and emotionally safe.",
+    styleTemplate: "wedding, romantic, orchestral strings, piano, 80bpm, elegant, emotional, warm, timeless, ceremonial",
+    notes: "'Ceremonial' as a tag reliably keeps Suno out of generic pop territory. Add the specific moment: 'processional' produces a slower walking pace, 'first dance' produces something more intimate.",
+  },
+  {
+    id: "sleep",
+    name: "Sleep / ASMR",
+    emoji: "😴",
+    description: "Ultra-quiet, almost imperceptible textures — designed to fade into the background of sleep.",
+    styleTemplate: "sleep music, ambient, very quiet, soft, 50bpm, barely audible, gentle pads, no melody, no rhythm, soothing",
+    notes: "'Very quiet' and 'barely audible' actually influence Suno's dynamic mix level. 'No melody' prevents hooks that would pull attention back — you want pure texture.",
+  },
+];
+
 export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string) => void }) {
+  const [view, setView] = useState<"genres" | "usecases">("genres");
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState("All");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -223,6 +384,65 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
 
   return (
     <div className="space-y-5">
+      {/* View toggle */}
+      <div className="flex rounded-lg border border-border p-0.5">
+        {(["genres", "usecases"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            className={cn(
+              "flex-1 rounded-md py-2 font-mono text-[10px] uppercase tracking-wider transition-colors",
+              view === v
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {v === "genres" ? "Genre Cards" : "Use Case Templates"}
+          </button>
+        ))}
+      </div>
+
+      {view === "usecases" && (
+        <Panel
+          title="Use Case Templates"
+          subtitle="Style prompts organised by what the music is for, not just how it sounds."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            {USE_CASE_CARDS.map((card) => (
+              <div key={card.id} className="rounded-xl border border-border bg-card/50 overflow-hidden">
+                <div className="p-4">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-lg">{card.emoji}</span>
+                    <span className="font-semibold text-sm text-foreground">{card.name}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{card.description}</p>
+                </div>
+                <div className="border-t border-border/50 bg-primary/5 px-4 py-2.5">
+                  <div className="mb-1 font-mono text-[9px] tracking-widest text-primary/70 uppercase">
+                    Style template
+                  </div>
+                  <p className="font-mono text-[11px] leading-relaxed text-foreground/80">{card.styleTemplate}</p>
+                  <div className="mt-2 flex gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 gap-1 border-border px-2 text-[10px]"
+                      onClick={() => void copyTag(card.id, card.styleTemplate)}
+                    >
+                      <Clipboard className="size-2.5" />
+                      {copied === card.id ? "Copied!" : "Copy"}
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{card.notes}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {view === "genres" && (
       <Panel
         title="Genre Reference Cards"
         subtitle="Ready-to-use Suno style templates and production notes for common genres."
@@ -342,6 +562,7 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
           ))}
         </div>
       </Panel>
+      )}
     </div>
   );
 }
