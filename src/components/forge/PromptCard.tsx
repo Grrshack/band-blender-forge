@@ -29,7 +29,7 @@ type Props = {
   data: PromptCardData;
   onClose: () => void;
   /** If provided, shows a "Share link" button */
-  shareSlug?: string;
+  shareSlug?: string | undefined;
   onShare?: () => Promise<void>;
   sharing?: boolean;
   /** When true, renders as a page block instead of a fixed modal overlay. */
@@ -99,7 +99,7 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
     setExporting(true);
     try {
       // Dynamically import html2canvas — it's heavy and only needed here.
-      const { default: html2canvas } = await import("html2canvas");
+      const { default: html2canvas } = await import("html2canvas-pro"); // -pro supports oklch colors
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: "#0d0d12",
         scale: 2,
@@ -252,7 +252,7 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
               Band Blender Forge · Style Card
             </div>
             <h2 className="text-xl font-semibold leading-tight text-white">
-              {cardTitle ?? artists.filter(Boolean).join(" × ") || "Custom Blend"}
+              {cardTitle ?? (artists.filter(Boolean).join(" × ") || "Custom Blend")}
             </h2>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {targetGenre && (

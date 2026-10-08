@@ -1,3 +1,4 @@
+import type { Json } from "@/integrations/supabase/types";
 import { useServerFn } from "@tanstack/react-start";
 import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useState } from "react";
@@ -666,7 +667,7 @@ export function BandBlender({
               const { slug } = await shareBlend({
                 data: {
                   artists: artists.filter(Boolean),
-                  blendData: result as Record<string, unknown>,
+                  blendData: JSON.parse(JSON.stringify(result)) as Record<string, Json>,
                 },
               });
               setShareSlug(slug);

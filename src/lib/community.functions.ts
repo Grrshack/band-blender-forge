@@ -25,7 +25,7 @@ export type PublicPrompt = {
   upvotes: number;
   created_at: string;
   /** True when the current user has upvoted this. */
-  upvoted?: boolean;
+  upvoted?: boolean | undefined;
 };
 
 export const listPublicPrompts = createServerFn({ method: "GET" })
