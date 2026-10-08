@@ -214,7 +214,11 @@ function Index() {
                   onChange={(v) => patch("compare", v)}
                   onSendToBlender={(name) => {
                     const rest = state.blend.artists.filter((a) => a.trim() && a !== name);
-                    patch("blend", { ...state.blend, lookupMode: "band", artists: [name, ...rest].slice(0, 3) });
+                    patch("blend", {
+                      ...state.blend,
+                      lookupMode: "band",
+                      artists: [name, ...rest].slice(0, 3),
+                    });
                     setTab("blend");
                   }}
                 />
