@@ -29,7 +29,7 @@ type Props = {
   data: PromptCardData;
   onClose: () => void;
   /** If provided, shows a "Share link" button */
-  shareSlug?: string;
+  shareSlug?: string | undefined;
   onShare?: () => Promise<void>;
   sharing?: boolean;
   /** When true, renders as a page block instead of a fixed modal overlay. */
