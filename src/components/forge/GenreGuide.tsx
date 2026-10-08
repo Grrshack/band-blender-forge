@@ -3,8 +3,8 @@
  * Each card is a cheat sheet: BPM, instrumentation, vocal approach,
  * a ready-to-paste Suno style template, exclude tags, and example blends.
  */
-import { useState } from "react";
-import { Clipboard, ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Clipboard, ChevronDown, ChevronUp, Link2 } from "lucide-react";
 import { Panel } from "./Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -364,6 +364,26 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
   const [family, setFamily] = useState("All");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // On mount, read ?card= param and auto-expand that card.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const cardId = params.get("card");
+      if (cardId) {
+        setExpanded(cardId);
+        // Scroll to the card after render
+        setTimeout(() => {
+          cardRefs.current.get(cardId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+      }
+    } catch {
+      // URL parsing unavailable
+    }
+  }, []);
 
   const families = ["All", ...Array.from(new Set(GENRE_CARDS.map((c) => c.family)))];
 
@@ -380,6 +400,38 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
     await navigator.clipboard.writeText(tag);
     setCopied(id);
     setTimeout(() => setCopied(null), 1500);
+  };
+
+  const copyLink = async (cardId: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?tab=genres&card=${cardId}`;
+    await navigator.clipboard.writeText(url);
+    setLinkCopied(cardId);
+    setTimeout(() => setLinkCopied(null), 2000);
+  };
+
+  const exportCardImage = async (cardId: string) => {
+    const el = cardRefs.current.get(cardId);
+    if (!el) return;
+    setExporting(cardId);
+    try {
+      const { default: html2canvas } = await import("html2canvas-pro");
+      const canvas = await html2canvas(el, {
+        backgroundColor: "#0d0d12",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const a = document.createElement("a");
+      a.download = `${cardId}-genre-card.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    } catch {
+      // fallback — copy the style tag text instead
+      const card = GENRE_CARDS.find((c) => c.id === cardId);
+      if (card) await navigator.clipboard.writeText(card.styleTemplate);
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -479,6 +531,7 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
           {filtered.map((card) => (
             <div
               key={card.id}
+              ref={(el) => { if (el) cardRefs.current.set(card.id, el); else cardRefs.current.delete(card.id); }}
               className="flex flex-col rounded-xl border border-border bg-card/50 overflow-hidden"
             >
               {/* Card header */}
@@ -555,6 +608,32 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
                         <p className="text-[11px] text-muted-foreground">{b.description}</p>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Share row */}
+                  <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-3">
+                    <span className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase mr-1">
+                      Share
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 gap-1 border-border px-2 text-[10px]"
+                      onClick={() => void copyLink(card.id)}
+                    >
+                      <Link2 className="size-2.5" />
+                      {linkCopied === card.id ? "Link copied!" : "Copy link"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 gap-1 border-border px-2 text-[10px]"
+                      disabled={exporting === card.id}
+                      onClick={() => void exportCardImage(card.id)}
+                    >
+                      <Camera className="size-2.5" />
+                      {exporting === card.id ? "Exporting…" : "Save as image"}
+                    </Button>
                   </div>
                 </div>
               )}
