@@ -216,7 +216,19 @@ function Index() {
                 />
               </TabsContent>
               <TabsContent value="compare" className="mt-0">
-                <ComparableArtists value={state.compare} onChange={(v) => patch("compare", v)} />
+                <ComparableArtists
+                  value={state.compare}
+                  onChange={(v) => patch("compare", v)}
+                  onSendToBlender={(name) => {
+                    const rest = state.blend.artists.filter((a) => a.trim() && a !== name);
+                    patch("blend", {
+                      ...state.blend,
+                      lookupMode: "band",
+                      artists: [name, ...rest].slice(0, 3),
+                    });
+                    setTab("blend");
+                  }}
+                />
               </TabsContent>
               <TabsContent value="feedback" className="mt-0">
                 <HonestFeedback

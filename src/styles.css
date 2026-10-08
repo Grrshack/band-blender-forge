@@ -42,6 +42,10 @@
   --color-signal-high: var(--signal-high);
   --color-signal-mid: var(--signal-mid);
   --color-signal-low: var(--signal-low);
+  --color-radar: var(--radar);
+  --color-radar-foreground: var(--radar-foreground);
+  --color-qc: var(--qc);
+  --color-qc-foreground: var(--qc-foreground);
   --color-panel: var(--panel);
   --color-panel-foreground: var(--panel-foreground);
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
@@ -92,6 +96,10 @@
   --signal-high: oklch(0.78 0.18 155);
   --signal-mid: oklch(0.82 0.16 90);
   --signal-low: oklch(0.66 0.2 30);
+  --radar: oklch(0.8 0.14 205);
+  --radar-foreground: oklch(0.16 0.03 220);
+  --qc: oklch(0.79 0.16 72);
+  --qc-foreground: oklch(0.18 0.04 60);
 
   --border: oklch(from #283240 l c h);
   --input: oklch(from #283240 l c h);
