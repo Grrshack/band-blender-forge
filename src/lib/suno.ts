@@ -296,16 +296,7 @@ export type GenreGroup = { label: string; genres: string[] };
 export const GENRE_GROUPS: GenreGroup[] = [
   {
     label: "Electronic",
-    genres: [
-      "House",
-      "Techno",
-      "Drum & Bass",
-      "Dubstep",
-      "Ambient",
-      "Synthwave",
-      "Trip-hop",
-      "IDM",
-    ],
+    genres: ["House", "Techno", "Drum & Bass", "Dubstep", "Ambient", "Synthwave", "Trip-hop", "IDM"],
   },
   {
     label: "Hip-hop & R&B",
@@ -313,16 +304,7 @@ export const GENRE_GROUPS: GenreGroup[] = [
   },
   {
     label: "Rock & Metal",
-    genres: [
-      "Rock",
-      "Indie Rock",
-      "Alternative",
-      "Metal",
-      "Post-Rock",
-      "Punk",
-      "Grunge",
-      "Shoegaze",
-    ],
+    genres: ["Rock", "Indie Rock", "Alternative", "Metal", "Post-Rock", "Punk", "Grunge", "Shoegaze"],
   },
   {
     label: "Pop",
@@ -344,3 +326,17 @@ export const GENRE_GROUPS: GenreGroup[] = [
 
 /** Flat sorted list for autocomplete / search. */
 export const ALL_GENRES: string[] = GENRE_GROUPS.flatMap((g) => g.genres).sort();
+
+// ─── Era targeting ────────────────────────────────────────────────────────────
+
+export const ERA_OPTIONS = [
+  { value: "pre-70s", label: "Pre-70s", note: "Motown, early rock, jazz, folk" },
+  { value: "70s", label: "70s", note: "Funk, disco, prog rock, punk" },
+  { value: "80s", label: "80s", note: "New wave, synth-pop, glam, hip-hop roots" },
+  { value: "90s", label: "90s", note: "Grunge, R&B, jungle, Britpop" },
+  { value: "00s", label: "00s", note: "Post-punk revival, crunk, indie sleaze" },
+  { value: "2010s", label: "2010s", note: "Trap, EDM, bedroom pop" },
+  { value: "current", label: "Current", note: "2020s production, modern mix conventions" },
+] as const;
+
+export type EraValue = (typeof ERA_OPTIONS)[number]["value"];

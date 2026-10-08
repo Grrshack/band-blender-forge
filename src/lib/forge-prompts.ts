@@ -34,8 +34,12 @@ export function prompt(task: string, payload: Record<string, unknown>): string {
           ? `\nGENRE LOCK — HARD CONSTRAINT: The final style tag MUST be rooted in ${targetGenre}. Resolve all conflicting elements in favor of ${targetGenre} conventions. The genre field must list ${targetGenre} first.`
           : `\nGenre bias: Lean the blend toward ${targetGenre}. Where artist elements conflict, favour ${targetGenre} conventions. You may still incorporate outside elements when they genuinely serve the blend.`
         : "";
+      const targetEra = typeof payload["targetEra"] === "string" ? payload["targetEra"].trim() : "";
+      const eraNote = targetEra
+        ? `\nEra targeting: Bias the production sound, mix conventions, and instrumentation toward ${targetEra} aesthetics. This applies to production choices (compression, reverb style, drum sound) as well as harmonic and rhythmic conventions of that period.`
+        : "";
       return `Blend these artists into one coherent, produceable style for ${vLabel}.
-Target: ${vLabel}. ${vNote}${genreNote}
+Target: ${vLabel}. ${vNote}${genreNote}${eraNote}
 Input: ${p}
 The "sliders" values are user-set 0-100 targets; honour them and reflect them in the output.
 Slider definitions (interpret user values against these exact meanings):
@@ -49,8 +53,10 @@ Return JSON exactly:
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
 "styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${vTarget} characters.",
+"voiceTags":"Suno v6 bracket vocal tags to prepend to the lyrics field, e.g. '[Female Vocal]' or '[Male Vocal], [Whisper]'. Choose from: [Male Vocal] [Female Vocal] [Duet] [Choir] [Rap] [Whisper] [Falsetto] [Raw Vocals]. Max 2-3 tags. Empty string if not applicable.",
 "vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound (for Suno's Exclude styles box), e.g. 'autotune, trap hi-hats, EDM drop'",
+"contradictions":"array of 0-3 short strings flagging any terms in the styleTag that may conflict with each other and confuse Suno v6 (e.g. 'acoustic and heavy bass may conflict'). Empty array [] if none found.",
 "reconciliation":"2-4 sentences explaining exactly how conflicting elements of the chosen artists are fused, naming the specific conflicts and the resolution",
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this blend"}
