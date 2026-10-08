@@ -40,8 +40,22 @@ export function SystemPanel() {
                     {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </Button>
                 </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Held in this browser tab's session only. Leave blank to use the built-in model.
+                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                  No key needed —{" "}
+                  <span className="text-foreground/80">sign in for free access</span> (rate
+                  limited). For unlimited use, add your own key —{" "}
+                  <a
+                    href="https://console.anthropic.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    get one at console.anthropic.com →
+                  </a>
+                  <br />
+                  <span className="text-muted-foreground/70">
+                    Held in this tab's session only — never stored.
+                  </span>
                 </p>
               </div>
 
@@ -75,10 +89,12 @@ export function SystemPanel() {
             </div>
 
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-              Lyrics, line rewrites, critiques and take-fixes always use the stronger model,
-              whatever the switch says. Without your own key the built-in model requires sign-in and
-              is limited per hour. Artist names are looked up on MusicBrainz, an open music
-              database, to check they exist.
+              <span className="text-foreground/80">Free tier:</span> sign in, no key required —
+              rate limited to keep costs manageable.{" "}
+              <span className="text-foreground/80">Your own key:</span> no rate limit, billed
+              directly by Anthropic at a few cents per session. Lyrics, rewrites, and critiques
+              always use the stronger model regardless of the routing switch. Artist names are
+              verified against MusicBrainz, an open music database.
             </p>
 
             <p className="hairline-top mt-4 flex items-start gap-2 pt-3 text-[11px] leading-relaxed text-muted-foreground">
