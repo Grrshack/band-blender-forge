@@ -70,7 +70,14 @@ const TABS = [
 ];
 
 function Index() {
-  const [tab, setTab] = useState("blend");
+  const [tab, setTab] = useState(() => {
+    // Read ?tab= param on first render so shared genre links land on the right tab.
+    try {
+      const p = new URLSearchParams(window.location.search).get("tab");
+      if (p && ["blend","lyrics","suno","fix","compare","feedback","master","library","genres","usage"].includes(p)) return p;
+    } catch { /* SSR */ }
+    return "blend";
+  });
   const [state, setState] = useState<ForgeState>(emptyState);
   const [shared, setShared] = useState<SharePayload | null>(null);
 
