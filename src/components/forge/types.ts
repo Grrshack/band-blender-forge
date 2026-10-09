@@ -116,6 +116,29 @@ export type LyricSlice = {
    * Words with count >= 2 are soft-avoided in the next generation.
    */
   recentWords: Record<string, number>;
+  /** User blacklist, comma-separated ("alone, voice"). Hard-banned from generated lyrics. */
+  bannedWords?: string | undefined;
+};
+
+export type DossierResult = {
+  titleOptions?: string[];
+  coverArtPrompt?: string;
+  coverArtAlt?: string;
+  metadata?: {
+    primaryGenre?: string;
+    secondaryGenre?: string;
+    moods?: string[];
+    bpm?: string;
+    key?: string;
+    explicit?: boolean;
+    language?: string;
+  };
+  shortDescription?: string;
+  bio?: string;
+  playlistPitch?: string;
+  socialHooks?: Array<{ platform?: string; hook?: string; clip?: string }>;
+  hashtags?: string[];
+  releaseTips?: string[];
 };
 
 export type CompareSlice = {
@@ -138,6 +161,7 @@ export type ForgeState = {
   fix: FixSlice;
   /** Log of generated takes, newest last. */
   takes: Take[];
+  dossier: DossierResult | null;
 };
 
 export const emptyState = (): ForgeState => ({
@@ -157,6 +181,7 @@ export const emptyState = (): ForgeState => ({
   critique: { lyrics: "", notes: "", result: null },
   fix: { symptoms: [], notes: "", result: null, undo: null },
   takes: [],
+  dossier: null,
 });
 
 export function hasContent(s: ForgeState): boolean {
@@ -173,7 +198,8 @@ export function hasContent(s: ForgeState): boolean {
     s.fix.notes.trim() ||
     s.fix.symptoms.length ||
     s.fix.result ||
-    s.takes.length,
+    s.takes.length ||
+    s.dossier,
   );
 }
 
@@ -188,6 +214,7 @@ export function mergeState(raw: unknown): ForgeState {
     critique: { ...base.critique, ...(s.critique ?? {}) },
     fix: { ...base.fix, ...(s.fix ?? {}) },
     takes: Array.isArray(s.takes) ? s.takes : base.takes,
+    dossier: s.dossier && typeof s.dossier === "object" ? s.dossier : null,
   };
 }
 
