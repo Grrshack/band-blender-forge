@@ -25,6 +25,7 @@ const InputSchema = z.object({
     "critique",
     "fixTake",
     "variants",
+    "dossier",
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),

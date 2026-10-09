@@ -1,3 +1,4 @@
+import { bannedWordsInstruction } from "@/lib/banned-words";
 import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
 import { STYLE_TARGET, STYLE_TARGET_FOR_VERSION, type SunoVersion } from "@/lib/suno";
 
@@ -10,7 +11,18 @@ into any style, genre, vocal or exclude field. Describe the sound instead: genre
 vocal timbre and delivery, production traits. Only a "reconciliation" explanation may name artists.
 Always reply with ONLY raw JSON. No markdown fences, no commentary.`;
 
+const LYRIC_TASKS = new Set(["lyrics", "regenLine", "regenSection"]);
+
 export function prompt(task: string, payload: Record<string, unknown>): string {
+  const body = promptBody(task, payload);
+  if (!LYRIC_TASKS.has(task)) return body;
+  const banned = Array.isArray(payload["bannedWords"])
+    ? (payload["bannedWords"] as unknown[]).filter((w): w is string => typeof w === "string")
+    : [];
+  return body + bannedWordsInstruction(banned);
+}
+
+function promptBody(task: string, payload: Record<string, unknown>): string {
   const p = JSON.stringify(payload);
   switch (task) {
     case "blend": {
@@ -92,6 +104,22 @@ Return JSON exactly:
 {"title":"string, max 60 characters","sections":[{"tag":"[Verse 1]","cue":"optional short direction","lines":["line","line"]}]}
 Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro] as appropriate.`;
     }
+    case "dossier":
+      return `Build a release dossier for this finished song idea, ready for distribution and promotion.
+Input: ${p}
+Be specific to THIS song's sound and lyrics. No generic marketing filler. No real artist names in tags or art prompts.
+Return JSON exactly:
+{"titleOptions":["3 alternative release titles, max 60 chars each"],
+"coverArtPrompt":"one detailed image-generation prompt for square album art: subject, palette, lighting, texture, typography-free",
+"coverArtAlt":"a second, contrasting cover art direction",
+"metadata":{"primaryGenre":"string","secondaryGenre":"string","moods":["3-5 mood tags"],"bpm":"estimate","key":"suggested key, e.g. A minor","explicit":false,"language":"string"},
+"shortDescription":"one-sentence pitch, max 140 chars",
+"bio":"3-4 sentence press/release description",
+"playlistPitch":"2-3 sentences pitching to streaming playlist editors, naming the listener and moment",
+"socialHooks":[{"platform":"TikTok"|"Reels"|"Shorts","hook":"on-screen text or caption","clip":"which lyric/section to clip"}],
+"hashtags":["6-10 hashtags without spaces"],
+"releaseTips":["3 concrete release-week actions"]}
+Return exactly 3 socialHooks.`;
     case "regenLine":
       return `Rewrite ONE lyric line inside an existing song, keeping syllable count and rhythm close, keeping meaning coherent with neighbours, and avoiding clichés.
 Input: ${p}
