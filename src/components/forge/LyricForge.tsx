@@ -29,6 +29,7 @@ import {
   isSyllableOutlier,
   mergeWordCounts,
 } from "@/lib/cliches";
+import { findBannedWords, parseBannedWords } from "@/lib/banned-words";
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
@@ -38,18 +39,29 @@ function LineMarkers({
   locked,
   all,
   index,
+  banned,
 }: {
   text: string;
   locked: boolean;
   all: string[];
   index: number;
+  banned: string[];
 }) {
+  const blocked = findBannedWords(text, banned);
   const counts = all.map((t) => countSyllables(t));
   const syllables = counts[index] ?? 0;
   const outlier = isSyllableOutlier(counts, index);
   const worn = locked ? [] : findCliches(text);
   return (
     <div className="mr-1 flex items-center gap-1.5">
+      {blocked.length ? (
+        <span
+          title={`Uses a banned word: "${blocked.join('", "')}". Regenerate or rewrite this line.`}
+          className="rounded bg-destructive/15 px-1 font-mono text-[10px] text-destructive"
+        >
+          BAN
+        </span>
+      ) : null}
       {worn.length ? (
         <span
           title={`Worn-out phrase: "${worn[0]}". Regenerate or rewrite this line.`}
@@ -107,7 +119,13 @@ export function LyricForge({
     tagsOnly = false,
     manualStyle = "",
     recentWords = {},
+    bannedWords = "",
   } = value;
+  const banned = parseBannedWords(bannedWords);
+  const bannedHits = sections.reduce(
+    (n, s) => n + s.lines.filter((l) => findBannedWords(l.text, banned).length).length,
+    0,
+  );
   const set = (patch: Partial<LyricSlice>) => onChange({ ...value, ...patch });
 
   const hasBlend = Boolean(blend?.styleTag);
@@ -134,6 +152,7 @@ export function LyricForge({
             hookIdea: hook,
             notes,
             style: styleContext,
+            bannedWords: banned,
             ...(value.structure ? { structure: value.structure } : {}),
             ...(tagsOnly ? { tagsOnly: true } : {}),
             // Words used >= 2 times in previous generations get soft-avoided
@@ -239,6 +258,7 @@ export function LyricForge({
             style: styleContext,
             sectionTag: section.tag,
             lineToRewrite: line.text,
+            bannedWords: banned,
             sectionLines: section.lines.map((l) => l.text),
           },
         },
@@ -269,6 +289,7 @@ export function LyricForge({
             style: styleContext,
             sectionTag: section.tag,
             cue: section.cue ?? "",
+            bannedWords: banned,
             lines: section.lines.map((l) => ({ text: l.text, locked: l.locked })),
             otherSections: sections
               .filter((_, i) => i !== si)
@@ -342,6 +363,29 @@ export function LyricForge({
               placeholder="Short lines, present tense, no rhyme on the chorus…"
               className="resize-y border-border bg-card/60 text-sm focus-visible:ring-primary"
             />
+          </div>
+
+          <div>
+            <span className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+              Banned words
+              {banned.length ? (
+                <span className="tracking-normal normal-case">
+                  {banned.length} blocked
+                  {bannedHits ? (
+                    <span className="text-destructive"> · {bannedHits} line(s) use them</span>
+                  ) : null}
+                </span>
+              ) : null}
+            </span>
+            <Input
+              value={bannedWords}
+              onChange={(e) => set({ bannedWords: e.target.value })}
+              placeholder="alone, voice, fire, neon…"
+              className="border-border bg-card/60 text-sm focus-visible:ring-primary"
+            />
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Comma-separated. The AI won't use these, and any line that does gets a BAN flag.
+            </p>
           </div>
 
           {hasBlend ? (
@@ -488,6 +532,7 @@ export function LyricForge({
                           locked={l.locked}
                           all={s.lines.map((x) => x.text)}
                           index={li}
+                          banned={banned}
                         />
                         <button
                           type="button"

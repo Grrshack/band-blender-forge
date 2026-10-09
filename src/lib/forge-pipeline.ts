@@ -4,6 +4,7 @@
  * whole flow can be tested with a scripted fake model.
  */
 
+import { findBannedWords } from "@/lib/banned-words";
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
 import { clicheFixPrompt, prompt } from "@/lib/forge-prompts";
 import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
@@ -111,6 +112,21 @@ export async function runPipeline(task: string, payload: Json, deps: PipelineDep
       const blocks = sections.map((s) => ({ lines: strings(obj(s)["lines"]) }));
       const fixed = await cleanBlocks(blocks, deps, payload);
       result["sections"] = sections.map((s, i) => ({ ...obj(s), lines: fixed[i]!.lines }));
+      // User blacklist: if any banned word slipped through, ask once more with the offenders named.
+      const banned = strings(payload["bannedWords"]);
+      const offenders = [
+        ...new Set(blocks.flatMap((_, i) => fixed[i]!.lines.flatMap((l) => findBannedWords(l, banned)))),
+      ];
+      if (offenders.length) {
+        try {
+          const again = await deps.ask(
+            `${base}\n\nYour previous answer used banned words: ${offenders.map((w) => `"${w}"`).join(", ")}. Rewrite the complete JSON without them.`,
+          );
+          if (Array.isArray(again["sections"])) return again;
+        } catch {
+          /* keep the first answer; the UI flags the lines */
+        }
+      }
       return result;
     }
 

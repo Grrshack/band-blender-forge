@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, ExternalLink, Plus, ShieldAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { Panel } from "./Field";
@@ -17,6 +17,7 @@ import {
   scrubArtistNames,
   vocalString,
 } from "@/lib/suno";
+import { ENGINE_LABELS, buildEngineExport, type Engine } from "@/lib/engines";
 import { cn } from "@/lib/utils";
 
 function Counter({ n, max }: { n: number; max: number }) {
@@ -107,6 +108,7 @@ export function SunoSheet({
   onLyrics: (next: LyricSlice) => void;
   onOpenForge: () => void;
 }) {
+  const [engine, setEngine] = useState<Engine>("suno");
   const result = blend.result;
   const style = result?.styleTag ?? "";
   const exclude = result?.excludeStyles ?? "";
@@ -157,8 +159,8 @@ export function SunoSheet({
 
   return (
     <Panel
-      title="Suno Sheet"
-      subtitle="Four boxes, each paste-ready for Suno's Custom mode."
+      title="Export Sheet"
+      subtitle="Pick your engine — every box is paste-ready for it."
       action={
         <div className="flex flex-wrap justify-end gap-1.5">
           <CopyButton value={everything} label="Copy all" />
@@ -176,6 +178,66 @@ export function SunoSheet({
       }
     >
       <div className="space-y-4">
+        <div
+          role="radiogroup"
+          aria-label="Target engine"
+          className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background/40 p-1"
+        >
+          {(Object.keys(ENGINE_LABELS) as Engine[]).map((e) => (
+            <button
+              key={e}
+              type="button"
+              role="radio"
+              aria-checked={engine === e}
+              onClick={() => setEngine(e)}
+              className={cn(
+                "rounded-md px-2 py-2 font-mono text-[11px] tracking-[0.12em] uppercase transition-colors",
+                engine === e
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {ENGINE_LABELS[e]}
+            </button>
+          ))}
+        </div>
+
+        {engine !== "suno" ? (
+          <>
+            {leaks.length ? (
+              <p className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs">
+                Artist names found in the style ({leaks.join(", ")}) — most engines block them.
+                Switch to Suno v6 and press "Remove them".
+              </p>
+            ) : null}
+            {buildEngineExport(engine, {
+              title: lyrics.title,
+              style,
+              exclude,
+              vocal,
+              genre: result?.genre,
+              tempo: result?.tempo,
+              mood: result?.mood,
+              instrumentation: result?.instrumentation,
+              lyrics: lyricText,
+            }).map((f) => (
+              <SunoBox
+                key={f.label}
+                label={f.label}
+                value={f.value}
+                max={f.max ?? 200}
+                rows={f.label === "Title" ? 0 : f.value.length > 400 ? 14 : 4}
+                mono={f.label === "Prompt"}
+                {...(f.hint ? { hint: f.hint } : {})}
+              />
+            ))}
+            <p className="hairline-top pt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Built from the same blend and lyrics as the Suno version. Edit them in Band Blender or
+              Lyric Forge; limits are approximate and live in one place if the engines change.
+            </p>
+          </>
+        ) : (
+        <>
         <div
           className={cn(
             "flex items-start gap-2.5 rounded-lg border px-3 py-2 text-xs",
@@ -298,6 +360,8 @@ export function SunoSheet({
           Limits are third-party measurements of Suno's current fields and can change — they live in
           one place (<span className="font-mono">src/lib/suno.ts</span>) if Suno updates them.
         </p>
+        </>
+        )}
       </div>
     </Panel>
   );
