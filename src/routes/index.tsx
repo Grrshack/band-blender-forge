@@ -33,7 +33,6 @@ import { SunoSheet } from "@/components/forge/SunoSheet";
 import { SystemPanel } from "@/components/forge/SystemPanel";
 import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { getSharedBlend } from "@/lib/forge.functions";
 import type { BlendResult } from "@/components/forge/types";
@@ -78,7 +77,6 @@ const TABS = [
 
 function Index() {
   const [tab, setTab] = useState(() => {
-    // Read ?tab= param on first render so shared genre links land on the right tab.
     try {
       const p = new URLSearchParams(window.location.search).get("tab");
       if (p && TABS.some((t) => t.value === p)) return p;
@@ -107,7 +105,6 @@ function Index() {
     }
   };
 
-  // ?remix=<slug> loads a community blend into the studio as a starting point.
   useEffect(() => {
     const slug = new URLSearchParams(window.location.search).get("remix");
     if (!slug) return;
@@ -129,7 +126,6 @@ function Index() {
       .finally(() => window.history.replaceState(null, "", window.location.pathname));
   }, []);
 
-  // A link like /#share=... opens a read-only view. The data lives in the link itself.
   useEffect(() => {
     const read = () => {
       const token = tokenFromHash(window.location.hash);
@@ -219,31 +215,42 @@ function Index() {
     );
   }
 
+  const activeTab = TABS.find((t) => t.value === tab);
+
   return (
     <AuthProvider>
       <SettingsProvider>
-        <div className="min-h-screen pb-24">
-          <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="glow-primary flex size-11 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
-                  <AudioLines className="size-5 text-primary" />
+        <div className="flex min-h-screen bg-background">
+
+          {/* ── Left Sidebar ── */}
+          <aside className="w-56 flex-shrink-0 sticky top-0 h-screen flex flex-col border-r border-border bg-panel/40 overflow-y-auto">
+
+            {/* Logo */}
+            <div className="px-4 pt-6 pb-5 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                <span className="glow-primary flex size-9 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
+                  <AudioLines className="size-4 text-primary" />
                 </span>
                 <div>
-                  <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                    Band Lookup &amp; Lyric Forge
-                  </h1>
-                  <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-                    Pre-production console for AI music generation
-                  </p>
+                  <div className="neon-text font-display text-sm font-bold tracking-tight leading-snug">
+                    Band Forge
+                  </div>
+                  <div className="font-mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase mt-0.5">
+                    Music Console
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* ── Guided / Rack mode toggle ── */}
+            {/* Mode toggle */}
+            <div className="px-3 py-3 border-b border-border/60">
+              <div className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/50 uppercase mb-2 px-1">
+                Studio Mode
+              </div>
               <div
                 role="radiogroup"
                 aria-label="Studio mode"
-                className="flex rounded-lg border border-border bg-panel/70 p-1"
+                className="flex rounded-lg border border-border bg-background/50 p-0.5"
               >
                 {(
                   [
@@ -258,7 +265,7 @@ function Index() {
                     aria-checked={mode === m}
                     onClick={() => changeMode(m)}
                     className={
-                      "rounded-md px-3 py-1.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors " +
+                      "flex-1 rounded-md px-2 py-1.5 font-mono text-[10px] tracking-[0.1em] uppercase transition-colors " +
                       (mode === m
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground")
@@ -269,123 +276,151 @@ function Index() {
                 ))}
               </div>
             </div>
-          </header>
 
-          <main className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6">
-            <WorkspaceBar state={state} onLoadState={setState} />
+            {/* Nav links */}
+            <nav className="flex-1 px-2 py-3">
+              <div className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/40 uppercase mb-1.5 px-2">
+                Tools
+              </div>
+              {TABS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => {
+                    setTab(t.value);
+                    if (mode === "guided") changeMode("rack");
+                  }}
+                  className={
+                    "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors " +
+                    (tab === t.value && mode === "rack"
+                      ? "bg-primary/15 text-primary font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/40 font-normal")
+                  }
+                >
+                  <t.icon className="size-3.5 flex-shrink-0" />
+                  <span className="text-sm">{t.label}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-            {/* ── Guided Flow (4-step wizard) ── */}
-            {mode === "guided" ? (
-              <GuidedFlow
-                state={state}
-                patch={patch}
-                onExitToRack={() => changeMode("rack")}
-              />
-            ) : (
-              /* ── Rack Console (full tab layout) ── */
-              <Tabs value={tab} onValueChange={setTab}>
-                <TabsList className="mb-5 h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border bg-panel/70 p-1">
-                  {TABS.map((t) => (
-                    <TabsTrigger
-                      key={t.value}
-                      value={t.value}
-                      className="gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
-                    >
-                      <t.icon className="size-3.5" />
-                      {t.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+          {/* ── Right Content Panel ── */}
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-                <TabsContent value="blend" className="mt-0">
-                  <BandBlender
-                    value={state.blend}
-                    onChange={(v) => patch("blend", v)}
-                    onSendToForge={() => setTab("lyrics")}
-                    onOpenSunoSheet={() => setTab("suno")}
-                  />
-                </TabsContent>
-                <TabsContent value="lyrics" className="mt-0">
-                  <LyricForge
-                    value={state.lyrics}
-                    onChange={(v) => patch("lyrics", v)}
-                    blend={state.blend.result}
-                  />
-                </TabsContent>
-                <TabsContent value="suno" className="mt-0">
-                  <SunoSheet
-                    blend={state.blend}
-                    lyrics={state.lyrics}
-                    onBlend={(v) => patch("blend", v)}
-                    onLyrics={(v) => patch("lyrics", v)}
-                    onOpenForge={() => setTab("lyrics")}
-                  />
-                </TabsContent>
-                <TabsContent value="dossier" className="mt-0">
-                  <ReleaseDossier
-                    blend={state.blend}
-                    lyrics={state.lyrics}
-                    value={state.dossier}
-                    onChange={(v) => patch("dossier", v)}
-                  />
-                </TabsContent>
-                <TabsContent value="fix" className="mt-0">
-                  <FixTake
-                    blend={state.blend}
-                    lyrics={state.lyrics}
-                    value={state.fix}
-                    onChange={(v) => patch("fix", v)}
-                    onBlend={(v) => patch("blend", v)}
-                    takes={state.takes}
-                    onTakes={(v) => patch("takes", v)}
-                  />
-                </TabsContent>
-                <TabsContent value="compare" className="mt-0">
-                  <ComparableArtists
-                    value={state.compare}
-                    onChange={(v) => patch("compare", v)}
-                    onSendToBlender={(name) => {
-                      const rest = state.blend.artists.filter((a) => a.trim() && a !== name);
-                      patch("blend", {
-                        ...state.blend,
-                        lookupMode: "band",
-                        artists: [name, ...rest].slice(0, 3),
-                      });
-                      setTab("blend");
-                    }}
-                  />
-                </TabsContent>
-                <TabsContent value="feedback" className="mt-0">
-                  <HonestFeedback
-                    value={state.critique}
-                    onChange={(v) => patch("critique", v)}
-                    lyrics={state.lyrics}
-                  />
-                </TabsContent>
-                <TabsContent value="master" className="mt-0">
-                  <MasteringLab />
-                </TabsContent>
-                <TabsContent value="library" className="mt-0">
-                  <PromptLibrary onApply={applyPreset} />
-                </TabsContent>
-                <TabsContent value="genres" className="mt-0">
-                  <GenreGuide
-                    onApplyToBlend={(genre) => {
-                      patch("blend", { ...state.blend, targetGenre: genre });
-                      setTab("blend");
-                    }}
-                  />
-                </TabsContent>
-                <TabsContent value="usage" className="mt-0">
-                  <UsageDashboard />
-                </TabsContent>
-              </Tabs>
-            )}
-          </main>
+            {/* Top bar */}
+            <div className="border-b border-border bg-background/80 backdrop-blur px-6 py-3 flex-shrink-0">
+              <WorkspaceBar state={state} onLoadState={setState} />
+            </div>
 
-          <SystemPanel />
-          <Toaster />
+            {/* Tool content */}
+            <main className="flex-1 overflow-y-auto">
+              <div className="px-6 py-6">
+
+                {/* Page title */}
+                <div className="mb-5">
+                  <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
+                    {mode === "guided" ? "Guided Flow" : (activeTab?.label ?? "Studio")}
+                  </h1>
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase mt-0.5">
+                    Band Lookup &amp; Lyric Forge — AI Music Pre-Production
+                  </p>
+                </div>
+
+                {/* ── Guided Flow ── */}
+                {mode === "guided" ? (
+                  <GuidedFlow
+                    state={state}
+                    patch={patch}
+                    onExitToRack={() => changeMode("rack")}
+                  />
+                ) : (
+                  /* ── Rack: show active tool directly (no tab bar needed) ── */
+                  <>
+                    {tab === "blend" && (
+                      <BandBlender
+                        value={state.blend}
+                        onChange={(v) => patch("blend", v)}
+                        onSendToForge={() => setTab("lyrics")}
+                        onOpenSunoSheet={() => setTab("suno")}
+                      />
+                    )}
+                    {tab === "lyrics" && (
+                      <LyricForge
+                        value={state.lyrics}
+                        onChange={(v) => patch("lyrics", v)}
+                        blend={state.blend.result}
+                      />
+                    )}
+                    {tab === "suno" && (
+                      <SunoSheet
+                        blend={state.blend}
+                        lyrics={state.lyrics}
+                        onBlend={(v) => patch("blend", v)}
+                        onLyrics={(v) => patch("lyrics", v)}
+                        onOpenForge={() => setTab("lyrics")}
+                      />
+                    )}
+                    {tab === "dossier" && (
+                      <ReleaseDossier
+                        blend={state.blend}
+                        lyrics={state.lyrics}
+                        value={state.dossier}
+                        onChange={(v) => patch("dossier", v)}
+                      />
+                    )}
+                    {tab === "fix" && (
+                      <FixTake
+                        blend={state.blend}
+                        lyrics={state.lyrics}
+                        value={state.fix}
+                        onChange={(v) => patch("fix", v)}
+                        onBlend={(v) => patch("blend", v)}
+                        takes={state.takes}
+                        onTakes={(v) => patch("takes", v)}
+                      />
+                    )}
+                    {tab === "compare" && (
+                      <ComparableArtists
+                        value={state.compare}
+                        onChange={(v) => patch("compare", v)}
+                        onSendToBlender={(name) => {
+                          const rest = state.blend.artists.filter((a) => a.trim() && a !== name);
+                          patch("blend", {
+                            ...state.blend,
+                            lookupMode: "band",
+                            artists: [name, ...rest].slice(0, 3),
+                          });
+                          setTab("blend");
+                        }}
+                      />
+                    )}
+                    {tab === "feedback" && (
+                      <HonestFeedback
+                        value={state.critique}
+                        onChange={(v) => patch("critique", v)}
+                        lyrics={state.lyrics}
+                      />
+                    )}
+                    {tab === "master" && <MasteringLab />}
+                    {tab === "library" && <PromptLibrary onApply={applyPreset} />}
+                    {tab === "genres" && (
+                      <GenreGuide
+                        onApplyToBlend={(genre) => {
+                          patch("blend", { ...state.blend, targetGenre: genre });
+                          setTab("blend");
+                        }}
+                      />
+                    )}
+                    {tab === "usage" && <UsageDashboard />}
+                  </>
+                )}
+              </div>
+            </main>
+          </div>
         </div>
+
+        <SystemPanel />
+        <Toaster />
       </SettingsProvider>
     </AuthProvider>
   );
