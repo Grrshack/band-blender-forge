@@ -43,6 +43,25 @@ type GenreCard = {
   exampleBlends: { artists: string[]; description: string }[];
 };
 
+type SunoParamHint = { weirdness: string; style: string; vocals: string; note: string };
+
+const SUNO_PARAM_HINTS: Record<string, SunoParamHint> = {
+  "hip-hop":   { weirdness: "25–45", style: "70–80", vocals: "Male", note: "Higher weirdness for melodic trap; lower for boom-bap." },
+  "pop":        { weirdness: "15–30", style: "75–85", vocals: "Any", note: "High style keeps production polished and on-prompt." },
+  "rock":       { weirdness: "35–55", style: "70–80", vocals: "Male", note: "Increase weirdness for alternative or art-rock blends." },
+  "electronic": { weirdness: "45–70", style: "65–75", vocals: "None", note: "High weirdness for IDM/experimental; lower for straight house or techno." },
+  "rnb":        { weirdness: "20–35", style: "70–80", vocals: "Female", note: "Low weirdness keeps the groove smooth; raise it for neo-soul." },
+  "jazz":       { weirdness: "30–55", style: "60–70", vocals: "Any", note: "Lower style allows more improvisational freedom." },
+  "country":    { weirdness: "10–25", style: "75–85", vocals: "Male", note: "Keep weirdness low to stay grounded in the genre." },
+  "metal":      { weirdness: "40–65", style: "75–85", vocals: "Male", note: "Higher weirdness for prog/avant-metal; lower for straight thrash." },
+  "indie":      { weirdness: "40–60", style: "65–75", vocals: "Any", note: "Mid weirdness suits dream pop and shoegaze textures well." },
+  "classical":  { weirdness: "10–25", style: "60–70", vocals: "None", note: "Low style gives the AI compositional breathing room." },
+  "reggae":     { weirdness: "15–30", style: "70–80", vocals: "Male", note: "Low weirdness preserves the rhythmic reggae feel." },
+  "folk":       { weirdness: "15–30", style: "70–80", vocals: "Any", note: "Low weirdness keeps the sound authentic and organic." },
+  "blues":      { weirdness: "25–40", style: "65–75", vocals: "Male", note: "Mild weirdness allows the expressive improvisation the genre needs." },
+  "latin":      { weirdness: "20–35", style: "70–80", vocals: "Any", note: "Low weirdness preserves the rhythmic drive; high style locks in the groove." },
+};
+
 const GENRE_CARDS: GenreCard[] = [
   {
     id: "hip-hop",
@@ -753,6 +772,30 @@ export function GenreGuide({ onApplyToBlend }: { onApplyToBlend?: (genre: string
                       </div>
                       <p className="text-[11px] leading-relaxed text-foreground/70">{card.notes}</p>
                     </div>
+                    {/* Suno Parameter Guide */}
+                    {SUNO_PARAM_HINTS[card.id] && (
+                      <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
+                        <div className="mb-2 font-mono text-[9px] tracking-widest text-primary/70 uppercase">
+                          Suno parameter guide
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mb-1.5">
+                          <div>
+                            <div className="font-mono text-[9px] text-muted-foreground mb-0.5">Weirdness</div>
+                            <div className="text-[11px] font-semibold text-foreground">{SUNO_PARAM_HINTS[card.id]!.weirdness}</div>
+                          </div>
+                          <div>
+                            <div className="font-mono text-[9px] text-muted-foreground mb-0.5">Style</div>
+                            <div className="text-[11px] font-semibold text-foreground">{SUNO_PARAM_HINTS[card.id]!.style}</div>
+                          </div>
+                          <div>
+                            <div className="font-mono text-[9px] text-muted-foreground mb-0.5">Vocals</div>
+                            <div className="text-[11px] font-semibold text-foreground">{SUNO_PARAM_HINTS[card.id]!.vocals}</div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-muted-foreground">{SUNO_PARAM_HINTS[card.id]!.note}</p>
+                      </div>
+                    )}
+
                     <div>
                       <div className="mb-2 font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
                         Example artist blends

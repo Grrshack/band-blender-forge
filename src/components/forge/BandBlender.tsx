@@ -478,18 +478,18 @@ export function BandBlender({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onOpenSunoSheet}
-                    className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
-                  >
-                    <Send className="size-3.5" /> Suno Sheet
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={() => onSendToForge(result)}
                     className="gap-1.5 border-primary/50 bg-primary/10 text-xs hover:bg-primary/20"
                   >
                     <Sparkles className="size-3.5" /> Send to Lyric Forge
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onOpenSunoSheet}
+                    className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
+                  >
+                    <Send className="size-3.5" /> Suno Sheet
                   </Button>
                 </div>
               }
@@ -545,6 +545,63 @@ export function BandBlender({
                   </div>
                 </div>
               ) : null}
+              {/* ── Suno Parameter Guide ── */}
+              {(() => {
+                const sliders = result.recommendedSliders;
+                const voiceText = (result.vocalPrompt?.voice ?? result.vocals ?? "").toLowerCase();
+                const vocalGender =
+                  voiceText.includes("female") || voiceText.includes("soprano") || voiceText.includes("mezzo")
+                    ? "Female"
+                    : voiceText.includes("male") || voiceText.includes("tenor") || voiceText.includes("baritone") || voiceText.includes("bass")
+                    ? "Male"
+                    : "Any";
+                const weirdness = sliders
+                  ? Math.max(5, Math.min(95, Math.round(((sliders.energy ?? 0.5) * 0.4 + (sliders.complexity ?? 0.5) * 0.6) * 100)))
+                  : null;
+                const styleVal = sliders
+                  ? Math.max(50, Math.min(95, Math.round(60 + (sliders.brightness ?? 0.5) * 30)))
+                  : null;
+                return (
+                  <div className="mt-3 rounded-lg border border-border bg-card/40 p-3">
+                    <div className="mb-2.5 font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                      Suno Parameter Guide
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mb-2">
+                      <div>
+                        <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                          Weirdness
+                        </div>
+                        <div className="text-sm font-semibold text-foreground">
+                          {weirdness !== null ? weirdness : "40–60"}
+                        </div>
+                        <div className="font-mono text-[9px] text-muted-foreground">/ 100</div>
+                      </div>
+                      <div>
+                        <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                          Style
+                        </div>
+                        <div className="text-sm font-semibold text-foreground">
+                          {styleVal !== null ? styleVal : "70–80"}
+                        </div>
+                        <div className="font-mono text-[9px] text-muted-foreground">/ 100</div>
+                      </div>
+                      <div>
+                        <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
+                          Vocals
+                        </div>
+                        <div className="text-sm font-semibold text-foreground">{vocalGender}</div>
+                      </div>
+                    </div>
+                    {result.sliderNotes && (
+                      <p className="text-[10px] leading-relaxed text-muted-foreground mb-1">{result.sliderNotes}</p>
+                    )}
+                    <p className="font-mono text-[9px] text-muted-foreground/50">
+                      Suggestions — dial in to taste in Suno's generation panel.
+                    </p>
+                  </div>
+                );
+              })()}
+
               {result.excludeStyles ? (
                 <div className="mt-3">
                   <ReadoutField label="Exclude Styles" value={result.excludeStyles} mono />

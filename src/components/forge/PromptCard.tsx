@@ -185,8 +185,13 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
                 <Clipboard className="size-3" /> Copy link
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={onClose} className="gap-1">
-              <X className="size-3.5" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="gap-1.5 border-border text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" /> Close
             </Button>
           </div>
         </div>
@@ -344,8 +349,14 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
   if (inline) return inner;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      {inner}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Stop propagation so clicking inside the card doesn't close it */}
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl">
+        {inner}
+      </div>
     </div>
   );
 }
