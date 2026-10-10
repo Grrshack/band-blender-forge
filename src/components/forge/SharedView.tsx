@@ -28,7 +28,15 @@ function Block({ label, value, mono }: { label: string; value: string; mono?: bo
 }
 
 /** Read-only page for a shared sheet. Nothing here is saved to any account. */
-export function SharedView({ payload, onClose }: { payload: SharePayload; onClose: () => void }) {
+export function SharedView({
+  payload,
+  onClose,
+  onRemix,
+}: {
+  payload: SharePayload;
+  onClose: () => void;
+  onRemix?: () => void;
+}) {
   return (
     <div className="mx-auto min-h-screen max-w-3xl space-y-4 px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -45,9 +53,16 @@ export function SharedView({ payload, onClose }: { payload: SharePayload; onClos
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
-          Open the app
-        </Button>
+        <div className="flex gap-2">
+          {onRemix ? (
+            <Button size="sm" onClick={onRemix} className="text-xs">
+              Remix in studio
+            </Button>
+          ) : null}
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
+            Open the app
+          </Button>
+        </div>
       </div>
 
       <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
