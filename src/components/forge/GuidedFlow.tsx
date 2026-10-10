@@ -20,8 +20,6 @@ const STEPS = [
   { key: "feedback", label: "Polish",          subtitle: "Evaluate and sharpen your track" },
 ] as const;
 
-type StepKey = typeof STEPS[number]["key"];
-
 type Props = {
   state: ForgeState;
   patch: <K extends keyof ForgeState>(key: K, value: ForgeState[K]) => void;
@@ -36,8 +34,8 @@ export function GuidedFlow({ state, patch, onExitToRack }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ── Step Progress Bar ── */}
-      <div className="rounded-xl border border-border bg-panel/60 px-6 py-4">
+      {/* ── Step Progress Bar ── panel-neon gives it the neon top-edge treatment */}
+      <div className="panel-neon rounded-xl border border-border bg-panel/60 px-6 py-4">
         <div className="flex items-center justify-between">
           {STEPS.map((s, i) => {
             const done = i < stepIdx;
@@ -63,7 +61,7 @@ export function GuidedFlow({ state, patch, onExitToRack }: Props) {
                     {done ? (
                       <CheckCircle2 className="size-5 text-primary" />
                     ) : active ? (
-                      <div className="size-5 rounded-full border-2 border-primary bg-primary/20 shadow-[0_0_8px_var(--primary)] transition-all" />
+                      <div className="size-5 rounded-full border-2 border-primary bg-primary/20 shadow-[0_0_10px_var(--color-primary)] transition-all" />
                     ) : (
                       <Circle className="size-5 text-border group-hover:text-muted-foreground transition-colors" />
                     )}
@@ -153,10 +151,11 @@ export function GuidedFlow({ state, patch, onExitToRack }: Props) {
         </div>
 
         {!isLast ? (
+          /* ④ glow-pulse: subtle breathing glow on the primary CTA */
           <Button
             size="sm"
             onClick={() => setStepIdx((i) => i + 1)}
-            className="gap-1.5 font-mono text-[11px]"
+            className="glow-pulse gap-1.5 font-mono text-[11px]"
           >
             Continue <ChevronRight className="size-3.5" />
           </Button>
