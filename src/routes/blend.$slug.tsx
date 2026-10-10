@@ -72,6 +72,12 @@ function SharedBlendPage() {
             <p className="mb-4 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
               Shared blend · {artists.join(" × ")}
             </p>
+            <a
+              href={`/?remix=${encodeURIComponent(slug)}`}
+              className="mb-4 inline-flex items-center rounded-md bg-primary px-3 py-2 font-mono text-xs tracking-wide text-primary-foreground uppercase"
+            >
+              Remix this blend in the studio
+            </a>
             {/* Inline card — not in a modal, rendered directly on the page */}
             <SharedBlendCard artists={artists} result={result} slug={slug} />
           </>

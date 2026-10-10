@@ -6,6 +6,7 @@ import {
   BookMarked,
   Gauge,
   Map,
+  Rocket,
   Search,
   Send,
   Sliders,
@@ -26,12 +27,16 @@ import { GenreGuide } from "@/components/forge/GenreGuide";
 import { UsageDashboard } from "@/components/forge/UsageDashboard";
 import { SettingsProvider } from "@/components/forge/settings";
 import { SharedView } from "@/components/forge/SharedView";
+import { ReleaseDossier } from "@/components/forge/ReleaseDossier";
 import { SunoSheet } from "@/components/forge/SunoSheet";
 import { SystemPanel } from "@/components/forge/SystemPanel";
 import { emptyState, type ForgeState } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
+import { getSharedBlend } from "@/lib/forge.functions";
+import type { BlendResult } from "@/components/forge/types";
+import { toast } from "sonner";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 
 export const Route = createFileRoute("/")({
@@ -59,7 +64,8 @@ export const Route = createFileRoute("/")({
 const TABS = [
   { value: "blend", label: "Band Blender", icon: Sliders },
   { value: "lyrics", label: "Lyric Forge", icon: Wand2 },
-  { value: "suno", label: "Suno Sheet", icon: Send },
+  { value: "suno", label: "Export Sheet", icon: Send },
+  { value: "dossier", label: "Release Dossier", icon: Rocket },
   { value: "fix", label: "Fix a Take", icon: Stethoscope },
   { value: "compare", label: "Comparables", icon: Search },
   { value: "feedback", label: "Honest Feedback", icon: Gauge },
@@ -69,17 +75,64 @@ const TABS = [
   { value: "usage", label: "Usage", icon: BarChart2 },
 ];
 
+/** Simple mode: one guided path from idea to release. */
+const GUIDED = ["blend", "lyrics", "suno", "dossier"];
+
 function Index() {
   const [tab, setTab] = useState(() => {
     // Read ?tab= param on first render so shared genre links land on the right tab.
     try {
       const p = new URLSearchParams(window.location.search).get("tab");
-      if (p && ["blend","lyrics","suno","fix","compare","feedback","master","library","genres","usage"].includes(p)) return p;
+      if (p && TABS.some((t) => t.value === p)) return p;
     } catch { /* SSR */ }
     return "blend";
   });
   const [state, setState] = useState<ForgeState>(emptyState);
   const [shared, setShared] = useState<SharePayload | null>(null);
+  const [mode, setMode] = useState<"guided" | "rack">("rack");
+
+  useEffect(() => {
+    try {
+      const m = localStorage.getItem("blf.mode");
+      if (m === "guided" || m === "rack") setMode(m);
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+
+  const changeMode = (m: "guided" | "rack") => {
+    setMode(m);
+    try {
+      localStorage.setItem("blf.mode", m);
+    } catch {
+      /* ignore */
+    }
+    if (m === "guided" && !GUIDED.includes(tab)) setTab("blend");
+  };
+
+  // ?remix=<slug> loads a community blend into the studio as a starting point.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("remix");
+    if (!slug) return;
+    void getSharedBlend({ data: { slug } })
+      .then((row) => {
+        setState((prev) => ({
+          ...prev,
+          blend: {
+            ...prev.blend,
+            lookupMode: "band",
+            artists: [...(row.artists ?? []), "", "", ""].slice(0, 3),
+            result: row.blend_data as BlendResult,
+          },
+        }));
+        setTab("blend");
+        toast.success("Blend remixed into your studio — tweak it and make it yours.");
+      })
+      .catch(() => toast.error("That blend couldn't be loaded."))
+      .finally(() => window.history.replaceState(null, "", window.location.pathname));
+  }, []);
+
+  const visibleTabs = mode === "guided" ? TABS.filter((t) => GUIDED.includes(t.value)) : TABS;
 
   // A link like /#share=... opens a read-only view. The data lives in the link itself.
   useEffect(() => {
@@ -126,6 +179,36 @@ function Index() {
         <SettingsProvider>
           <SharedView
             payload={shared}
+            onRemix={() => {
+              setState((prev) => ({
+                ...prev,
+                blend: {
+                  ...prev.blend,
+                  result: {
+                    ...(prev.blend.result ?? {}),
+                    styleTag: shared.style,
+                    excludeStyles: shared.exclude,
+                  },
+                },
+                lyrics: {
+                  ...prev.lyrics,
+                  title: shared.title,
+                  manualStyle: shared.style,
+                  sections: shared.lyrics
+                    .split(/\n\s*\n/)
+                    .map((block) => {
+                      const rows = block.split("\n").filter((r) => r.trim());
+                      const tag = /^\[.*\]$/.test(rows[0] ?? "") ? rows.shift()! : "[Section]";
+                      return { tag, lines: rows.map((text) => ({ text, locked: false })) };
+                    })
+                    .filter((sec) => sec.lines.length || sec.tag !== "[Section]"),
+                },
+              }));
+              window.history.replaceState(null, "", window.location.pathname);
+              setShared(null);
+              setTab("lyrics");
+              toast.success("Remixed into your studio.");
+            }}
             onClose={() => {
               window.history.replaceState(
                 null,
@@ -160,6 +243,34 @@ function Index() {
                   </p>
                 </div>
               </div>
+              <div
+                role="radiogroup"
+                aria-label="Studio mode"
+                className="flex rounded-lg border border-border bg-panel/70 p-1"
+              >
+                {(
+                  [
+                    ["guided", "Simple"],
+                    ["rack", "Full rack"],
+                  ] as const
+                ).map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === m}
+                    onClick={() => changeMode(m)}
+                    className={
+                      "rounded-md px-3 py-1.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors " +
+                      (mode === m
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </header>
 
@@ -168,12 +279,15 @@ function Index() {
 
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="mb-5 h-auto w-full flex-wrap justify-start gap-1 rounded-xl border border-border bg-panel/70 p-1">
-                {TABS.map((t) => (
+                {visibleTabs.map((t, i) => (
                   <TabsTrigger
                     key={t.value}
                     value={t.value}
                     className="gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-all data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-4"
                   >
+                    {mode === "guided" ? (
+                      <span className="font-mono text-[10px] opacity-70">{i + 1}</span>
+                    ) : null}
                     <t.icon className="size-3.5" />
                     {t.label}
                   </TabsTrigger>
@@ -202,6 +316,14 @@ function Index() {
                   onBlend={(v) => patch("blend", v)}
                   onLyrics={(v) => patch("lyrics", v)}
                   onOpenForge={() => setTab("lyrics")}
+                />
+              </TabsContent>
+              <TabsContent value="dossier" className="mt-0">
+                <ReleaseDossier
+                  blend={state.blend}
+                  lyrics={state.lyrics}
+                  value={state.dossier}
+                  onChange={(v) => patch("dossier", v)}
                 />
               </TabsContent>
               <TabsContent value="fix" className="mt-0">
