@@ -192,6 +192,60 @@ Return JSON exactly:
 {"styleTag":"revised comma-separated style tag, max ${vTarget} chars","changes":["one sentence describing what was changed and why"]}
 Return 1–3 changes. No more.`;
     }
+    case "masterSuggest": {
+      const PRESET_NAMES = [
+        "Flat",
+        "Suno sub tame",
+        "Suno deep clean",
+        "Streaming ready",
+        "Tighter low end",
+        "Warm & fat",
+        "Club sub boost",
+        "Clean up boxy mix",
+      ];
+      return `You are a mastering engineer advising on bass-focused treatment for a finished track or AI-generated song.
+Given the track's offline frequency analysis, recommend a starting preset and any parameter adjustments.
+Input: ${p}
+The "analysis" field contains:
+- peakDb / rmsDb: overall level in dBFS
+- dynamicRangeDb: crest factor (peakDb − rmsDb); typical music is 6–20 dB
+- lowPeakHz: the most energetic sub-frequency in Hz (probe bands: 28, 50, 70, 90, 120, 165, 210 Hz)
+- bands: energy of each frequency range in dB relative to the track's full-range RMS
+    sub 20–80 Hz | bass 80–250 Hz | lowMid 250–500 Hz | mid 500–2 000 Hz | highMid 2 000–8 000 Hz | air 8 000–20 000 Hz
+    0 dB = matches average energy; negative = quieter than average; positive = louder
+- analyzedSeconds: seconds analyzed
+
+Available presets (use the exact string):
+${PRESET_NAMES.map((n) => `"${n}"`).join(", ")}
+
+Preset purposes:
+- "Flat" — no processing; use when the track is already balanced
+- "Suno sub tame" — Band mode + 65% tighten at 100 Hz crossover; suppresses AI-generated sub boom dynamically without cutting
+- "Suno deep clean" — Aggressive band tighten (80%) at 110 Hz; for very heavy bass
+- "Streaming ready" — Moderate band treatment for Spotify/Apple Music/YouTube
+- "Tighter low end" — Addresses boom and mud; good when lowMid is elevated
+- "Warm & fat" — Adds saturation harmonics so bass reads on small speakers; for thin-sounding tracks
+- "Club sub boost" — Full-range bass shelf boost; for club/EDM needing weight below 80 Hz
+- "Clean up boxy mix" — Cuts 250 Hz mud, adds air; for mixes with elevated lowMid and weak air
+
+"adjustments" is a Partial<MasterParams> object with any of these number/boolean fields:
+  mode ("full"|"band"), bassGainDb (−12…12 dB), crossoverHz (60…200 Hz),
+  punchFreq (35…160 Hz), punchGainDb (−9…9 dB), punchQ (0.5…4),
+  warmth (0…1), tighten (0…1), monoBass (bool),
+  subCutHz (0…40 Hz — see hard rule below), subCutSlope (1|2), subCutQ (0.5…2),
+  lowMidCutDb (−6…0 dB), airDb (0…6 dB), glue (0…1), ceilingDb (−3…−0.1 dBFS)
+
+HARD RULES — never violate these:
+1. subCutHz must NEVER exceed 40 — values above 40 permanently remove audible bass fundamentals.
+2. For boomy bass (sub or bass band significantly above 0 dB), recommend Band mode + high tighten, NOT a high subCutHz.
+3. punchFreq in adjustments should be close to lowPeakHz (35–160 Hz range only).
+4. Never include makeupDb in adjustments — the exporter controls that.
+5. Only include fields in adjustments that genuinely need to differ from the chosen preset.
+
+Return JSON exactly:
+{"preset":"one of the preset names above","adjustments":{},"reasoning":"2-3 sentences: the track's main characteristics and why this treatment suits it","warnings":[]}
+"warnings" is an array of short strings for genuine concerns (e.g. "Bass is very heavy — check on headphones after export"). Empty array [] if none.`;
+    }
     case "song":
       return `Analyse the production style of ONE specific song for AI music generation (Suno-style).
 Input: ${p}
