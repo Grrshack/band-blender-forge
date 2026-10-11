@@ -31,8 +31,9 @@ export type MasterParams = {
   /** BAND mode only. Sum the low band to mono. */
   monoBass: boolean;
   /**
-   * High-pass cutoff. 0 = off. Hz.
-   * Typical range 0–120 Hz. Use 40–80 Hz to tame boomy Suno bass.
+   * High-pass cutoff for true sub-rumble removal. 0 = off. Hz.
+   * Keep at or below 40 Hz — this permanently removes energy.
+   * For boomy Suno bass, use Band mode + Tighten instead.
    */
   subCutHz: number;
   /**
@@ -81,35 +82,43 @@ export const PRESETS: Array<{ name: string; hint: string; params: Partial<Master
   { name: "Flat", hint: "Reset everything", params: { ...DEFAULT_PARAMS } },
   {
     name: "Suno sub tame",
-    hint: "Removes the vibrating 60–80 Hz rumble common in Suno-generated songs",
+    hint: "Dynamically compresses Suno's characteristic low-end boom — shapes and controls the bass without removing it.",
     params: {
-      mode: "full",
-      subCutHz: 55,
-      subCutSlope: 1,
-      subCutQ: 0.8,
-      bassGainDb: -1.5,
-      punchFreq: 90,
+      mode: "band",
+      crossoverHz: 100,
+      bassGainDb: 0,
+      punchFreq: 80,
       punchGainDb: 1.0,
       punchQ: 1.3,
-      lowMidCutDb: -2,
-      glue: 0.2,
+      warmth: 0.2,
+      tighten: 0.65,
+      monoBass: true,
+      subCutHz: 30,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -1.5,
+      glue: 0.25,
       ceilingDb: -1,
     },
   },
   {
     name: "Suno deep clean",
-    hint: "Aggressive 24 dB/oct HPF to kill excessive Suno bass on headphones",
+    hint: "Maximum band compression for heavy Suno bass — aggressive tightening without cutting. Best for headphones and club monitoring.",
     params: {
-      mode: "full",
-      subCutHz: 70,
-      subCutSlope: 2,
-      subCutQ: 0.9,
-      bassGainDb: -2,
-      punchFreq: 100,
+      mode: "band",
+      crossoverHz: 110,
+      bassGainDb: -1,
+      punchFreq: 90,
       punchGainDb: 1.5,
       punchQ: 1.4,
-      lowMidCutDb: -2.5,
-      glue: 0.25,
+      warmth: 0.15,
+      tighten: 0.8,
+      monoBass: true,
+      subCutHz: 30,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -2,
+      glue: 0.3,
       ceilingDb: -1,
     },
   },
