@@ -537,7 +537,9 @@ export function MasteringLab() {
     params.mode === "band"
       ? `Warmth ${Math.round(params.warmth * 100)}%, tighten ${Math.round(params.tighten * 100)}%, mono bass ${params.monoBass ? "on" : "off"}`
       : "",
-    `Sub cut: ${params.subCutHz ? `${params.subCutHz} Hz` : "off"}`,
+    params.subCutHz
+      ? `High-pass: ${params.subCutHz} Hz, ${params.subCutSlope === 2 ? "−24 dB/oct (steep)" : "−12 dB/oct (gentle)"}, Q ${params.subCutQ.toFixed(2)}`
+      : "High-pass: off",
     `Low-mid cut @ 250 Hz: ${fmtDb(params.lowMidCutDb)}`,
     `Air shelf @ 10 kHz: ${fmtDb(params.airDb)}`,
     `Glue compression: ${Math.round(params.glue * 100)}%`,
@@ -703,15 +705,69 @@ export function MasteringLab() {
 
           <Group title="Clean-up & finish">
             <ParamSlider
-              label="Sub cut (high-pass)"
+              label="High-pass cutoff"
               value={params.subCutHz}
               min={0}
-              max={45}
+              max={120}
               step={1}
               format={(v) => (v === 0 ? "Off" : `${v} Hz`)}
               onChange={(v) => patch({ subCutHz: v > 0 && v < 18 ? 18 : v })}
               disabled={noSong}
-              hint="Removes rumble below what speakers can reproduce."
+              hint="Cuts everything below this frequency. 40–80 Hz tames vibrating Suno bass; 20–35 Hz removes inaudible sub-rumble."
+            />
+            {/* Slope toggle — only useful when HPF is on */}
+            <div
+              className={cn(
+                "space-y-1.5",
+                (noSong || params.subCutHz === 0) && "pointer-events-none opacity-40",
+              )}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                  HPF slope
+                </span>
+                <span className="font-mono text-xs text-accent">
+                  {params.subCutSlope === 2 ? "−24 dB/oct" : "−12 dB/oct"}
+                </span>
+              </div>
+              <div className="flex rounded-lg border border-border p-0.5">
+                {(
+                  [
+                    [1, "Gentle", "−12 dB/oct"],
+                    [2, "Steep", "−24 dB/oct (double)"],
+                  ] as const
+                ).map(([slope, label, tip]) => (
+                  <button
+                    key={slope}
+                    type="button"
+                    title={tip}
+                    onClick={() => patch({ subCutSlope: slope })}
+                    disabled={noSong || params.subCutHz === 0}
+                    className={cn(
+                      "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
+                      params.subCutSlope === slope
+                        ? "bg-primary/25 text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Steep (24 dB/oct) is more aggressive — good for heavy Suno bass on headphones.
+              </p>
+            </div>
+            <ParamSlider
+              label="HPF resonance (Q)"
+              value={params.subCutQ}
+              min={0.5}
+              max={2.0}
+              step={0.05}
+              format={(v) => v.toFixed(2)}
+              onChange={(v) => patch({ subCutQ: v })}
+              disabled={noSong || params.subCutHz === 0}
+              hint="0.71 = flat (Butterworth). Above 1.0 adds a slight punch boost at the cutoff."
             />
             <ParamSlider
               label="Low-mid cut @ 250 Hz"
