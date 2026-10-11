@@ -1,3 +1,4 @@
+import { useServerFn } from "@tanstack/react-start";
 import {
   AudioWaveform,
   Download,
@@ -6,6 +7,7 @@ import {
   Pause,
   Play,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -14,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
 import { ReferenceMatch } from "./ReferenceMatch";
+import { useSettings } from "./settings";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -32,6 +35,8 @@ import {
   sliceBuffer,
   type MasterParams,
 } from "@/lib/audio/mastering-chain";
+import { analyzeTrack, type TrackAnalysis } from "@/lib/audio/track-analyzer";
+import { runForge } from "@/lib/forge.functions";
 import {
   applyGain,
   dbToLin,
@@ -46,6 +51,13 @@ import { cn } from "@/lib/utils";
 const MAX_FILE_MB = 250;
 const FMIN = 20;
 const FMAX = 20000;
+
+type Suggestion = {
+  preset: string;
+  adjustments: Partial<MasterParams>;
+  reasoning: string;
+  warnings: string[];
+};
 
 type Song = { name: string; size: number; buffer: AudioBuffer };
 type Result = { lufs: number; truePeakDb: number; makeupDb: number; bits: number; file: string };
@@ -144,6 +156,13 @@ export function MasteringLab() {
   const [exporting, setExporting] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // AI suggestion state
+  const { apiKey, routing } = useSettings();
+  const forge = useServerFn(runForge);
+  const [suggesting, setSuggesting] = useState<string | null>(null); // step label while working
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
 
   const audioRef = useRef<Audio | null>(null);
   const srcRef = useRef<AudioBufferSourceNode | null>(null);
@@ -548,6 +567,68 @@ export function MasteringLab() {
     .filter(Boolean)
     .join("\n");
 
+  /* ---------- AI mastering suggestion ---------- */
+
+  const analyzeAndSuggest = async () => {
+    if (!song) return;
+    setSuggestError(null);
+    setSuggestion(null);
+    try {
+      setSuggesting("Analyzing frequency balance…");
+      const analysis: TrackAnalysis = await analyzeTrack(song.buffer);
+
+      setSuggesting("Asking AI for settings…");
+      const res = await forge({
+        data: {
+          task: "masterSuggest",
+          routing,
+          ...(apiKey ? { apiKey } : {}),
+          payload: { analysis },
+        },
+      });
+
+      const raw = JSON.parse(res.json) as {
+        preset?: string;
+        adjustments?: Record<string, unknown>;
+        reasoning?: string;
+        warnings?: unknown[];
+      };
+
+      const presetName = typeof raw.preset === "string" ? raw.preset : "Flat";
+      const adjustments = raw.adjustments && typeof raw.adjustments === "object" ? raw.adjustments : {};
+      const reasoning = typeof raw.reasoning === "string" ? raw.reasoning : "";
+      const warnings = Array.isArray(raw.warnings)
+        ? raw.warnings.filter((w): w is string => typeof w === "string")
+        : [];
+
+      setSuggestion({
+        preset: presetName,
+        adjustments: adjustments as Partial<MasterParams>,
+        reasoning,
+        warnings,
+      });
+    } catch (e) {
+      setSuggestError(e instanceof Error ? e.message : "Analysis failed. Try again.");
+    } finally {
+      setSuggesting(null);
+    }
+  };
+
+  const applySuggestion = (s: Suggestion) => {
+    const preset = PRESETS.find((p) => p.name === s.preset);
+    const base = preset ? { ...DEFAULT_PARAMS, ...preset.params } : { ...DEFAULT_PARAMS };
+    // Merge AI adjustments; always preserve user's current makeupDb
+    const merged: MasterParams = {
+      ...base,
+      ...s.adjustments,
+      makeupDb: params.makeupDb,
+    };
+    // Safety clamp: never allow AI to set subCutHz above 40
+    if (merged.subCutHz > 40) merged.subCutHz = 40;
+    setParams(merged);
+    setSuggestion(null);
+  };
+
   const band = params.mode === "band";
   const noSong = !song;
 
@@ -602,6 +683,71 @@ export function MasteringLab() {
                 {p.name}
               </button>
             ))}
+          </div>
+
+          {/* ── AI Suggestion panel ── */}
+          <div className="rounded-lg border border-border bg-card/50 p-3.5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h3 className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                  AI Suggest
+                </h3>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  Analyzes your track's frequency balance locally, then asks the AI to recommend settings. No audio is uploaded.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={noSong || !!suggesting}
+                onClick={() => void analyzeAndSuggest()}
+                className="shrink-0 h-8 gap-1.5 font-mono text-[10px] tracking-wider border-primary/40 text-primary hover:border-primary hover:bg-primary/10"
+              >
+                {suggesting ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3" />
+                )}
+                {suggesting ? suggesting : "Analyze & Suggest"}
+              </Button>
+            </div>
+
+            {suggestError ? (
+              <p className="text-[10px] text-destructive">{suggestError}</p>
+            ) : null}
+
+            {suggestion ? (
+              <div className="space-y-2.5 rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 min-w-0">
+                    <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                      Recommended preset
+                    </p>
+                    <p className="font-display text-sm font-semibold text-primary">
+                      {suggestion.preset}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => applySuggestion(suggestion)}
+                    className="shrink-0 h-7 gap-1 font-mono text-[10px] tracking-wider glow-primary"
+                  >
+                    Apply
+                  </Button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-foreground/80">{suggestion.reasoning}</p>
+                {suggestion.warnings.length > 0 ? (
+                  <ul className="space-y-1">
+                    {suggestion.warnings.map((w, i) => (
+                      <li key={i} className="text-[10px] text-amber-400/90 flex items-start gap-1.5">
+                        <span className="shrink-0 mt-0.5">⚠</span>
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <Group title="Bass">
