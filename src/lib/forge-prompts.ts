@@ -174,6 +174,24 @@ The three variants, in this order:
 Rules: differences must be audible, not cosmetic — do not just reorder tags. Each styleTag is one comma-separated line, genre and mood first, max ${STYLE_TARGET} characters. NO real artist, band, producer, label or song names anywhere. Each excludeStyles is 3-8 comma-separated traits.
 Return JSON exactly:
 {"variants":[{"label":"Safe","angle":"one sentence: what is different about this take","styleTag":"string","excludeStyles":"string","vocalLine":"one short line describing the vocal"},{"label":"Experimental","angle":"","styleTag":"","excludeStyles":"","vocalLine":""},{"label":"Hybrid","angle":"","styleTag":"","excludeStyles":"","vocalLine":""}]}`;
+    case "refine": {
+      const rawVersion = payload["sunoVersion"];
+      const version: SunoVersion =
+        rawVersion === "mini" || rawVersion === "pro" ? rawVersion : "v6";
+      const vTarget = STYLE_TARGET_FOR_VERSION[version];
+      return `Refine this Suno style tag according to the user's instruction. Keep everything not explicitly asked to change; make targeted edits only.
+Input: ${p}
+Fields: "styleTag" is the current tag. "instruction" is what the user wants changed.
+Rules:
+- Output a single comma-separated style tag line, genre and mood first, max ${vTarget} characters.
+- Translate requests into production terms — never use real artist, band, producer, label or song names.
+- If a request is ambiguous (e.g. "more chill"), pick the most natural interpretation and explain it in changes.
+- Limit edits: change or add at most 4 tag elements per call; preserve the rest verbatim.
+- If the instruction is already reflected in the tag, say so in changes and return the tag unchanged.
+Return JSON exactly:
+{"styleTag":"revised comma-separated style tag, max ${vTarget} chars","changes":["one sentence describing what was changed and why"]}
+Return 1–3 changes. No more.`;
+    }
     case "song":
       return `Analyse the production style of ONE specific song for AI music generation (Suno-style).
 Input: ${p}

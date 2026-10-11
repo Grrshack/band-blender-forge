@@ -26,6 +26,7 @@ const InputSchema = z.object({
     "fixTake",
     "variants",
     "dossier",
+    "refine",
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),
@@ -54,6 +55,7 @@ const CRAFT_TASKS = new Set([
   "critique",
   "fixTake",
   "variants",
+  "refine",
 ]);
 
 function extractJson(text: string): unknown {
