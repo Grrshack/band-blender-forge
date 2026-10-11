@@ -30,8 +30,21 @@ export type MasterParams = {
   tighten: number;
   /** BAND mode only. Sum the low band to mono. */
   monoBass: boolean;
-  /** High-pass for inaudible sub rumble. 0 = off. Hz. */
+  /**
+   * High-pass cutoff. 0 = off. Hz.
+   * Typical range 0–120 Hz. Use 40–80 Hz to tame boomy Suno bass.
+   */
   subCutHz: number;
+  /**
+   * HPF order: 1 = 12 dB/oct (gentle); 2 = 24 dB/oct (steep, more aggressive cut).
+   * Steeper slope removes more bass energy above the cutoff but rolls off faster.
+   */
+  subCutSlope: 1 | 2;
+  /**
+   * HPF resonance (Q). 0.5 = very smooth; 0.707 = Butterworth (no peak);
+   * 1.2–2.0 = adds a slight boost at the cutoff that can add punch.
+   */
+  subCutQ: number;
   /** Bell cut at 250 Hz. dB, ≤ 0. */
   lowMidCutDb: number;
   /** High shelf at 10 kHz. dB. */
@@ -55,6 +68,8 @@ export const DEFAULT_PARAMS: MasterParams = {
   tighten: 0,
   monoBass: false,
   subCutHz: 0,
+  subCutSlope: 1,
+  subCutQ: 0.707,
   lowMidCutDb: 0,
   airDb: 0,
   glue: 0,
@@ -64,6 +79,40 @@ export const DEFAULT_PARAMS: MasterParams = {
 
 export const PRESETS: Array<{ name: string; hint: string; params: Partial<MasterParams> }> = [
   { name: "Flat", hint: "Reset everything", params: { ...DEFAULT_PARAMS } },
+  {
+    name: "Suno sub tame",
+    hint: "Removes the vibrating 60–80 Hz rumble common in Suno-generated songs",
+    params: {
+      mode: "full",
+      subCutHz: 55,
+      subCutSlope: 1,
+      subCutQ: 0.8,
+      bassGainDb: -1.5,
+      punchFreq: 90,
+      punchGainDb: 1.0,
+      punchQ: 1.3,
+      lowMidCutDb: -2,
+      glue: 0.2,
+      ceilingDb: -1,
+    },
+  },
+  {
+    name: "Suno deep clean",
+    hint: "Aggressive 24 dB/oct HPF to kill excessive Suno bass on headphones",
+    params: {
+      mode: "full",
+      subCutHz: 70,
+      subCutSlope: 2,
+      subCutQ: 0.9,
+      bassGainDb: -2,
+      punchFreq: 100,
+      punchGainDb: 1.5,
+      punchQ: 1.4,
+      lowMidCutDb: -2.5,
+      glue: 0.25,
+      ceilingDb: -1,
+    },
+  },
   {
     name: "Tighter low end",
     hint: "Cut mud, rein in boom",
@@ -149,6 +198,8 @@ export class MasterChain {
   private readonly realtime: boolean;
 
   private readonly subCut: BiquadFilterNode;
+  /** Second HPF in series — enabled (same frequency) when subCutSlope === 2 for 24 dB/oct. */
+  private readonly subCut2: BiquadFilterNode;
   // full path
   private readonly shelf: BiquadFilterNode;
   private readonly punchF: BiquadFilterNode;
@@ -187,6 +238,9 @@ export class MasterChain {
     this.output = ctx.createGain();
     this.subCut = bq("highpass");
     this.subCut.Q.value = 0.707;
+    this.subCut2 = bq("highpass");
+    this.subCut2.frequency.value = 1; // effectively flat until slope === 2
+    this.subCut2.Q.value = 0.707;
 
     // ---- full path
     this.shelf = bq("lowshelf");
@@ -240,14 +294,18 @@ export class MasterChain {
     this.limiter.release.value = 0.08;
 
     // ---- wiring
+    // Two cascaded HPFs: subCut → subCut2.
+    // When subCutSlope === 1, subCut2.frequency is held at 1 Hz (flat pass-through).
+    // When subCutSlope === 2, subCut2 mirrors subCut's frequency for a 24 dB/oct slope.
     this.input.connect(this.subCut);
+    this.subCut.connect(this.subCut2);
 
-    this.subCut.connect(this.shelf);
+    this.subCut2.connect(this.shelf);
     this.shelf.connect(this.punchF);
     this.punchF.connect(this.fullGain);
     this.fullGain.connect(bus);
 
-    this.subCut.connect(this.lp1);
+    this.subCut2.connect(this.lp1);
     this.lp1.connect(this.lp2);
     this.lp2.connect(this.punchB);
     this.punchB.connect(this.level);
@@ -263,7 +321,7 @@ export class MasterChain {
     this.stereoG.connect(lowSum);
     this.monoG.connect(lowSum);
     lowSum.connect(bandSum);
-    this.subCut.connect(this.hp1);
+    this.subCut2.connect(this.hp1);
     this.hp1.connect(this.hp2);
     this.hp2.connect(bandSum);
     bandSum.connect(this.bandGain);
@@ -288,7 +346,12 @@ export class MasterChain {
     };
     const full = p.mode === "full";
 
-    set(this.subCut.frequency, p.subCutHz > 0 ? p.subCutHz : 5);
+    const hpfHz = p.subCutHz > 0 ? p.subCutHz : 5;
+    set(this.subCut.frequency, hpfHz);
+    set(this.subCut.Q, p.subCutQ);
+    // subCut2: active when slope === 2; otherwise park at 1 Hz (transparent)
+    set(this.subCut2.frequency, p.subCutSlope === 2 ? hpfHz : 1);
+    set(this.subCut2.Q, p.subCutQ);
 
     set(this.fullGain.gain, full ? 1 : 0);
     set(this.bandGain.gain, full ? 0 : 1);
@@ -336,7 +399,7 @@ export class MasterChain {
       return { mag, ph };
     };
     const out = new Float32Array(n);
-    const common = [this.subCut, this.mud, this.air].map(resp);
+    const common = [this.subCut, this.subCut2, this.mud, this.air].map(resp);
     const full = p.mode === "full";
     const fullPath = full ? [this.shelf, this.punchF].map(resp) : [];
     const lowPath = full ? [] : [this.lp1, this.lp2, this.punchB].map(resp);
