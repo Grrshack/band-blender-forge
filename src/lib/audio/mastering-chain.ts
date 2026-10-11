@@ -114,6 +114,28 @@ export const PRESETS: Array<{ name: string; hint: string; params: Partial<Master
     },
   },
   {
+    name: "Streaming ready",
+    hint: "Tightens and shapes bass for streaming without removing it. Targets –14 LUFS behaviour (Spotify, Apple Music, YouTube).",
+    params: {
+      mode: "band",
+      crossoverHz: 120,
+      bassGainDb: 0,
+      punchFreq: 85,
+      punchGainDb: 1.0,
+      punchQ: 1.2,
+      warmth: 0.35,
+      tighten: 0.45,
+      monoBass: true,
+      subCutHz: 30,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -1.5,
+      airDb: 0.5,
+      glue: 0.3,
+      ceilingDb: -1,
+    },
+  },
+  {
     name: "Tighter low end",
     hint: "Cut mud, rein in boom",
     params: {
