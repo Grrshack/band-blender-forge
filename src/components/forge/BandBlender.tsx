@@ -132,6 +132,12 @@ export function BandBlender({
   const [shareSlug, setShareSlug] = useState<string | undefined>();
   const [sharing, setSharing] = useState(false);
 
+  // AudioChat state
+  const [refineInput, setRefineInput] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
+  const [refineChanges, setRefineChanges] = useState<string[]>([]);
+
   const setArtist = (i: number, v: string) =>
     onChange({ ...value, artists: artists.map((a, idx) => (idx === i ? v : a)) });
 
@@ -190,6 +196,34 @@ export function BandBlender({
       clearTimeout(t2);
       setStage("");
       setLoading(false);
+    }
+  };
+
+  /** Refine the style tag via natural-language instruction. */
+  const refine = async () => {
+    if (!result?.styleTag || !refineInput.trim()) return;
+    setRefining(true);
+    setRefineError(null);
+    setRefineChanges([]);
+    try {
+      const res = await forge({
+        data: {
+          task: "refine",
+          routing,
+          apiKey,
+          payload: { styleTag: result.styleTag, instruction: refineInput.trim(), sunoVersion },
+        },
+      });
+      const refined = JSON.parse(res.json) as { styleTag?: string; changes?: string[] };
+      if (refined.styleTag) {
+        onChange({ ...value, result: { ...result, styleTag: refined.styleTag } });
+        setRefineChanges(refined.changes ?? []);
+        setRefineInput("");
+      }
+    } catch (e) {
+      setRefineError(e instanceof Error ? e.message : "Refinement failed.");
+    } finally {
+      setRefining(false);
     }
   };
 
@@ -478,18 +512,18 @@ export function BandBlender({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onSendToForge(result)}
-                    className="gap-1.5 border-primary/50 bg-primary/10 text-xs hover:bg-primary/20"
-                  >
-                    <Sparkles className="size-3.5" /> Send to Lyric Forge
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={onOpenSunoSheet}
                     className="gap-1.5 border-accent/50 bg-accent/10 text-xs text-accent hover:bg-accent/20"
                   >
                     <Send className="size-3.5" /> Suno Sheet
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSendToForge(result)}
+                    className="gap-1.5 border-primary/50 bg-primary/10 text-xs hover:bg-primary/20"
+                  >
+                    <Sparkles className="size-3.5" /> Send to Lyric Forge
                   </Button>
                 </div>
               }
@@ -545,63 +579,6 @@ export function BandBlender({
                   </div>
                 </div>
               ) : null}
-              {/* ── Suno Parameter Guide ── */}
-              {(() => {
-                const sliders = result.recommendedSliders;
-                const voiceText = (result.vocalPrompt?.voice ?? result.vocals ?? "").toLowerCase();
-                const vocalGender =
-                  voiceText.includes("female") || voiceText.includes("soprano") || voiceText.includes("mezzo")
-                    ? "Female"
-                    : voiceText.includes("male") || voiceText.includes("tenor") || voiceText.includes("baritone") || voiceText.includes("bass")
-                    ? "Male"
-                    : "Any";
-                const weirdness = sliders
-                  ? Math.max(5, Math.min(95, Math.round(((sliders.energy ?? 0.5) * 0.4 + (sliders.complexity ?? 0.5) * 0.6) * 100)))
-                  : null;
-                const styleVal = sliders
-                  ? Math.max(50, Math.min(95, Math.round(60 + (sliders.brightness ?? 0.5) * 30)))
-                  : null;
-                return (
-                  <div className="mt-3 rounded-lg border border-border bg-card/40 p-3">
-                    <div className="mb-2.5 font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
-                      Suno Parameter Guide
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 mb-2">
-                      <div>
-                        <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
-                          Weirdness
-                        </div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {weirdness !== null ? weirdness : "40–60"}
-                        </div>
-                        <div className="font-mono text-[9px] text-muted-foreground">/ 100</div>
-                      </div>
-                      <div>
-                        <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
-                          Style
-                        </div>
-                        <div className="text-sm font-semibold text-foreground">
-                          {styleVal !== null ? styleVal : "70–80"}
-                        </div>
-                        <div className="font-mono text-[9px] text-muted-foreground">/ 100</div>
-                      </div>
-                      <div>
-                        <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">
-                          Vocals
-                        </div>
-                        <div className="text-sm font-semibold text-foreground">{vocalGender}</div>
-                      </div>
-                    </div>
-                    {result.sliderNotes && (
-                      <p className="text-[10px] leading-relaxed text-muted-foreground mb-1">{result.sliderNotes}</p>
-                    )}
-                    <p className="font-mono text-[9px] text-muted-foreground/50">
-                      Suggestions — dial in to taste in Suno's generation panel.
-                    </p>
-                  </div>
-                );
-              })()}
-
               {result.excludeStyles ? (
                 <div className="mt-3">
                   <ReadoutField label="Exclude Styles" value={result.excludeStyles} mono />
@@ -643,6 +620,56 @@ export function BandBlender({
             >
               <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
                 {result.reconciliation ?? "—"}
+              </p>
+            </Panel>
+
+            {/* AudioChat — natural-language style tag refiner */}
+            <Panel
+              title="Style Chat"
+              subtitle="Describe a change in plain English — the style tag updates automatically."
+            >
+              {refineChanges.length > 0 && (
+                <div className="mb-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+                  <div className="mb-1.5 font-mono text-[9px] tracking-widest text-primary uppercase">
+                    Changes applied
+                  </div>
+                  <ul className="space-y-1">
+                    {refineChanges.map((c, i) => (
+                      <li key={i} className="text-foreground/80">
+                        · {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {refineError && <ErrorNote message={refineError} />}
+              <div className="flex gap-2">
+                <Input
+                  value={refineInput}
+                  onChange={(e) => setRefineInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !refining) void refine();
+                  }}
+                  placeholder="e.g. make it darker, add jazz piano, less synth…"
+                  className="h-10 border-border bg-card/60 text-sm focus-visible:ring-primary"
+                  disabled={refining}
+                />
+                <Button
+                  onClick={() => void refine()}
+                  disabled={refining || !refineInput.trim()}
+                  size="sm"
+                  className="glow-primary h-10 shrink-0 gap-1.5"
+                >
+                  {refining ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Wand className="size-3.5" />
+                  )}
+                  {refining ? "Refining…" : "Refine"}
+                </Button>
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                The style tag above updates in place — copy it again after refining.
               </p>
             </Panel>
           </>
