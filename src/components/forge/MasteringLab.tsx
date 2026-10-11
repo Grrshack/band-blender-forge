@@ -705,15 +705,15 @@ export function MasteringLab() {
 
           <Group title="Clean-up & finish">
             <ParamSlider
-              label="High-pass cutoff"
+              label="Sub-rumble cut"
               value={params.subCutHz}
               min={0}
-              max={120}
+              max={60}
               step={1}
               format={(v) => (v === 0 ? "Off" : `${v} Hz`)}
               onChange={(v) => patch({ subCutHz: v > 0 && v < 18 ? 18 : v })}
               disabled={noSong}
-              hint="Cuts everything below this frequency. 40–80 Hz tames vibrating Suno bass; 20–35 Hz removes inaudible sub-rumble."
+              hint="Permanently removes inaudible sub-rumble (keep at or below 40 Hz). For boomy Suno bass, use Band mode + Tighten instead — it shapes without cutting."
             />
             {/* Slope toggle — only useful when HPF is on */}
             <div
@@ -755,7 +755,7 @@ export function MasteringLab() {
                 ))}
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Steep (24 dB/oct) is more aggressive — good for heavy Suno bass on headphones.
+                Steep (24 dB/oct) removes more sub-rumble energy just above the cutoff.
               </p>
             </div>
             <ParamSlider
