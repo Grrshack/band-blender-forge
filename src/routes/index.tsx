@@ -279,6 +279,7 @@ function Index() {
                 state={state}
                 patch={patch}
                 onExitToRack={() => changeMode("rack")}
+                onExitToTab={(t) => { changeMode("rack"); setTab(t); }}
                 onExitToFixTake={() => { changeMode("rack"); setTab("fix"); }}
               />
             ) : (
@@ -354,8 +355,8 @@ function Index() {
                     <ReleaseDossier
                       blend={state.blend}
                       lyrics={state.lyrics}
-                      value={state.dossier}
-                      onChange={(v) => patch("dossier", v)}
+                      value={state.dossiers}
+                      onChange={(v) => patch("dossiers", v)}
                     />
                   )}
                   {tab === "fix" && (
