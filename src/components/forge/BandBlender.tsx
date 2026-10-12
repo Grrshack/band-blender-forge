@@ -203,6 +203,16 @@ export function BandBlender({
     }
   };
 
+  // Assistant-triggered run: fires after the form has re-rendered with the assistant's values.
+  const lastAutoRun = useRef(autoRunToken);
+  useEffect(() => {
+    if (autoRunToken === undefined || autoRunToken === lastAutoRun.current) return;
+    lastAutoRun.current = autoRunToken;
+    if (!loading) void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRunToken]);
+
+
   /** Refine the style tag via natural-language instruction. */
   const refine = async () => {
     if (!result?.styleTag || !refineInput.trim()) return;
