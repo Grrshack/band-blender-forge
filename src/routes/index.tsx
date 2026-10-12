@@ -285,11 +285,13 @@ function Index() {
               /* ── Rack Console (left nav + content) ── */
               <div className="flex gap-5 lg:items-start">
                 {/* Left sidebar nav — desktop only */}
-                <nav className="hidden lg:flex w-48 shrink-0 flex-col gap-0.5 rounded-xl border border-border bg-panel/70 p-1.5 sticky top-4 self-start">
+                <nav role="tablist" aria-label="Studio tools" className="hidden lg:flex w-48 shrink-0 flex-col gap-0.5 rounded-xl border border-border bg-panel/70 p-1.5 sticky top-4 self-start">
                   {TABS.map((t) => (
                     <button
                       key={t.value}
                       type="button"
+                      role="tab"
+                      aria-selected={tab === t.value}
                       onClick={() => setTab(t.value)}
                       className={
                         "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.14em] uppercase text-left transition-colors " +
@@ -306,11 +308,13 @@ function Index() {
 
                 <div className="min-w-0 flex-1">
                   {/* Horizontal strip — mobile only */}
-                  <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-border bg-panel/70 p-1 lg:hidden">
+                  <div role="tablist" aria-label="Studio tools" className="mb-4 flex flex-wrap gap-1 rounded-xl border border-border bg-panel/70 p-1 lg:hidden">
                     {TABS.map((t) => (
                       <button
                         key={t.value}
                         type="button"
+                        role="tab"
+                        aria-selected={tab === t.value}
                         onClick={() => setTab(t.value)}
                         className={
                           "flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-colors " +
