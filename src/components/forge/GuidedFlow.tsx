@@ -30,7 +30,9 @@ type Props = {
 
 export function GuidedFlow({ state, patch, onExitToRack, onExitToFixTake }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
-  const step = STEPS[stepIdx];
+  // stepIdx is always in [0, STEPS.length-1]; the non-null assertion is safe.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const step = STEPS[stepIdx]!;
   const isFirst = stepIdx === 0;
   const isLast = stepIdx === STEPS.length - 1;
 
