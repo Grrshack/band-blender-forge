@@ -280,6 +280,7 @@ function Index() {
                 state={state}
                 patch={patch}
                 onExitToRack={() => changeMode("rack")}
+                onExitToFixTake={() => { changeMode("rack"); setTab("fix"); }}
               />
             ) : (
               /* ── Rack Console (full tab layout) ── */
