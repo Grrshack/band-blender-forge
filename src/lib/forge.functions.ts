@@ -39,7 +39,7 @@ const InputSchema = z.object({
 type Routing = z.infer<typeof RoutingSchema>;
 
 const ANTHROPIC_MODELS: Record<Routing, string> = {
-  fast: "claude-haiku-4-5-20251001",
+  fast: "claude-haiku-5-5",
   craft: "claude-sonnet-5-5",
 };
 
