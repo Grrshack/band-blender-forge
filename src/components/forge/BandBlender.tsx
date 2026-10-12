@@ -109,11 +109,14 @@ export function BandBlender({
   onChange,
   onSendToForge,
   onOpenSunoSheet,
+  autoRunToken,
 }: {
   value: BlendSlice;
   onChange: (next: BlendSlice) => void;
   onSendToForge: (blend: BlendResult) => void;
   onOpenSunoSheet: () => void;
+  /** Changing this number (from the studio assistant) runs the blend once with the current form. */
+  autoRunToken?: number | undefined;
 }) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
