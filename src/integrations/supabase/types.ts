@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -56,6 +56,57 @@ export type Database = {
           id?: string
           task?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      custom_genre_cards: {
+        Row: {
+          bpm: string
+          created_at: string
+          emoji: string
+          exclude: string
+          family: string
+          feel: string
+          id: string
+          instrumentation: string
+          name: string
+          notes: string
+          style_template: string
+          updated_at: string
+          user_id: string
+          vocals: string
+        }
+        Insert: {
+          bpm?: string
+          created_at?: string
+          emoji?: string
+          exclude?: string
+          family?: string
+          feel?: string
+          id?: string
+          instrumentation?: string
+          name: string
+          notes?: string
+          style_template: string
+          updated_at?: string
+          user_id: string
+          vocals?: string
+        }
+        Update: {
+          bpm?: string
+          created_at?: string
+          emoji?: string
+          exclude?: string
+          family?: string
+          feel?: string
+          id?: string
+          instrumentation?: string
+          name?: string
+          notes?: string
+          style_template?: string
+          updated_at?: string
+          user_id?: string
+          vocals?: string
         }
         Relationships: []
       }
@@ -181,54 +232,6 @@ export type Database = {
           upvotes?: number
           user_id?: string | null
           vocal_prompt?: Json | null
-        }
-        Relationships: []
-      }
-      custom_genre_cards: {
-        Row: {
-          bpm: string
-          created_at: string
-          emoji: string
-          exclude: string
-          family: string
-          feel: string
-          id: string
-          instrumentation: string
-          name: string
-          notes: string
-          style_template: string
-          user_id: string
-          vocals: string
-        }
-        Insert: {
-          bpm?: string
-          created_at?: string
-          emoji?: string
-          exclude?: string
-          family?: string
-          feel?: string
-          id?: string
-          instrumentation?: string
-          name: string
-          notes?: string
-          style_template: string
-          user_id: string
-          vocals?: string
-        }
-        Update: {
-          bpm?: string
-          created_at?: string
-          emoji?: string
-          exclude?: string
-          family?: string
-          feel?: string
-          id?: string
-          instrumentation?: string
-          name?: string
-          notes?: string
-          style_template?: string
-          user_id?: string
-          vocals?: string
         }
         Relationships: []
       }
