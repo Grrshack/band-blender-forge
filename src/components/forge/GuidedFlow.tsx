@@ -49,10 +49,16 @@ type Props = {
   onExitToTab?: (tab: string) => void;
   /** Jump straight to Fix a Take in rack mode (convenience alias kept for callers) */
   onExitToFixTake?: () => void;
+  autoRun?: boolean | undefined;
+  onAutoRunDone?: (() => void) | undefined;
 };
 
-export function GuidedFlow({ state, patch, onExitToRack, onExitToTab, onExitToFixTake }: Props) {
+export function GuidedFlow({ state, patch, onExitToRack, onExitToTab, onExitToFixTake, autoRun, onAutoRunDone }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
+  // The studio assistant always lands on the blend step.
+  useEffect(() => {
+    if (autoRun) setStepIdx(0);
+  }, [autoRun]);
   // stepIdx is always in [0, STEPS.length-1]; the non-null assertion is safe.
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const step = STEPS[stepIdx]!;
@@ -136,6 +142,8 @@ export function GuidedFlow({ state, patch, onExitToRack, onExitToTab, onExitToFi
             onChange={(v) => patch("blend", v)}
             onSendToForge={() => setStepIdx(1)}
             onOpenSunoSheet={() => setStepIdx(2)}
+            autoRun={autoRun}
+            onAutoRunDone={onAutoRunDone}
           />
         )}
         {step.key === "lyrics" && (
