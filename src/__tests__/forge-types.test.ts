@@ -31,8 +31,8 @@ describe("emptyState", () => {
     expect(emptyState().takes).toEqual([]);
   });
 
-  it("has null dossier", () => {
-    expect(emptyState().dossier).toBeNull();
+  it("has empty dossiers array", () => {
+    expect(emptyState().dossiers).toEqual([]);
   });
 });
 
@@ -91,9 +91,9 @@ describe("hasContent", () => {
     expect(hasContent(s)).toBe(true);
   });
 
-  it("returns true when dossier is present", () => {
+  it("returns true when dossiers is non-empty", () => {
     const s = emptyState();
-    s.dossier = { titleOptions: ["Neon Dreams"] };
+    s.dossiers = [{ titleOptions: ["Neon Dreams"] }];
     expect(hasContent(s)).toBe(true);
   });
 });
@@ -140,15 +140,21 @@ describe("mergeState", () => {
     expect(result.lyrics.theme).toBe(""); // default
   });
 
-  it("sets dossier to null when it is a non-object", () => {
-    const result = mergeState({ dossier: "bad" as unknown });
-    expect(result.dossier).toBeNull();
+  it("sets dossiers to [] when no dossier data is present", () => {
+    const result = mergeState({ dossiers: "bad" as unknown });
+    expect(result.dossiers).toEqual([]);
   });
 
-  it("preserves a valid dossier object", () => {
+  it("migrates a legacy single-dossier save into the dossiers array", () => {
     const dossier = { titleOptions: ["Track A", "Track B"] };
     const result = mergeState({ dossier });
-    expect(result.dossier).toEqual(dossier);
+    expect(result.dossiers).toEqual([dossier]);
+  });
+
+  it("preserves a valid dossiers array", () => {
+    const dossier = { titleOptions: ["Track A", "Track B"] };
+    const result = mergeState({ dossiers: [dossier] });
+    expect(result.dossiers).toEqual([dossier]);
   });
 });
 
