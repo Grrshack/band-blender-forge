@@ -57,7 +57,7 @@ function mixMono(buffer: AudioBuffer): Float32Array {
   const mono = new Float32Array(len);
   for (let c = 0; c < nCh; c++) {
     const ch = buffer.getChannelData(c);
-    for (let i = 0; i < len; i++) mono[i] += ch[i]! / nCh;
+    for (let i = 0; i < len; i++) mono[i] = (mono[i] ?? 0) + ch[i]! / nCh;
   }
   return mono;
 }
@@ -95,7 +95,7 @@ async function bandRms(
 ): Promise<number> {
   const ctx = new OfflineAudioContext(1, mono.length, sampleRate);
   const buf = ctx.createBuffer(1, mono.length, sampleRate);
-  buf.copyToChannel(mono, 0);
+  buf.copyToChannel(mono as Float32Array<ArrayBuffer>, 0);
 
   const src = ctx.createBufferSource();
   src.buffer = buf;
@@ -135,7 +135,7 @@ async function narrowBandRms(
 ): Promise<number> {
   const ctx = new OfflineAudioContext(1, mono.length, sampleRate);
   const buf = ctx.createBuffer(1, mono.length, sampleRate);
-  buf.copyToChannel(mono, 0);
+  buf.copyToChannel(mono as Float32Array<ArrayBuffer>, 0);
 
   const src = ctx.createBufferSource();
   src.buffer = buf;
