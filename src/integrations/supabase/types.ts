@@ -184,6 +184,54 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_genre_cards: {
+        Row: {
+          bpm: string
+          created_at: string
+          emoji: string
+          exclude: string
+          family: string
+          feel: string
+          id: string
+          instrumentation: string
+          name: string
+          notes: string
+          style_template: string
+          user_id: string
+          vocals: string
+        }
+        Insert: {
+          bpm?: string
+          created_at?: string
+          emoji?: string
+          exclude?: string
+          family?: string
+          feel?: string
+          id?: string
+          instrumentation?: string
+          name: string
+          notes?: string
+          style_template: string
+          user_id: string
+          vocals?: string
+        }
+        Update: {
+          bpm?: string
+          created_at?: string
+          emoji?: string
+          exclude?: string
+          family?: string
+          feel?: string
+          id?: string
+          instrumentation?: string
+          name?: string
+          notes?: string
+          style_template?: string
+          user_id?: string
+          vocals?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           created_at: string
