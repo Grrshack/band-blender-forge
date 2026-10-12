@@ -24,9 +24,11 @@ type Props = {
   state: ForgeState;
   patch: <K extends keyof ForgeState>(key: K, value: ForgeState[K]) => void;
   onExitToRack: () => void;
+  /** Jump straight to Fix a Take in rack mode */
+  onExitToFixTake?: () => void;
 };
 
-export function GuidedFlow({ state, patch, onExitToRack }: Props) {
+export function GuidedFlow({ state, patch, onExitToRack, onExitToFixTake }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
   const step = STEPS[stepIdx];
   const isFirst = stepIdx === 0;
@@ -146,7 +148,7 @@ export function GuidedFlow({ state, patch, onExitToRack }: Props) {
             onClick={onExitToRack}
             className="font-mono text-[10px] text-muted-foreground tracking-wider uppercase"
           >
-            Open full rack
+            All tools
           </Button>
         </div>
 
@@ -160,14 +162,25 @@ export function GuidedFlow({ state, patch, onExitToRack }: Props) {
             Continue <ChevronRight className="size-3.5" />
           </Button>
         ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onExitToRack}
-            className="gap-1.5 font-mono text-[11px] border-primary/40 text-primary hover:bg-primary/10"
-          >
-            Open full rack →
-          </Button>
+          <div className="flex items-center gap-2">
+            {onExitToFixTake ? (
+              <Button
+                size="sm"
+                onClick={onExitToFixTake}
+                className="glow-pulse gap-1.5 font-mono text-[11px]"
+              >
+                Fix this take <ChevronRight className="size-3.5" />
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onExitToRack}
+              className="gap-1.5 font-mono text-[11px] border-border text-muted-foreground hover:text-foreground"
+            >
+              All tools →
+            </Button>
+          </div>
         )}
       </div>
     </div>

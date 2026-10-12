@@ -16,6 +16,9 @@ const TASK_LABELS: Record<string, string> = {
   critique: "Feedback",
   fixTake: "Fix a Take",
   variants: "Variants",
+  dossier: "Release Dossier",
+  masterSuggest: "AI Suggest",
+  refine: "Refine Blend",
 };
 
 const TASK_COLORS: Record<string, string> = {
@@ -28,6 +31,9 @@ const TASK_COLORS: Record<string, string> = {
   variants: "bg-violet-500",
   regenLine: "bg-yellow-500",
   regenSection: "bg-teal-500",
+  dossier: "bg-cyan-500",
+  masterSuggest: "bg-purple-500",
+  refine: "bg-indigo-500",
 };
 
 export function UsageDashboard() {

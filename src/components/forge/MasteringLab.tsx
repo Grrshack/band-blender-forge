@@ -165,6 +165,7 @@ export function MasteringLab() {
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestIntent, setSuggestIntent] = useState("");
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   const audioRef = useRef<Audio | null>(null);
   const srcRef = useRef<AudioBufferSourceNode | null>(null);
@@ -631,6 +632,7 @@ export function MasteringLab() {
     // Safety clamp: never allow AI to set subCutHz above 40
     if (merged.subCutHz > 40) merged.subCutHz = 40;
     setParams(merged);
+    setActivePreset(s.preset);
     setSuggestion(null);
   };
 
@@ -674,20 +676,32 @@ export function MasteringLab() {
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {PRESETS.map((p) => (
-              <button
-                key={p.name}
-                type="button"
-                title={p.hint}
-                onClick={() =>
-                  setParams((prev) => ({ ...DEFAULT_PARAMS, ...p.params, makeupDb: prev.makeupDb }))
-                }
-                className="rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-[10px] tracking-wider text-muted-foreground uppercase transition-colors hover:border-accent/60 hover:text-accent"
-              >
-                {p.name}
-              </button>
-            ))}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-1.5">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.name}
+                  type="button"
+                  onClick={() => {
+                    setParams((prev) => ({ ...DEFAULT_PARAMS, ...p.params, makeupDb: prev.makeupDb }));
+                    setActivePreset(p.name);
+                  }}
+                  className={cn(
+                    "rounded-full border px-3 py-1 font-mono text-[10px] tracking-wider uppercase transition-all",
+                    activePreset === p.name
+                      ? "glow-primary border-primary/60 bg-primary/10 text-primary"
+                      : "border-border bg-card/60 text-muted-foreground hover:border-accent/60 hover:text-accent",
+                  )}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            {activePreset ? (
+              <p className="pl-1 text-[10px] leading-snug text-muted-foreground">
+                {PRESETS.find((p) => p.name === activePreset)?.hint}
+              </p>
+            ) : null}
           </div>
 
           {/* ── AI Suggestion panel ── */}

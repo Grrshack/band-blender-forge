@@ -143,6 +143,22 @@ export function WorkspaceBar({
     }
   };
 
+  // Auto-suggest a session name when the first blend result arrives and the user hasn't renamed yet
+  useEffect(() => {
+    if (name !== "Untitled session") return;
+    const { artists, lookupMode, songTitle, result } = state.blend;
+    if (!result) return;
+    let suggested = "";
+    if (lookupMode === "song" && songTitle.trim()) {
+      suggested = songTitle.trim();
+    } else {
+      const validArtists = artists.filter(Boolean);
+      if (validArtists.length > 0) suggested = validArtists.slice(0, 2).join(" × ");
+    }
+    if (suggested) setName(suggested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.blend.result]);
+
   const brief = exportBrief(name, state);
 
   const download = () => {
@@ -201,9 +217,11 @@ export function WorkspaceBar({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (!confirm(`Delete "${r.name}"? This can't be undone.`)) return;
                         void drop(r.id);
                       }}
                       className="text-muted-foreground hover:text-destructive"
+                      title="Delete session"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
