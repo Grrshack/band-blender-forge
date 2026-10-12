@@ -203,8 +203,9 @@ Return 1–3 changes. No more.`;
         "Club sub boost",
         "Clean up boxy mix",
       ];
+      const intent = (payload["intent"] as string | undefined)?.trim();
       return `You are a mastering engineer advising on bass-focused treatment for a finished track or AI-generated song.
-Given the track's offline frequency analysis, recommend a starting preset and any parameter adjustments.
+Given the track's offline frequency analysis, recommend a starting preset and any parameter adjustments.${intent ? `\nUser's stated goal: "${intent}" — weight your recommendation toward serving this.` : ""}
 Input: ${p}
 The "analysis" field contains:
 - peakDb / rmsDb: overall level in dBFS
