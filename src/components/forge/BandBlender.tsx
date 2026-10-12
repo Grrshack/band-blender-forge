@@ -1,7 +1,7 @@
 import type { Json } from "@/integrations/supabase/types";
 import { useServerFn } from "@tanstack/react-start";
 import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
@@ -109,14 +109,16 @@ export function BandBlender({
   onChange,
   onSendToForge,
   onOpenSunoSheet,
-  autoRunToken,
+  autoRun,
+  onAutoRunDone,
 }: {
   value: BlendSlice;
   onChange: (next: BlendSlice) => void;
   onSendToForge: (blend: BlendResult) => void;
   onOpenSunoSheet: () => void;
-  /** Changing this number (from the studio assistant) runs the blend once with the current form. */
-  autoRunToken?: number | undefined;
+  /** Set by the studio assistant: run the blend once with the current form, then call onAutoRunDone. */
+  autoRun?: boolean | undefined;
+  onAutoRunDone?: (() => void) | undefined;
 }) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
@@ -204,13 +206,12 @@ export function BandBlender({
   };
 
   // Assistant-triggered run: fires after the form has re-rendered with the assistant's values.
-  const lastAutoRun = useRef(autoRunToken);
   useEffect(() => {
-    if (autoRunToken === undefined || autoRunToken === lastAutoRun.current) return;
-    lastAutoRun.current = autoRunToken;
+    if (!autoRun) return;
+    onAutoRunDone?.();
     if (!loading) void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRunToken]);
+  }, [autoRun]);
 
 
   /** Refine the style tag via natural-language instruction. */
