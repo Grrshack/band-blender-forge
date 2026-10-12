@@ -4,7 +4,18 @@
  * Back / Continue navigation. No new logic: it's purely a layout wrapper.
  */
 import { useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Circle } from "lucide-react";
+import {
+  AudioWaveform,
+  BookMarked,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Map,
+  Rocket,
+  Search,
+  Stethoscope,
+} from "lucide-react";
 
 import { BandBlender } from "./BandBlender";
 import { HonestFeedback } from "./HonestFeedback";
@@ -20,21 +31,41 @@ const STEPS = [
   { key: "feedback", label: "Polish",          subtitle: "Evaluate and sharpen your track" },
 ] as const;
 
+/** Rack-only tools surfaced in the completion panel on the final guided step. */
+const RACK_TOOLS = [
+  { tab: "fix",     label: "Fix a Take",      icon: Stethoscope,  desc: "Diagnose what went wrong and try again" },
+  { tab: "master",  label: "Mastering",       icon: AudioWaveform, desc: "EQ & dynamics suggestions for your mix" },
+  { tab: "dossier", label: "Release Dossier", icon: Rocket,        desc: "Cover art, metadata, pitch copy & social hooks" },
+  { tab: "compare", label: "Comparables",     icon: Search,        desc: "Find artists you sound like" },
+  { tab: "genres",  label: "Genre Guides",    icon: Map,           desc: "Reference guides for any genre" },
+  { tab: "library", label: "Prompt Library",  icon: BookMarked,    desc: "Save and reuse style prompts" },
+] as const;
+
 type Props = {
   state: ForgeState;
   patch: <K extends keyof ForgeState>(key: K, value: ForgeState[K]) => void;
   onExitToRack: () => void;
-  /** Jump straight to Fix a Take in rack mode */
+  /** Jump straight to a specific rack tab */
+  onExitToTab?: (tab: string) => void;
+  /** Jump straight to Fix a Take in rack mode (convenience alias kept for callers) */
   onExitToFixTake?: () => void;
 };
 
-export function GuidedFlow({ state, patch, onExitToRack, onExitToFixTake }: Props) {
+export function GuidedFlow({ state, patch, onExitToRack, onExitToTab, onExitToFixTake }: Props) {
   const [stepIdx, setStepIdx] = useState(0);
   // stepIdx is always in [0, STEPS.length-1]; the non-null assertion is safe.
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const step = STEPS[stepIdx]!;
   const isFirst = stepIdx === 0;
   const isLast = stepIdx === STEPS.length - 1;
+
+  const exitToTab = (tab: string) => {
+    if (onExitToTab) {
+      onExitToTab(tab);
+    } else {
+      onExitToRack();
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -132,30 +163,46 @@ export function GuidedFlow({ state, patch, onExitToRack, onExitToFixTake }: Prop
         )}
       </div>
 
+      {/* ── Completion panel — shown only on the last step ── */}
+      {isLast && (
+        <div className="rounded-xl border border-border bg-panel/60 p-5">
+          <p className="mb-3 font-mono text-[10px] tracking-wider text-primary uppercase">
+            What's next — full rack tools
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {RACK_TOOLS.map((tool) => (
+              <button
+                key={tool.tab}
+                type="button"
+                onClick={() => exitToTab(tool.tab)}
+                className="flex items-start gap-3 rounded-lg border border-border bg-card/60 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+              >
+                <tool.icon className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                <div>
+                  <div className="font-mono text-[10px] tracking-wider text-foreground uppercase">
+                    {tool.label}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">{tool.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Navigation row ── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isFirst}
-            onClick={() => setStepIdx((i) => i - 1)}
-            className="gap-1.5 font-mono text-[11px]"
-          >
-            <ChevronLeft className="size-3.5" /> Back
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onExitToRack}
-            className="font-mono text-[10px] text-muted-foreground tracking-wider uppercase"
-          >
-            All tools
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isFirst}
+          onClick={() => setStepIdx((i) => i - 1)}
+          className="gap-1.5 font-mono text-[11px]"
+        >
+          <ChevronLeft className="size-3.5" /> Back
+        </Button>
 
         {!isLast ? (
-          /* ④ glow-pulse: subtle breathing glow on the primary CTA */
           <Button
             size="sm"
             onClick={() => setStepIdx((i) => i + 1)}
@@ -180,7 +227,7 @@ export function GuidedFlow({ state, patch, onExitToRack, onExitToFixTake }: Prop
               onClick={onExitToRack}
               className="gap-1.5 font-mono text-[11px] border-border text-muted-foreground hover:text-foreground"
             >
-              All tools →
+              Full rack →
             </Button>
           </div>
         )}

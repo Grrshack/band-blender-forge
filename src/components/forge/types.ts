@@ -44,6 +44,8 @@ export type BlendResult = {
   /** Potential contradictions in the style tag the user should know about. */
   contradictions?: string[];
   variants?: StyleVariant[];
+  /** Changes made by the last Style Chat refinement — persisted so they survive tab switches. */
+  refineChanges?: string[];
 };
 
 export type Line = { text: string; locked: boolean; previous?: string };
@@ -141,6 +143,18 @@ export type DossierResult = {
   releaseTips?: string[];
 };
 
+export type MasterSuggestResult = {
+  preset?: string;
+  adjustments?: Record<string, unknown>;
+  reasoning?: string;
+  warnings?: string[];
+};
+
+export type MasterSlice = {
+  intent: string;
+  result: MasterSuggestResult | null;
+};
+
 export type CompareSlice = {
   lyrics: string;
   tags: string;
@@ -159,9 +173,11 @@ export type ForgeState = {
   compare: CompareSlice;
   critique: CritiqueSlice;
   fix: FixSlice;
+  master: MasterSlice;
   /** Log of generated takes, newest last. */
   takes: Take[];
-  dossier: DossierResult | null;
+  /** Release dossiers — most recent first, capped at 3. */
+  dossiers: DossierResult[];
 };
 
 export const emptyState = (): ForgeState => ({
@@ -180,8 +196,9 @@ export const emptyState = (): ForgeState => ({
   compare: { lyrics: "", tags: "", result: null },
   critique: { lyrics: "", notes: "", result: null },
   fix: { symptoms: [], notes: "", result: null, undo: null },
+  master: { intent: "", result: null },
   takes: [],
-  dossier: null,
+  dossiers: [],
 });
 
 export function hasContent(s: ForgeState): boolean {
@@ -199,22 +216,45 @@ export function hasContent(s: ForgeState): boolean {
     s.fix.symptoms.length ||
     s.fix.result ||
     s.takes.length ||
-    s.dossier,
+    s.dossiers.length > 0,
   );
 }
 
 export function mergeState(raw: unknown): ForgeState {
   const base = emptyState();
   if (!raw || typeof raw !== "object") return base;
-  const s = raw as Partial<ForgeState>;
+  // Use a loose record so we can handle both the new shape and legacy saves.
+  const s = raw as Record<string, unknown>;
+  const blend = (s.blend && typeof s.blend === "object" ? s.blend : {}) as Partial<BlendSlice>;
+  const lyrics = (s.lyrics && typeof s.lyrics === "object" ? s.lyrics : {}) as Partial<LyricSlice>;
+  const master = (s.master && typeof s.master === "object" ? s.master : {}) as Partial<MasterSlice>;
   return {
-    blend: { ...base.blend, ...(s.blend ?? {}) },
-    lyrics: { ...base.lyrics, ...(s.lyrics ?? {}) },
-    compare: { ...base.compare, ...(s.compare ?? {}) },
-    critique: { ...base.critique, ...(s.critique ?? {}) },
-    fix: { ...base.fix, ...(s.fix ?? {}) },
+    blend: {
+      ...base.blend,
+      ...blend,
+      // Deep-merge sliders so a save with only some keys still keeps defaults.
+      sliders: { ...base.blend.sliders, ...(blend.sliders ?? {}) },
+    },
+    lyrics: {
+      ...base.lyrics,
+      ...lyrics,
+      // Deep-merge recentWords so per-word counts survive partial saves.
+      recentWords: {
+        ...base.lyrics.recentWords,
+        ...(lyrics.recentWords && typeof lyrics.recentWords === "object" ? lyrics.recentWords : {}),
+      },
+    },
+    compare: { ...base.compare, ...(s.compare && typeof s.compare === "object" ? s.compare : {}) },
+    critique: { ...base.critique, ...(s.critique && typeof s.critique === "object" ? s.critique : {}) },
+    fix: { ...base.fix, ...(s.fix && typeof s.fix === "object" ? s.fix : {}) },
+    master: { ...base.master, ...master },
     takes: Array.isArray(s.takes) ? s.takes : base.takes,
-    dossier: s.dossier && typeof s.dossier === "object" ? s.dossier : null,
+    // Accept the new array shape or silently migrate a legacy single-dossier save.
+    dossiers: Array.isArray(s.dossiers)
+      ? (s.dossiers as DossierResult[])
+      : s.dossier && typeof s.dossier === "object"
+        ? [s.dossier as DossierResult]
+        : [],
   };
 }
 

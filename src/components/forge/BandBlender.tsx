@@ -132,11 +132,12 @@ export function BandBlender({
   const [shareSlug, setShareSlug] = useState<string | undefined>();
   const [sharing, setSharing] = useState(false);
 
-  // AudioChat state
+  // Style Chat state
   const [refineInput, setRefineInput] = useState("");
   const [refining, setRefining] = useState(false);
   const [refineError, setRefineError] = useState<string | null>(null);
-  const [refineChanges, setRefineChanges] = useState<string[]>([]);
+  // refineChanges lives in result.refineChanges so it survives tab switches.
+  const refineChanges = result?.refineChanges ?? [];
 
   const setArtist = (i: number, v: string) =>
     onChange({ ...value, artists: artists.map((a, idx) => (idx === i ? v : a)) });
@@ -204,7 +205,6 @@ export function BandBlender({
     if (!result?.styleTag || !refineInput.trim()) return;
     setRefining(true);
     setRefineError(null);
-    setRefineChanges([]);
     try {
       const res = await forge({
         data: {
@@ -216,8 +216,11 @@ export function BandBlender({
       });
       const refined = JSON.parse(res.json) as { styleTag?: string; changes?: string[] };
       if (refined.styleTag) {
-        onChange({ ...value, result: { ...result, styleTag: refined.styleTag } });
-        setRefineChanges(refined.changes ?? []);
+        // Persist refineChanges inside the result so they survive tab switches.
+        onChange({
+          ...value,
+          result: { ...result, styleTag: refined.styleTag, refineChanges: refined.changes ?? [] },
+        });
         setRefineInput("");
       }
     } catch (e) {
