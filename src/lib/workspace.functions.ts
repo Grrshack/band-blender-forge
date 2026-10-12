@@ -62,7 +62,8 @@ export const saveWorkspace = createServerFn({ method: "POST" })
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.state !== undefined ? { state: data.state } : {}),
       })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -71,7 +72,11 @@ export const deleteWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => IdSchema.parse(i))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("workspaces").delete().eq("id", data.id);
+    const { error } = await context.supabase
+      .from("workspaces")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
