@@ -104,6 +104,15 @@ Return JSON exactly:
 {"title":"string, max 60 characters","sections":[{"tag":"[Verse 1]","cue":"optional short direction","lines":["line","line"]}]}
 Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro] as appropriate.`;
     }
+    case "intent":
+      return `You are the studio assistant. Turn the user's latest message into settings for the Band Blender form.
+Input: ${p}
+"current" is the form as it is now; "history" is the recent chat. Treat follow-ups ("faster", "darker", "swap the second artist") as edits to "current" — keep anything the user didn't ask to change.
+If the user names styles or moods but no artists, pick 2-3 well-known artists who define that sound.
+Slider meanings (0-100): energy = how intense and driving (low sparse, high relentless); complexity = how intricate the arrangement (low simple, high layered/technical); brightness = tonal character (low dark/bass-heavy, high crisp/shimmering).
+era must be "" or one of: 1960s, 1970s, 1980s, 1990s, 2000s, 2010s, 2020s.
+Return JSON exactly:
+{"reply":"one or two short sentences saying what you set","artist_1":"string","artist_2":"string or empty","artist_3":"string or empty","target_genre":"short genre or empty","era":"string","energy":0,"complexity":0,"brightness":0}`;
     case "dossier":
       return `Build a release dossier for this finished song idea, ready for distribution and promotion.
 Input: ${p}

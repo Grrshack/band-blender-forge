@@ -28,6 +28,7 @@ const InputSchema = z.object({
     "dossier",
     "refine",
     "masterSuggest",
+    "intent",
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),
