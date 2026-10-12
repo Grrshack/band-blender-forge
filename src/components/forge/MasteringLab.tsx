@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_PARAMS,
   MasterChain,
@@ -163,6 +164,7 @@ export function MasteringLab() {
   const [suggesting, setSuggesting] = useState<string | null>(null); // step label while working
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggestIntent, setSuggestIntent] = useState("");
 
   const audioRef = useRef<Audio | null>(null);
   const srcRef = useRef<AudioBufferSourceNode | null>(null);
@@ -583,7 +585,10 @@ export function MasteringLab() {
           task: "masterSuggest",
           routing,
           ...(apiKey ? { apiKey } : {}),
-          payload: { analysis },
+          payload: {
+            analysis,
+            ...(suggestIntent.trim() ? { intent: suggestIntent.trim() } : {}),
+          },
         },
       });
 
@@ -687,30 +692,37 @@ export function MasteringLab() {
 
           {/* ── AI Suggestion panel ── */}
           <div className="rounded-lg border border-border bg-card/50 p-3.5 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h3 className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
-                  AI Suggest
-                </h3>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  Analyzes your track's frequency balance locally, then asks the AI to recommend settings. No audio is uploaded.
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={noSong || !!suggesting}
-                onClick={() => void analyzeAndSuggest()}
-                className="shrink-0 h-8 gap-1.5 font-mono text-[10px] tracking-wider border-primary/40 text-primary hover:border-primary hover:bg-primary/10"
-              >
-                {suggesting ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3" />
-                )}
-                {suggesting ? suggesting : "Analyze & Suggest"}
-              </Button>
+            <div>
+              <h3 className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                AI Suggest
+              </h3>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                Analyzes frequency balance locally, then asks the AI to recommend settings. No audio uploaded.
+              </p>
             </div>
+
+            <Textarea
+              value={suggestIntent}
+              onChange={(e) => setSuggestIntent(e.target.value)}
+              rows={2}
+              placeholder="What are you going for? e.g. 'punchier kick', 'less boomy bass', 'warmer overall' — optional"
+              className="resize-none border-border bg-card/60 font-mono text-[11px] placeholder:text-muted-foreground/50 focus-visible:ring-primary"
+            />
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={noSong || !!suggesting}
+              onClick={() => void analyzeAndSuggest()}
+              className="w-full h-8 gap-1.5 font-mono text-[10px] tracking-wider border-primary/40 text-primary hover:border-primary hover:bg-primary/10"
+            >
+              {suggesting ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Sparkles className="size-3" />
+              )}
+              {suggesting ?? "Analyze & Suggest"}
+            </Button>
 
             {suggestError ? (
               <p className="text-[10px] text-destructive">{suggestError}</p>
@@ -963,6 +975,7 @@ export function MasteringLab() {
       <Panel
         title="Preview & Export"
         subtitle={song ? song.name : "Drop a song or a bass stem to start."}
+        className={cn(!song && "lg:self-start")}
       >
         <div className="space-y-4">
           {error ? <ErrorNote message={error} /> : null}
