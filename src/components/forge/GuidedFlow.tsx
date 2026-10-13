@@ -3,7 +3,7 @@
  * Console but walks the user through them one at a time with a progress bar and
  * Back / Continue navigation. No new logic: it's purely a layout wrapper.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AudioWaveform,
   BookMarked,
