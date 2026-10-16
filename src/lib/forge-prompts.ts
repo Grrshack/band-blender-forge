@@ -204,6 +204,7 @@ Return 1–3 changes. No more.`;
     case "masterSuggest": {
       const PRESET_NAMES = [
         "Flat",
+        "Suno rumble fix",
         "Suno sub tame",
         "Suno deep clean",
         "Streaming ready",
@@ -230,6 +231,7 @@ ${PRESET_NAMES.map((n) => `"${n}"`).join(", ")}
 
 Preset purposes:
 - "Flat" — no processing; use when the track is already balanced
+- "Suno rumble fix" — Dedicated sub compressor (70%) below 50 Hz + sub scoop at 32 Hz; targets vibrating/rumbling sub-40 Hz bass without affecting punch. START HERE for muddy Suno bass.
 - "Suno sub tame" — Band mode + 65% tighten at 100 Hz crossover; suppresses AI-generated sub boom dynamically without cutting
 - "Suno deep clean" — Aggressive band tighten (80%) at 110 Hz; for very heavy bass
 - "Streaming ready" — Moderate band treatment for Spotify/Apple Music/YouTube
@@ -243,14 +245,18 @@ Preset purposes:
   punchFreq (35…160 Hz), punchGainDb (−9…9 dB), punchQ (0.5…4),
   warmth (0…1), tighten (0…1), monoBass (bool),
   subCutHz (0…40 Hz — see hard rule below), subCutSlope (1|2), subCutQ (0.5…2),
+  subCompAmount (0…1, sub-band compressor intensity), subCompFreq (30…80 Hz, sub compressor crossover),
+  subScoopDb (−12…0 dB, narrow cut at rumble freq), subScoopFreq (20…50 Hz), subScoopQ (1…6),
   lowMidCutDb (−6…0 dB), airDb (0…6 dB), glue (0…1), ceilingDb (−3…−0.1 dBFS)
 
 HARD RULES — never violate these:
 1. subCutHz must NEVER exceed 40 — values above 40 permanently remove audible bass fundamentals.
 2. For boomy bass (sub or bass band significantly above 0 dB), recommend Band mode + high tighten, NOT a high subCutHz.
-3. punchFreq in adjustments should be close to lowPeakHz (35–160 Hz range only).
-4. Never include makeupDb in adjustments — the exporter controls that.
-5. Only include fields in adjustments that genuinely need to differ from the chosen preset.
+3. If the sub band (20–80 Hz) is significantly above 0 dB AND lowPeakHz is at or below 50 Hz, strongly prefer "Suno rumble fix" or add subCompAmount (0.5–0.9) and subScoopDb (−2 to −4 dB at lowPeakHz) to target the rumble directly. Mention the sub-40 Hz rumble in your reasoning and warn the user to check on good speakers or headphones.
+4. punchFreq in adjustments should be close to lowPeakHz (35–160 Hz range only).
+5. Never include makeupDb in adjustments — the exporter controls that.
+6. Never include subSolo in adjustments — it is a monitoring toggle only.
+7. Only include fields in adjustments that genuinely need to differ from the chosen preset.
 
 Return JSON exactly:
 {"preset":"one of the preset names above","adjustments":{},"reasoning":"2-3 sentences: the track's main characteristics and why this treatment suits it","warnings":[]}

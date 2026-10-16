@@ -56,6 +56,18 @@ export type MasterParams = {
   ceilingDb: number;
   /** Gain into the limiter. Set by the exporter to hit a loudness target. dB. */
   makeupDb: number;
+  /** Sub-band compressor: dynamically ducks rumble below subCompFreq. 0 = off, 1 = max. */
+  subCompAmount: number;
+  /** Crossover for the sub compressor. Hz. */
+  subCompFreq: number;
+  /** Narrow EQ cut to reduce a specific rumble frequency. dB, ≤ 0. */
+  subScoopDb: number;
+  /** Center of the sub scoop. Hz. */
+  subScoopFreq: number;
+  /** Q of the sub scoop (higher = narrower). */
+  subScoopQ: number;
+  /** Solo the sub band for monitoring. */
+  subSolo: boolean;
 };
 
 export const DEFAULT_PARAMS: MasterParams = {
@@ -76,10 +88,42 @@ export const DEFAULT_PARAMS: MasterParams = {
   glue: 0,
   ceilingDb: -1,
   makeupDb: 0,
+  subCompAmount: 0,
+  subCompFreq: 50,
+  subScoopDb: 0,
+  subScoopFreq: 32,
+  subScoopQ: 3,
+  subSolo: false,
 };
 
 export const PRESETS: Array<{ name: string; hint: string; params: Partial<MasterParams> }> = [
   { name: "Flat", hint: "Reset everything", params: { ...DEFAULT_PARAMS } },
+  {
+    name: "Suno rumble fix",
+    hint: "Dedicated sub compressor targets rumble below 50 Hz without touching punch. Start here for muddy, vibrating Suno bass.",
+    params: {
+      mode: "band",
+      crossoverHz: 100,
+      bassGainDb: 0,
+      punchFreq: 70,
+      punchGainDb: 1.0,
+      punchQ: 1.2,
+      warmth: 0.2,
+      tighten: 0.35,
+      monoBass: true,
+      subCompAmount: 0.7,
+      subCompFreq: 50,
+      subScoopDb: -3,
+      subScoopFreq: 32,
+      subScoopQ: 3,
+      subCutHz: 25,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -1.5,
+      glue: 0.2,
+      ceilingDb: -1,
+    },
+  },
   {
     name: "Suno sub tame",
     hint: "Dynamically compresses Suno's characteristic low-end boom — shapes and controls the bass without removing it.",
@@ -255,6 +299,16 @@ export class MasterChain {
   private readonly glue: DynamicsCompressorNode;
   private readonly makeup: GainNode;
   private readonly limiter: DynamicsCompressorNode;
+  private readonly subScoop: BiquadFilterNode;
+  private readonly subLP: BiquadFilterNode;
+  private readonly subHP: BiquadFilterNode;
+  private readonly subComp: DynamicsCompressorNode;
+  private readonly subBypassGain: GainNode;
+  private readonly subWetGain: GainNode;
+  private readonly subHighGain: GainNode;
+  private readonly subCompSum: GainNode;
+  private readonly subSoloGain: GainNode;
+  private readonly mainMute: GainNode;
 
   constructor(ctx: BaseAudioContext, params: MasterParams) {
     this.ctx = ctx;
@@ -324,6 +378,27 @@ export class MasterChain {
     this.limiter.attack.value = 0.001;
     this.limiter.release.value = 0.08;
 
+    // ---- sub processor (scoop + dedicated sub compressor + solo)
+    this.subScoop = bq("peaking");
+    this.subScoop.frequency.value = 32;
+    this.subScoop.Q.value = 3;
+    this.subLP = bq("lowpass");
+    this.subLP.Q.value = 0.5;
+    this.subHP = bq("highpass");
+    this.subHP.Q.value = 0.5;
+    this.subComp = ctx.createDynamicsCompressor();
+    this.subComp.knee.value = 2;
+    this.subComp.attack.value = 0.008;
+    this.subComp.release.value = 0.1;
+    this.subBypassGain = ctx.createGain();
+    this.subWetGain = ctx.createGain();
+    this.subHighGain = ctx.createGain();
+    this.subCompSum = ctx.createGain();
+    this.subSoloGain = ctx.createGain();
+    this.subSoloGain.gain.value = 0;
+    this.mainMute = ctx.createGain();
+    this.mainMute.gain.value = 1;
+
     // ---- wiring
     // Two cascaded HPFs: subCut → subCut2.
     // When subCutSlope === 1, subCut2.frequency is held at 1 Hz (flat pass-through).
@@ -331,12 +406,27 @@ export class MasterChain {
     this.input.connect(this.subCut);
     this.subCut.connect(this.subCut2);
 
-    this.subCut2.connect(this.shelf);
+    this.subCut2.connect(this.subScoop);
+
+    // Sub compressor: dry/wet crossfade around a sub-band split
+    this.subScoop.connect(this.subBypassGain);
+    this.subBypassGain.connect(this.subCompSum);
+    this.subScoop.connect(this.subLP);
+    this.subLP.connect(this.subComp);
+    this.subLP.connect(this.subSoloGain);
+    this.subSoloGain.connect(this.output);
+    this.subComp.connect(this.subWetGain);
+    this.subWetGain.connect(this.subCompSum);
+    this.subScoop.connect(this.subHP);
+    this.subHP.connect(this.subHighGain);
+    this.subHighGain.connect(this.subCompSum);
+
+    this.subCompSum.connect(this.shelf);
     this.shelf.connect(this.punchF);
     this.punchF.connect(this.fullGain);
     this.fullGain.connect(bus);
 
-    this.subCut2.connect(this.lp1);
+    this.subCompSum.connect(this.lp1);
     this.lp1.connect(this.lp2);
     this.lp2.connect(this.punchB);
     this.punchB.connect(this.level);
@@ -352,7 +442,7 @@ export class MasterChain {
     this.stereoG.connect(lowSum);
     this.monoG.connect(lowSum);
     lowSum.connect(bandSum);
-    this.subCut2.connect(this.hp1);
+    this.subCompSum.connect(this.hp1);
     this.hp1.connect(this.hp2);
     this.hp2.connect(bandSum);
     bandSum.connect(this.bandGain);
@@ -363,7 +453,8 @@ export class MasterChain {
     this.air.connect(this.glue);
     this.glue.connect(this.makeup);
     this.makeup.connect(this.limiter);
-    this.limiter.connect(this.output);
+    this.limiter.connect(this.mainMute);
+    this.mainMute.connect(this.output);
 
     this.update(params, false);
   }
@@ -414,6 +505,24 @@ export class MasterChain {
     set(this.glue.ratio, 1 + p.glue * 2.5);
     set(this.makeup.gain, dbLin(p.makeupDb));
     set(this.limiter.threshold, p.ceilingDb);
+
+    // sub scoop
+    set(this.subScoop.frequency, p.subScoopFreq);
+    set(this.subScoop.gain, Math.min(0, p.subScoopDb));
+    set(this.subScoop.Q, p.subScoopQ);
+
+    // sub compressor
+    set(this.subLP.frequency, p.subCompFreq);
+    set(this.subHP.frequency, p.subCompFreq);
+    set(this.subComp.threshold, -5 - p.subCompAmount * 20);
+    set(this.subComp.ratio, 1 + p.subCompAmount * 8);
+    set(this.subBypassGain.gain, 1 - p.subCompAmount);
+    set(this.subWetGain.gain, p.subCompAmount);
+    set(this.subHighGain.gain, p.subCompAmount);
+
+    // sub solo (monitoring)
+    set(this.mainMute.gain, p.subSolo ? 0 : 1);
+    set(this.subSoloGain.gain, p.subSolo ? 1 : 0);
   }
 
   /**
@@ -430,7 +539,7 @@ export class MasterChain {
       return { mag, ph };
     };
     const out = new Float32Array(n);
-    const common = [this.subCut, this.subCut2, this.mud, this.air].map(resp);
+    const common = [this.subCut, this.subCut2, this.subScoop, this.mud, this.air].map(resp);
     const full = p.mode === "full";
     const fullPath = full ? [this.shelf, this.punchF].map(resp) : [];
     const lowPath = full ? [] : [this.lp1, this.lp2, this.punchB].map(resp);

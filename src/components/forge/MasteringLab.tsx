@@ -3,6 +3,7 @@ import {
   AudioWaveform,
   Download,
   FileAudio,
+  Headphones,
   Loader2,
   Pause,
   Play,
@@ -562,6 +563,12 @@ export function MasteringLab() {
     params.subCutHz
       ? `High-pass: ${params.subCutHz} Hz, ${params.subCutSlope === 2 ? "−24 dB/oct (steep)" : "−12 dB/oct (gentle)"}, Q ${params.subCutQ.toFixed(2)}`
       : "High-pass: off",
+    params.subCompAmount > 0
+      ? `Sub compressor: ${Math.round(params.subCompAmount * 100)}% @ ${params.subCompFreq} Hz`
+      : "Sub compressor: off",
+    params.subScoopDb < 0
+      ? `Sub scoop: ${fmtDb(params.subScoopDb)} @ ${params.subScoopFreq} Hz, Q ${params.subScoopQ.toFixed(1)}`
+      : "Sub scoop: off",
     `Low-mid cut @ 250 Hz: ${fmtDb(params.lowMidCutDb)}`,
     `Air shelf @ 10 kHz: ${fmtDb(params.airDb)}`,
     `Glue compression: ${Math.round(params.glue * 100)}%`,
@@ -873,6 +880,87 @@ export function MasteringLab() {
                 disabled={noSong || !band}
               />
             </label>
+          </Group>
+
+          <Group title="Sub-40 rumble control">
+            <ParamSlider
+              label="Sub compressor"
+              value={params.subCompAmount}
+              min={0}
+              max={1}
+              step={0.01}
+              format={(v) => (v === 0 ? "Off" : `${Math.round(v * 100)}%`)}
+              onChange={(v) => patch({ subCompAmount: v })}
+              disabled={noSong}
+              hint="Dynamically ducks rumble below the crossover only when it gets loud — leaves punchy bass above it untouched. Best tool for Suno's vibrating sub-40 Hz bass."
+            />
+            <ParamSlider
+              label="Sub comp crossover"
+              value={params.subCompFreq}
+              min={30}
+              max={80}
+              step={1}
+              format={(v) => `${v} Hz`}
+              onChange={(v) => patch({ subCompFreq: v })}
+              disabled={noSong || params.subCompAmount === 0}
+              hint="Everything below this goes through the sub compressor. 50 Hz is a good default — protects 50–100 Hz punch."
+            />
+            <ParamSlider
+              label="Sub scoop"
+              value={params.subScoopDb}
+              min={-12}
+              max={0}
+              step={0.5}
+              format={fmtDb}
+              onChange={(v) => patch({ subScoopDb: v })}
+              disabled={noSong}
+              hint="Narrow EQ cut at the worst rumble frequency. Unlike the HPF, this only reduces a specific frequency instead of removing everything below it."
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <ParamSlider
+                label="Scoop freq"
+                value={params.subScoopFreq}
+                min={20}
+                max={50}
+                step={1}
+                format={(v) => `${v} Hz`}
+                onChange={(v) => patch({ subScoopFreq: v })}
+                disabled={noSong || params.subScoopDb === 0}
+              />
+              <ParamSlider
+                label="Scoop Q"
+                value={params.subScoopQ}
+                min={1}
+                max={6}
+                step={0.1}
+                format={(v) => v.toFixed(1)}
+                onChange={(v) => patch({ subScoopQ: v })}
+                disabled={noSong || params.subScoopDb === 0}
+                hint="Higher = narrower cut. 3 is a good starting point."
+              />
+            </div>
+            <div className={cn("flex items-center justify-between gap-3", noSong && "opacity-40")}>
+              <div>
+                <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Solo sub
+                </span>
+                <p className="text-[10px] text-muted-foreground">Hear only what's below the sub comp crossover — check for rumble you can't otherwise hear.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => patch({ subSolo: !params.subSolo })}
+                disabled={noSong}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg border px-3 py-2 font-mono text-[10px] tracking-wider uppercase transition-colors",
+                  params.subSolo
+                    ? "glow-primary border-primary/60 bg-primary/10 text-primary"
+                    : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                )}
+              >
+                <Headphones className="size-3.5" />
+                {params.subSolo ? "Soloing" : "Solo sub"}
+              </button>
+            </div>
           </Group>
 
           <Group title="Clean-up & finish">
