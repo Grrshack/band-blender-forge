@@ -4,6 +4,7 @@ import {
   AudioWaveform,
   BarChart2,
   BookMarked,
+  Bot,
   Gauge,
   Map,
   Rocket,
@@ -74,6 +75,7 @@ const TABS = [
   { value: "library",  label: "Prompt Library",  icon: BookMarked },
   { value: "genres",   label: "Genre Guides",    icon: Map },
   { value: "usage",    label: "Usage",           icon: BarChart2 },
+  { value: "assistant", label: "Assistant",      icon: Bot },
 ];
 
 function Index() {
@@ -410,39 +412,41 @@ function Index() {
                     />
                   )}
                   {tab === "usage" && <UsageDashboard />}
+                  {tab === "assistant" && (
+                    <StudioAssistant
+                      currentBlend={state.blend}
+                      autoRun={assistantAutoRun}
+                      onToggleAutoRun={setAssistantAutoRun}
+                      onApply={(intent) => {
+                        const newBlend: BlendSlice = {
+                          ...state.blend,
+                          lookupMode: "band",
+                          artists: [intent.artist_1, intent.artist_2, intent.artist_3].map(
+                            (a, i) => a || (state.blend.artists[i] ?? ""),
+                          ),
+                          targetGenre: intent.target_genre || state.blend.targetGenre,
+                          targetEra: intent.era || state.blend.targetEra,
+                          sliders: {
+                            energy: intent.energy,
+                            complexity: intent.complexity,
+                            brightness: intent.brightness,
+                          },
+                          result: null,
+                        };
+                        patch("blend", newBlend);
+                        setTab("blend");
+                        setBlendFlashKey((k) => k + 1);
+                        if (assistantAutoRun) {
+                          setBlendAutoRun(true);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}
           </main>
 
-          <StudioAssistant
-            currentBlend={state.blend}
-            autoRun={assistantAutoRun}
-            onToggleAutoRun={setAssistantAutoRun}
-            onApply={(intent) => {
-              const newBlend: BlendSlice = {
-                ...state.blend,
-                lookupMode: "band",
-                artists: [intent.artist_1, intent.artist_2, intent.artist_3].map(
-                  (a, i) => a || (state.blend.artists[i] ?? ""),
-                ),
-                targetGenre: intent.target_genre || state.blend.targetGenre,
-                targetEra: intent.era || state.blend.targetEra,
-                sliders: {
-                  energy: intent.energy,
-                  complexity: intent.complexity,
-                  brightness: intent.brightness,
-                },
-                result: null,
-              };
-              patch("blend", newBlend);
-              setTab("blend");
-              setBlendFlashKey((k) => k + 1);
-              if (assistantAutoRun) {
-                setBlendAutoRun(true);
-              }
-            }}
-          />
           <SystemPanel />
           <Toaster />
         </div>

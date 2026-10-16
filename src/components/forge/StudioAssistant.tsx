@@ -1,14 +1,16 @@
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, Loader2, MessageSquare, Send, Sparkles, X, Zap } from "lucide-react";
+import { Loader2, MessageSquare, Send, Sparkles, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { runForge } from "@/lib/forge.functions";
 import { ERA_OPTIONS } from "@/lib/suno";
 import { useSettings } from "./settings";
+import { Panel } from "./Field";
 import type { BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 export type ChatMessage = {
@@ -72,7 +74,6 @@ export function StudioAssistant({
 }) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
-  const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -144,77 +145,23 @@ export function StudioAssistant({
   };
 
   return (
-    <>
-      {/* Floating toggle button */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "fixed top-1/2 right-0 z-50 flex -translate-y-1/2 flex-col items-center gap-1.5 rounded-l-xl border border-r-0 border-border bg-panel/95 px-2.5 py-3 font-mono text-[9px] tracking-[0.18em] uppercase text-muted-foreground shadow-lg backdrop-blur transition-colors hover:text-foreground",
-          open && "hidden",
-        )}
-        aria-label="Open studio assistant"
-      >
-        <Bot className="size-4 text-primary" />
-        <span className="[writing-mode:vertical-rl] rotate-180">Assistant</span>
-        <span className="relative flex size-1.5">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-        </span>
-      </button>
-
-      {/* Desktop: right-side drawer / Mobile: bottom sheet */}
-      <aside
-        className={cn(
-          "fixed z-50 flex flex-col border-border bg-panel/95 backdrop-blur-xl transition-transform duration-300",
-          "lg:top-0 lg:right-0 lg:h-dvh lg:max-w-[380px] lg:border-l lg:translate-x-0",
-          open
-            ? "translate-y-0 lg:translate-x-0"
-            : "translate-y-full lg:translate-y-0 lg:translate-x-full",
-          // Mobile: bottom sheet
-          "inset-x-0 bottom-0 max-h-[65dvh] rounded-t-2xl border-t lg:inset-auto lg:rounded-none lg:border-t-0",
-        )}
-        aria-hidden={!open}
-      >
-        {/* Mobile drag handle */}
-        <div className="flex justify-center pt-2 lg:hidden">
-          <span className="h-1 w-10 rounded-full bg-border" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="glow-primary flex size-8 items-center justify-center rounded-lg border border-primary/40 bg-primary/10">
-              <Bot className="size-4 text-primary" />
-            </span>
-            <div>
-              <h2 className="font-display text-sm font-bold tracking-tight">Studio Assistant</h2>
-              <p className="font-mono text-[9px] tracking-[0.16em] text-muted-foreground uppercase">
-                Natural language control
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close assistant"
-            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* Auto-run toggle */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+    <div className="space-y-5">
+      <Panel
+        title="Studio Assistant"
+        subtitle="Describe a sound in plain English — the assistant sets up the Band Blender for you automatically."
+        action={
           <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
             <Zap className="size-3.5 text-accent" />
-            Auto-run blend on apply
+            Auto-run blend
+            <Switch checked={autoRun} onCheckedChange={onToggleAutoRun} />
           </label>
-          <Switch checked={autoRun} onCheckedChange={onToggleAutoRun} />
-        </div>
-
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        }
+      >
+        {/* Chat messages */}
+        <div
+          ref={scrollRef}
+          className="mb-4 max-h-[420px] min-h-[200px] space-y-3 overflow-y-auto rounded-lg border border-border bg-card/30 p-4"
+        >
           {messages.map((m, i) => (
             <div
               key={i}
@@ -263,7 +210,7 @@ export function StudioAssistant({
         </div>
 
         {/* Quick-start chips */}
-        <div className="border-t border-border px-4 pt-3">
+        <div className="mb-4">
           <span className="mb-2 block font-mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase">
             Quick starts
           </span>
@@ -283,8 +230,8 @@ export function StudioAssistant({
         </div>
 
         {/* Input */}
-        <div className="flex gap-2 border-t border-border p-3">
-          <Input
+        <div className="flex gap-2">
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -293,28 +240,22 @@ export function StudioAssistant({
                 void send(input);
               }
             }}
-            placeholder="Describe a sound or tweak the blend…"
+            placeholder="Describe a sound or tweak the blend… e.g. 'Make it darker and more aggressive'"
             disabled={busy}
-            className="h-10 border-border bg-card/60 text-sm focus-visible:ring-primary"
+            rows={2}
+            className="min-h-[44px] resize-none border-border bg-card/60 text-sm focus-visible:ring-primary"
           />
           <Button
             onClick={() => void send(input)}
             disabled={busy || !input.trim()}
             size="sm"
-            className="glow-primary h-10 shrink-0 gap-1.5"
+            className="glow-primary h-11 shrink-0 gap-1.5 self-end"
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+            <span className="hidden sm:inline">Send</span>
           </Button>
         </div>
-      </aside>
-
-      {/* Backdrop on mobile */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-    </>
+      </Panel>
+    </div>
   );
 }
