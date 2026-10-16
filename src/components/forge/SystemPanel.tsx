@@ -20,14 +20,14 @@ export function SystemPanel() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-2 flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                  Anthropic API Key
+                  API Key (Anthropic or Gemini)
                 </label>
                 <div className="flex gap-2">
                   <Input
                     type={reveal ? "text" : "password"}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-ant-…  (optional)"
+                    placeholder="sk-ant-… or Google AI Studio key  (optional)"
                     className="border-border bg-card/60 font-mono text-xs focus-visible:ring-primary"
                   />
                   <Button
@@ -52,6 +52,17 @@ export function SystemPanel() {
                   >
                     get one at console.anthropic.com →
                   </a>
+                  <br />
+                  Gemini keys from{" "}
+                  <a
+                    href="https://aistudio.google.com/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    Google AI Studio
+                  </a>{" "}
+                  also work.
                   <br />
                   <span className="text-muted-foreground/70">
                     Held in this tab's session only — never stored.
@@ -120,7 +131,7 @@ export function SystemPanel() {
           </span>
           <span className="flex items-center gap-3">
             <span className="font-mono text-[10px] text-accent">
-              {apiKey ? "ANTHROPIC KEY SET" : "BUILT-IN MODEL"} ·{" "}
+              {apiKey ? "OWN KEY SET" : "BUILT-IN MODEL"} ·{" "}
               {routing === "fast" ? "FAST" : "CRAFT"}
             </span>
             <ChevronUp
