@@ -124,7 +124,7 @@ export function FixTake({
     <div className="space-y-5">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         <Panel
-          title="Fix a Take"
+          title="Fix a Track"
           subtitle="Suno gave you something off? Say what you heard — only what's needed changes."
         >
           {error ? <ErrorNote message={error} onRetry={() => void run()} /> : null}

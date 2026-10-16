@@ -33,9 +33,9 @@ const STEPS = [
 
 /** Rack-only tools surfaced in the completion panel on the final guided step. */
 const RACK_TOOLS = [
-  { tab: "fix",     label: "Fix a Take",      icon: Stethoscope,  desc: "Diagnose what went wrong and try again" },
+  { tab: "fix",     label: "Fix a Track",     icon: Stethoscope,  desc: "Diagnose what went wrong and try again" },
   { tab: "master",  label: "Mastering",       icon: AudioWaveform, desc: "EQ & dynamics suggestions for your mix" },
-  { tab: "dossier", label: "Release Dossier", icon: Rocket,        desc: "Cover art, metadata, pitch copy & social hooks" },
+  { tab: "dossier", label: "Release Kit",    icon: Rocket,        desc: "Cover art, metadata, pitch copy & social hooks" },
   { tab: "compare", label: "Comparables",     icon: Search,        desc: "Find artists you sound like" },
   { tab: "genres",  label: "Genre Guides",    icon: Map,           desc: "Reference guides for any genre" },
   { tab: "library", label: "Prompt Library",  icon: BookMarked,    desc: "Save and reuse style prompts" },
@@ -47,7 +47,7 @@ type Props = {
   onExitToRack: () => void;
   /** Jump straight to a specific rack tab */
   onExitToTab?: (tab: string) => void;
-  /** Jump straight to Fix a Take in rack mode (convenience alias kept for callers) */
+  /** Jump straight to Fix a Track in rack mode (convenience alias kept for callers) */
   onExitToFixTake?: () => void;
   autoRun?: boolean | undefined;
   onAutoRunDone?: (() => void) | undefined;
@@ -226,7 +226,7 @@ export function GuidedFlow({ state, patch, onExitToRack, onExitToTab, onExitToFi
                 onClick={onExitToFixTake}
                 className="glow-pulse gap-1.5 font-mono text-[11px]"
               >
-                Fix this take <ChevronRight className="size-3.5" />
+                Fix this track <ChevronRight className="size-3.5" />
               </Button>
             ) : null}
             <Button

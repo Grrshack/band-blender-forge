@@ -14,9 +14,9 @@ const TASK_LABELS: Record<string, string> = {
   regenSection: "Regen section",
   compare: "Comparables",
   critique: "Feedback",
-  fixTake: "Fix a Take",
+  fixTake: "Fix a Track",
   variants: "Variants",
-  dossier: "Release Dossier",
+  dossier: "Release Kit",
   masterSuggest: "AI Suggest",
   refine: "Refine Blend",
 };

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/forge/auth";
 import { BandBlender } from "@/components/forge/BandBlender";
 import { ComparableArtists } from "@/components/forge/ComparableArtists";
@@ -64,18 +65,18 @@ export const Route = createFileRoute("/")({
 });
 
 const TABS = [
-  { value: "blend",    label: "Band Blender",    icon: Sliders },
-  { value: "lyrics",   label: "Lyric Forge",     icon: Wand2 },
-  { value: "suno",     label: "Export Sheet",    icon: Send },
-  { value: "dossier",  label: "Release Dossier", icon: Rocket },
-  { value: "fix",      label: "Fix a Take",      icon: Stethoscope },
-  { value: "compare",  label: "Comparables",     icon: Search },
-  { value: "feedback", label: "Honest Feedback", icon: Gauge },
-  { value: "master",   label: "Mastering",       icon: AudioWaveform },
-  { value: "library",  label: "Prompt Library",  icon: BookMarked },
-  { value: "genres",   label: "Genre Guides",    icon: Map },
-  { value: "usage",    label: "Usage",           icon: BarChart2 },
-  { value: "assistant", label: "Assistant",      icon: Bot },
+  { value: "blend",     label: "Band Blender",  icon: Sliders,       hint: "Blend up to 3 artists into one produceable style tag for Suno" },
+  { value: "lyrics",    label: "Lyric Forge",   icon: Wand2,         hint: "Generate hook-first lyrics with per-line control and structure tags" },
+  { value: "fix",       label: "Fix a Track",   icon: Stethoscope,   hint: "Diagnose why your Suno track sounds off and get targeted fixes" },
+  { value: "suno",      label: "Export Sheet",  icon: Send,          hint: "Copy your finished style tag and lyrics into Suno's custom mode" },
+  { value: "feedback",  label: "Honest Feedback", icon: Gauge,       hint: "Get a blunt, no-nonsense critique of your lyrics before you generate" },
+  { value: "compare",   label: "Comparables",   icon: Search,        hint: "Find similar artists to your blend for more inspiration" },
+  { value: "assistant", label: "Assistant",     icon: Bot,           hint: "Describe a sound in plain English — the assistant sets up the Blender" },
+  { value: "genres",    label: "Genre Guides",  icon: Map,           hint: "Browse genre presets with ready-to-use style tags and BPM ranges" },
+  { value: "master",    label: "Mastering",     icon: AudioWaveform, hint: "Fine-tune your track's EQ, compression, and loudness after generation" },
+  { value: "library",   label: "Prompt Library", icon: BookMarked,   hint: "Save and reuse your best style prompts across sessions" },
+  { value: "dossier",   label: "Release Kit",   icon: Rocket,        hint: "Generate cover art prompts, metadata, and social copy for your release" },
+  { value: "usage",     label: "Usage",         icon: BarChart2,     hint: "Track how many AI generations you've used this session" },
 ];
 
 function Index() {
@@ -227,6 +228,7 @@ function Index() {
   return (
     <AuthProvider>
       <SettingsProvider>
+        <TooltipProvider delayDuration={400}>
         <div className="min-h-screen pb-24">
           <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -294,20 +296,26 @@ function Index() {
                 {/* Left sidebar nav — desktop only */}
                 <nav className="hidden lg:flex w-48 shrink-0 flex-col gap-0.5 rounded-xl border border-border bg-panel/70 p-1.5 sticky top-4 self-start">
                   {TABS.map((t) => (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => setTab(t.value)}
-                      className={
-                        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.14em] uppercase text-left transition-colors " +
-                        (tab === t.value
-                          ? "bg-primary/20 text-primary"
-                          : "text-muted-foreground hover:bg-card/60 hover:text-foreground")
-                      }
-                    >
-                      <t.icon className="size-3.5 shrink-0" />
-                      {t.label}
-                    </button>
+                    <Tooltip key={t.value}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setTab(t.value)}
+                          className={
+                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.14em] uppercase text-left transition-colors " +
+                            (tab === t.value
+                              ? "bg-primary/20 text-primary"
+                              : "text-muted-foreground hover:bg-card/60 hover:text-foreground")
+                          }
+                        >
+                          <t.icon className="size-3.5 shrink-0" />
+                          {t.label}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-[240px] text-left font-sans normal-case tracking-normal">
+                        {t.hint}
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </nav>
 
@@ -315,20 +323,26 @@ function Index() {
                   {/* Horizontal strip — mobile only */}
                   <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-border bg-panel/70 p-1 lg:hidden">
                     {TABS.map((t) => (
-                      <button
-                        key={t.value}
-                        type="button"
-                        onClick={() => setTab(t.value)}
-                        className={
-                          "flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-colors " +
-                          (tab === t.value
-                            ? "bg-primary/20 text-primary"
-                            : "text-muted-foreground hover:bg-card/60 hover:text-foreground")
-                        }
-                      >
-                        <t.icon className="size-3.5" />
-                        {t.label}
-                      </button>
+                      <Tooltip key={t.value}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => setTab(t.value)}
+                            className={
+                              "flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-colors " +
+                              (tab === t.value
+                                ? "bg-primary/20 text-primary"
+                                : "text-muted-foreground hover:bg-card/60 hover:text-foreground")
+                            }
+                          >
+                            <t.icon className="size-3.5" />
+                            {t.label}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[200px] text-center font-sans normal-case tracking-normal">
+                          {t.hint}
+                        </TooltipContent>
+                      </Tooltip>
                     ))}
                   </div>
 
@@ -450,6 +464,7 @@ function Index() {
           <SystemPanel />
           <Toaster />
         </div>
+        </TooltipProvider>
       </SettingsProvider>
     </AuthProvider>
   );
