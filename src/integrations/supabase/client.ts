@@ -29,7 +29,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 
 const LOVABLE_SUPABASE_URL = 'https://c--bec9cf82-40c7-471c-afdc-82075b1ef942-prod.lovable.cloud';
-const LOVABLE_SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrcWNmaWdkZXFqZ3dtd2JvaXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNzIyOTgsImV4cCI6MjEwNzc0ODI5OH0.X2-hYasNADL8aI3wNP7CCQOQ3IKDGhfPjURSxwFAW3c';
+const LOVABLE_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_lOzZx7rjsFrWoy8K0dveDw_7nqeLi6E';
 
 function createSupabaseClient() {
   // Keep the Lovable Cloud connection available when published builds omit environment injection.
