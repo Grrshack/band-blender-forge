@@ -51,3 +51,35 @@ describe("chooseProvider", () => {
     expect(result).toEqual({ via: "gateway", key: "gw-789", ownerPays: true });
   });
 });
+
+describe("chooseProvider: Gemini", () => {
+  it("routes a user Google key with an AQ. prefix to gemini", () => {
+    const result = chooseProvider({ userKey: "AQ.exampleKey" });
+    expect(result).toEqual({ via: "gemini", key: "AQ.exampleKey", ownerPays: false });
+  });
+
+  it("routes a user Gemini key (AIza…) to gemini, not rate-limited", () => {
+    const result = chooseProvider({ userKey: "AIzaSyExampleKey123" });
+    expect(result).toEqual({ via: "gemini", key: "AIzaSyExampleKey123", ownerPays: false });
+  });
+
+  it("routes a user Anthropic key to anthropic even when a server Gemini key exists", () => {
+    const result = chooseProvider({ userKey: "sk-ant-user", serverGeminiKey: "AIzaServer" });
+    expect(result).toEqual({ via: "anthropic", key: "sk-ant-user", ownerPays: false });
+  });
+
+  it("uses the server Anthropic key before the server Gemini key", () => {
+    const result = chooseProvider({ serverAnthropicKey: "sk-ant-server", serverGeminiKey: "AIzaServer" });
+    expect(result).toEqual({ via: "anthropic", key: "sk-ant-server", ownerPays: true });
+  });
+
+  it("falls back to the server Gemini key (ownerPays: true) before the gateway", () => {
+    const result = chooseProvider({ serverGeminiKey: "AIzaServer", gatewayKey: "gw-789" });
+    expect(result).toEqual({ via: "gemini", key: "AIzaServer", ownerPays: true });
+  });
+
+  it("skips an empty server Gemini key and uses the gateway", () => {
+    const result = chooseProvider({ serverGeminiKey: "  ", gatewayKey: "gw-789" });
+    expect(result).toEqual({ via: "gateway", key: "gw-789", ownerPays: true });
+  });
+});
