@@ -28,18 +28,17 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 
-const ORIGINAL_SUPABASE_URL = 'https://kkqcfigdeqjgwmwboizr.supabase.co';
-const ORIGINAL_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrcWNmaWdkZXFqZ3dtd2JvaXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNzIyOTgsImV4cCI6MjEwNzc0ODI5OH0.X2-hYasNADL8aI3wNP7CCQOQ3IKDGhfPjURSxwFAW3c';
+const LOVABLE_SUPABASE_URL = 'https://c--bec9cf82-40c7-471c-afdc-82075b1ef942-prod.lovable.cloud';
+const LOVABLE_SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrcWNmaWdkZXFqZ3dtd2JvaXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNzIyOTgsImV4cCI6MjEwNzc0ODI5OH0.X2-hYasNADL8aI3wNP7CCQOQ3IKDGhfPjURSxwFAW3c';
 
 function createSupabaseClient() {
-  // Keep the original project available when published builds omit environment injection.
+  // Keep the Lovable Cloud connection available when published builds omit environment injection.
   const SUPABASE_URL =
-    import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'] || ORIGINAL_SUPABASE_URL;
+    process.env['SUPABASE_URL'] || import.meta.env['VITE_SUPABASE_URL'] || LOVABLE_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
-    import.meta.env['VITE_SUPABASE_ANON_KEY'] ||
     process.env['SUPABASE_PUBLISHABLE_KEY'] ||
-    ORIGINAL_SUPABASE_ANON_KEY;
+    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
+    LOVABLE_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
