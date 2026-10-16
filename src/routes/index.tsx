@@ -29,9 +29,10 @@ import { GenreGuide } from "@/components/forge/GenreGuide";
 import { UsageDashboard } from "@/components/forge/UsageDashboard";
 import { SettingsProvider } from "@/components/forge/settings";
 import { SharedView } from "@/components/forge/SharedView";
+import { StudioAssistant, type IntentResponse } from "@/components/forge/StudioAssistant";
 import { SunoSheet } from "@/components/forge/SunoSheet";
 import { SystemPanel } from "@/components/forge/SystemPanel";
-import { emptyState, type ForgeState } from "@/components/forge/types";
+import { emptyState, type ForgeState, type BlendSlice } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Toaster } from "@/components/ui/sonner";
 import { getSharedBlend } from "@/lib/forge.functions";
@@ -87,6 +88,8 @@ function Index() {
   const [state, setState] = useState<ForgeState>(emptyState);
   const [shared, setShared] = useState<SharePayload | null>(null);
   const [mode, setMode] = useState<"guided" | "rack">("rack");
+  const [assistantAutoRun, setAssistantAutoRun] = useState(true);
+  const [blendAutoRun, setBlendAutoRun] = useState(false);
 
   useEffect(() => {
     try {
@@ -333,6 +336,8 @@ function Index() {
                       onChange={(v) => patch("blend", v)}
                       onSendToForge={() => setTab("lyrics")}
                       onOpenSunoSheet={() => setTab("suno")}
+                      autoRun={blendAutoRun}
+                      onAutoRunDone={() => setBlendAutoRun(false)}
                     />
                   )}
                   {tab === "lyrics" && (
@@ -408,6 +413,33 @@ function Index() {
             )}
           </main>
 
+          <StudioAssistant
+            currentBlend={state.blend}
+            autoRun={assistantAutoRun}
+            onToggleAutoRun={setAssistantAutoRun}
+            onApply={(intent) => {
+              const newBlend: BlendSlice = {
+                ...state.blend,
+                lookupMode: "band",
+                artists: [intent.artist_1, intent.artist_2, intent.artist_3].map(
+                  (a, i) => a || (state.blend.artists[i] ?? ""),
+                ),
+                targetGenre: intent.target_genre || state.blend.targetGenre,
+                targetEra: intent.era || state.blend.targetEra,
+                sliders: {
+                  energy: intent.energy,
+                  complexity: intent.complexity,
+                  brightness: intent.brightness,
+                },
+                result: null,
+              };
+              patch("blend", newBlend);
+              setTab("blend");
+              if (assistantAutoRun) {
+                setBlendAutoRun(true);
+              }
+            }}
+          />
           <SystemPanel />
           <Toaster />
         </div>
