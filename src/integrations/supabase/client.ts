@@ -28,11 +28,18 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 
+const ORIGINAL_SUPABASE_URL = 'https://kkqcfigdeqjgwmwboizr.supabase.co';
+const ORIGINAL_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrcWNmaWdkZXFqZ3dtd2JvaXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNzIyOTgsImV4cCI6MjEwNzc0ODI5OH0.X2-hYasNADL8aI3wNP7CCQOQ3IKDGhfPjURSxwFAW3c';
+
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+  // Keep the original project available when published builds omit environment injection.
+  const SUPABASE_URL =
+    import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'] || ORIGINAL_SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY =
+    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
+    import.meta.env['VITE_SUPABASE_ANON_KEY'] ||
+    process.env['SUPABASE_PUBLISHABLE_KEY'] ||
+    ORIGINAL_SUPABASE_ANON_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
