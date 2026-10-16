@@ -111,6 +111,7 @@ export function BandBlender({
   onOpenSunoSheet,
   autoRun,
   onAutoRunDone,
+  flashKey,
 }: {
   value: BlendSlice;
   onChange: (next: BlendSlice) => void;
@@ -119,6 +120,8 @@ export function BandBlender({
   /** Set by the studio assistant: run the blend once with the current form, then call onAutoRunDone. */
   autoRun?: boolean | undefined;
   onAutoRunDone?: (() => void) | undefined;
+  /** Increments when the assistant updates the form — triggers a one-shot border flash. */
+  flashKey?: number | undefined;
 }) {
   const forge = useServerFn(runForge);
   const { apiKey, routing } = useSettings();
@@ -136,6 +139,7 @@ export function BandBlender({
   const [showCard, setShowCard] = useState(false);
   const [shareSlug, setShareSlug] = useState<string | undefined>();
   const [sharing, setSharing] = useState(false);
+  const [flashing, setFlashing] = useState(false);
 
   // Style Chat state
   const [refineInput, setRefineInput] = useState("");
@@ -213,6 +217,14 @@ export function BandBlender({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRun]);
 
+  // One-shot flash on the form panel when the assistant changes something.
+  useEffect(() => {
+    if (!flashKey) return;
+    setFlashing(true);
+    const t = setTimeout(() => setFlashing(false), 1300);
+    return () => clearTimeout(t);
+  }, [flashKey]);
+
 
   /** Refine the style tag via natural-language instruction. */
   const refine = async () => {
@@ -256,6 +268,7 @@ export function BandBlender({
               ? "Analyse one specific song's production style."
               : "Blend up to three artists into one produceable style."
           }
+          className={flashing ? "assistant-flash" : undefined}
         >
           {/* Mode toggle */}
           <div className="mb-4 flex rounded-lg border border-border p-0.5">

@@ -90,6 +90,7 @@ function Index() {
   const [mode, setMode] = useState<"guided" | "rack">("rack");
   const [assistantAutoRun, setAssistantAutoRun] = useState(true);
   const [blendAutoRun, setBlendAutoRun] = useState(false);
+  const [blendFlashKey, setBlendFlashKey] = useState(0);
 
   useEffect(() => {
     try {
@@ -338,6 +339,7 @@ function Index() {
                       onOpenSunoSheet={() => setTab("suno")}
                       autoRun={blendAutoRun}
                       onAutoRunDone={() => setBlendAutoRun(false)}
+                      flashKey={blendFlashKey}
                     />
                   )}
                   {tab === "lyrics" && (
@@ -435,6 +437,7 @@ function Index() {
               };
               patch("blend", newBlend);
               setTab("blend");
+              setBlendFlashKey((k) => k + 1);
               if (assistantAutoRun) {
                 setBlendAutoRun(true);
               }

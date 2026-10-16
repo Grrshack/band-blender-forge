@@ -3,6 +3,7 @@ import { Bot, Loader2, MessageSquare, Send, Sparkles, X, Zap } from "lucide-reac
 import { useEffect, useRef, useState } from "react";
 
 import { runForge } from "@/lib/forge.functions";
+import { ERA_OPTIONS } from "@/lib/suno";
 import { useSettings } from "./settings";
 import type { BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,31 @@ export type IntentResponse = {
   complexity: number;
   brightness: number;
 };
+
+const VALID_ERAS = new Set(ERA_OPTIONS.map((e) => e.value));
+
+const clampSlider = (v: unknown): number => {
+  const n = typeof v === "number" ? v : 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+};
+
+function sanitizeIntent(raw: unknown): IntentResponse {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const str = (k: string): string =>
+    typeof r[k] === "string" ? (r[k] as string).trim() : "";
+  const era = str("era");
+  return {
+    reply: str("reply") || "Done — I've updated the blend settings.",
+    artist_1: str("artist_1"),
+    artist_2: str("artist_2"),
+    artist_3: str("artist_3"),
+    target_genre: str("target_genre"),
+    era: VALID_ERAS.has(era) ? era : "",
+    energy: clampSlider(r["energy"]),
+    complexity: clampSlider(r["complexity"]),
+    brightness: clampSlider(r["brightness"]),
+  };
+}
 
 const QUICK_STARTS = [
   "90s grunge meets retro synthwave",
@@ -58,6 +84,12 @@ export function StudioAssistant({
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Ref mirrors currentBlend so the async send closure always sees the latest values.
+  const blendRef = useRef(currentBlend);
+  useEffect(() => {
+    blendRef.current = currentBlend;
+  }, [currentBlend]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
@@ -69,6 +101,7 @@ export function StudioAssistant({
     setError(null);
     setBusy(true);
 
+    const blend = blendRef.current;
     const history = messages.slice(-6).map((m) => ({ role: m.role, text: m.text }));
 
     setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
@@ -82,20 +115,20 @@ export function StudioAssistant({
           payload: {
             message: trimmed,
             current: {
-              artist_1: currentBlend.artists[0] ?? "",
-              artist_2: currentBlend.artists[1] ?? "",
-              artist_3: currentBlend.artists[2] ?? "",
-              target_genre: currentBlend.targetGenre,
-              era: currentBlend.targetEra,
-              energy: currentBlend.sliders.energy,
-              complexity: currentBlend.sliders.complexity,
-              brightness: currentBlend.sliders.brightness,
+              artist_1: blend.artists[0] ?? "",
+              artist_2: blend.artists[1] ?? "",
+              artist_3: blend.artists[2] ?? "",
+              target_genre: blend.targetGenre,
+              era: blend.targetEra,
+              energy: blend.sliders.energy,
+              complexity: blend.sliders.complexity,
+              brightness: blend.sliders.brightness,
             },
             history,
           },
         },
       });
-      const parsed = JSON.parse(res.json) as IntentResponse;
+      const parsed = sanitizeIntent(JSON.parse(res.json));
       setMessages((prev) => [...prev, { role: "assistant", text: parsed.reply }]);
       onApply(parsed);
     } catch (e) {
@@ -130,14 +163,24 @@ export function StudioAssistant({
         </span>
       </button>
 
-      {/* Drawer */}
+      {/* Desktop: right-side drawer / Mobile: bottom sheet */}
       <aside
         className={cn(
-          "fixed top-0 right-0 z-50 flex h-dvh w-full max-w-[380px] flex-col border-l border-border bg-panel/95 backdrop-blur-xl transition-transform duration-300",
-          open ? "translate-x-0" : "translate-x-full",
+          "fixed z-50 flex flex-col border-border bg-panel/95 backdrop-blur-xl transition-transform duration-300",
+          "lg:top-0 lg:right-0 lg:h-dvh lg:max-w-[380px] lg:border-l lg:translate-x-0",
+          open
+            ? "translate-y-0 lg:translate-x-0"
+            : "translate-y-full lg:translate-y-0 lg:translate-x-full",
+          // Mobile: bottom sheet
+          "inset-x-0 bottom-0 max-h-[65dvh] rounded-t-2xl border-t lg:inset-auto lg:rounded-none lg:border-t-0",
         )}
         aria-hidden={!open}
       >
+        {/* Mobile drag handle */}
+        <div className="flex justify-center pt-2 lg:hidden">
+          <span className="h-1 w-10 rounded-full bg-border" />
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2.5">
