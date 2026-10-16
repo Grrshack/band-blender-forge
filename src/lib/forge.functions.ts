@@ -49,6 +49,13 @@ const GATEWAY_MODELS: Record<Routing, string> = {
   craft: "google/gemini-3.1-pro-preview",
 };
 
+// Google AI Studio (OpenAI-compatible endpoint). "fast" is confirmed in Google's docs;
+// "craft" is unverified, so check it against AI Studio's model list if it returns 404.
+const GEMINI_MODELS: Record<Routing, string> = {
+  fast: "gemini-3.8-flash",
+  craft: "gemini-3.1-pro-preview",
+};
+
 /** Writing quality is the product, so these always use the stronger model, whatever the toggle says. */
 const CRAFT_TASKS = new Set([
   "lyrics",
@@ -96,7 +103,9 @@ function failure(status: number, provider: string, message: string): Error {
     return new Error(
       provider === "anthropic"
         ? "Your Anthropic API key was rejected. Check the key in the System panel."
-        : `Built-in AI is unavailable (${status}). ${message}`,
+        : provider === "gemini"
+          ? "Your Gemini API key was rejected. Check the key in the System panel."
+          : `Built-in AI is unavailable (${status}). ${message}`,
     );
   }
   if (status === 402) {
@@ -146,6 +155,32 @@ async function callAnthropic(apiKey: string, routing: Routing, user: string, max
   return json.content?.map((c) => c.text ?? "").join("") ?? "";
 }
 
+async function callGemini(key: string, routing: Routing, user: string, maxTokens: number) {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: GEMINI_MODELS[routing],
+      max_tokens: maxTokens,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: user },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw failure(res.status, "gemini", body.slice(0, 300));
+  }
+  const json = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  return json.choices?.[0]?.message?.content ?? "";
+}
+
 async function callGateway(key: string, routing: Routing, user: string, maxTokens: number) {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -180,6 +215,7 @@ export const runForge = createServerFn({ method: "POST" })
     const choice = chooseProvider({
       userKey: data.apiKey,
       serverAnthropicKey: process.env["ANTHROPIC_API_KEY"],
+      serverGeminiKey: process.env["GEMINI_API_KEY"],
       gatewayKey: process.env["LOVABLE_API_KEY"],
     });
     if (!choice) {
@@ -191,10 +227,13 @@ export const runForge = createServerFn({ method: "POST" })
 
     // A model the site owner pays for requires sign-in and is rate-limited.
     // Callers who bring their own key spend their own credits and are not restricted.
-    if (choice.ownerPays) {
+    // ALLOW_ANON_OWNER_KEY=true lets anyone use the owner's key without signing in and skips
+    // the hourly limit. Use it for private/local runs only: on a public site, anyone could spend it.
+    const allowAnonOwnerKey = process.env["ALLOW_ANON_OWNER_KEY"] === "true";
+    if (choice.ownerPays && !allowAnonOwnerKey) {
       if (!context.userId || !context.supabase) {
         throw new Error(
-          "Sign in to use the built-in model, or add your own Anthropic API key in System & Credentials.",
+          "Sign in to use the built-in model, or add your own API key (Anthropic or Gemini) in System & Credentials.",
         );
       }
       const usage = await consumeUsage(context.supabase, context.userId, data.task);
@@ -211,7 +250,9 @@ export const runForge = createServerFn({ method: "POST" })
       withRateLimitRetry(() =>
         choice.via === "anthropic"
           ? callAnthropic(choice.key, routing, text, maxTokens)
-          : callGateway(choice.key, routing, text, maxTokens),
+          : choice.via === "gemini"
+            ? callGemini(choice.key, routing, text, maxTokens)
+            : callGateway(choice.key, routing, text, maxTokens),
       );
 
     // Lyrics tasks generate full song sections and need more room than a blend or critique.
