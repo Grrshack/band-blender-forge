@@ -355,7 +355,8 @@ export const getSharedBlend = createServerFn({ method: "GET" })
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       process.env["SUPABASE_URL"] ?? "",
-      process.env["SUPABASE_ANON_KEY"] ?? "",
+      // Lovable Cloud (and HOSTING.md) set SUPABASE_PUBLISHABLE_KEY; SUPABASE_ANON_KEY is the legacy name.
+      process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_ANON_KEY"] || "",
     );
     const { data: row, error } = await supabase
       .from("public_blends")
