@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/brand";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -9,8 +10,8 @@ import type { BlendResult } from "@/components/forge/types";
 export const Route = createFileRoute("/blend/$slug")({
   head: () => ({
     meta: [
-      { title: "Shared Blend — Band Blender Forge" },
-      { name: "description", content: "A shared style prompt from Band Blender Forge." },
+      { title: `Shared Blend — ${APP_NAME}` },
+      { name: "description", content: `A shared style prompt from ${APP_NAME}.` },
     ],
   }),
   component: SharedBlendPage,
@@ -46,7 +47,7 @@ function SharedBlendPage() {
           to="/"
           className="mb-6 inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="size-3" /> Back to Band Blender Forge
+          <ArrowLeft className="size-3" /> Back to {APP_NAME}
         </Link>
 
         {loading && (

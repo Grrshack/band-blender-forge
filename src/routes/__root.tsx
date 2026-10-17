@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/brand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -78,12 +79,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Band Lookup & Lyric Forge" },
+      { title: APP_NAME },
       {
         name: "description",
         content: "Pre-production planning console for AI music generation.",
       },
-      { property: "og:title", content: "Band Lookup & Lyric Forge" },
+      { property: "og:title", content: APP_NAME },
       {
         property: "og:description",
         content: "Pre-production planning console for AI music generation.",

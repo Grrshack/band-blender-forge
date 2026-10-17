@@ -1,22 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  AudioLines,
-  AudioWaveform,
-  BarChart2,
-  BookMarked,
-  Bot,
-  Gauge,
-  Map,
-  Rocket,
-  Search,
-  Send,
-  Sliders,
-  Stethoscope,
-  Wand2,
-} from "lucide-react";
+import { AudioLines } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/forge/auth";
 import { BandBlender } from "@/components/forge/BandBlender";
 import { ComparableArtists } from "@/components/forge/ComparableArtists";
@@ -33,7 +19,10 @@ import { SettingsProvider } from "@/components/forge/settings";
 import { SharedView } from "@/components/forge/SharedView";
 import { StudioAssistant, type IntentResponse } from "@/components/forge/StudioAssistant";
 import { SunoSheet } from "@/components/forge/SunoSheet";
-import { SystemPanel } from "@/components/forge/SystemPanel";
+import { AiStatusButton } from "@/components/forge/SystemPanel";
+import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
+import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
+import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { emptyState, type ForgeState, type BlendSlice } from "@/components/forge/types";
 import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
 import { Toaster } from "@/components/ui/sonner";
@@ -45,13 +34,12 @@ import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Band Lookup & Lyric Forge — AI Music Pre-Production" },
+      { title: `${APP_NAME} — AI Music Pre-Production` },
       {
         name: "description",
-        content:
-          "Blend artists into one style, forge hook-first lyrics with per-line control, get blunt song critique and save every session.",
+        content: APP_DESCRIPTION,
       },
-      { property: "og:title", content: "Band Lookup & Lyric Forge" },
+      { property: "og:title", content: APP_NAME },
       {
         property: "og:description",
         content:
@@ -64,27 +52,13 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const TABS = [
-  { value: "blend",     label: "Band Blender",  icon: Sliders,       hint: "Blend up to 3 artists into one produceable style tag for Suno" },
-  { value: "lyrics",    label: "Lyric Forge",   icon: Wand2,         hint: "Generate hook-first lyrics with per-line control and structure tags" },
-  { value: "fix",       label: "Fix a Track",   icon: Stethoscope,   hint: "Diagnose why your Suno track sounds off and get targeted fixes" },
-  { value: "suno",      label: "Export Sheet",  icon: Send,          hint: "Copy your finished style tag and lyrics into Suno's custom mode" },
-  { value: "feedback",  label: "Honest Feedback", icon: Gauge,       hint: "Get a blunt, no-nonsense critique of your lyrics before you generate" },
-  { value: "compare",   label: "Comparables",   icon: Search,        hint: "Find similar artists to your blend for more inspiration" },
-  { value: "assistant", label: "Assistant",     icon: Bot,           hint: "Describe a sound in plain English — the assistant sets up the Blender" },
-  { value: "genres",    label: "Genre Guides",  icon: Map,           hint: "Browse genre presets with ready-to-use style tags and BPM ranges" },
-  { value: "master",    label: "Mastering",     icon: AudioWaveform, hint: "Fine-tune your track's EQ, compression, and loudness after generation" },
-  { value: "library",   label: "Prompt Library", icon: BookMarked,   hint: "Save and reuse your best style prompts across sessions" },
-  { value: "dossier",   label: "Release Kit",   icon: Rocket,        hint: "Generate cover art prompts, metadata, and social copy for your release" },
-  { value: "usage",     label: "Usage",         icon: BarChart2,     hint: "Track how many AI generations you've used this session" },
-];
 
 function Index() {
   const [tab, setTab] = useState(() => {
     // Read ?tab= param on first render so shared genre links land on the right tab.
     try {
       const p = new URLSearchParams(window.location.search).get("tab");
-      if (p && TABS.some((t) => t.value === p)) return p;
+      if (p && ALL_TAB_VALUES.includes(p)) return p;
     } catch { /* SSR */ }
     return "blend";
   });
@@ -229,7 +203,7 @@ function Index() {
     <AuthProvider>
       <SettingsProvider>
         <TooltipProvider delayDuration={400}>
-        <div className="min-h-screen pb-24">
+        <div className="min-h-screen pb-12">
           <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -238,14 +212,16 @@ function Index() {
                 </span>
                 <div>
                   <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                    Band Lookup &amp; Lyric Forge
+                    {APP_NAME}
                   </h1>
                   <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-                    Pre-production console for AI music generation
+                    {APP_TAGLINE}
                   </p>
                 </div>
               </div>
 
+              <div className="flex flex-wrap items-center gap-2">
+              <AiStatusButton />
               {/* ── Guided / Rack mode toggle ── */}
               <div
                 role="radiogroup"
@@ -275,6 +251,7 @@ function Index() {
                   </button>
                 ))}
               </div>
+              </div>
             </div>
           </header>
 
@@ -293,58 +270,10 @@ function Index() {
             ) : (
               /* ── Rack Console (left nav + content) ── */
               <div className="flex gap-5 lg:items-start">
-                {/* Left sidebar nav — desktop only */}
-                <nav className="hidden lg:flex w-48 shrink-0 flex-col gap-0.5 rounded-xl border border-border bg-panel/70 p-1.5 sticky top-4 self-start">
-                  {TABS.map((t) => (
-                    <Tooltip key={t.value}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => setTab(t.value)}
-                          className={
-                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.14em] uppercase text-left transition-colors " +
-                            (tab === t.value
-                              ? "bg-primary/20 text-primary"
-                              : "text-muted-foreground hover:bg-card/60 hover:text-foreground")
-                          }
-                        >
-                          <t.icon className="size-3.5 shrink-0" />
-                          {t.label}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-[240px] text-left font-sans normal-case tracking-normal">
-                        {t.hint}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </nav>
+                <RackSidebar tab={tab} onTab={setTab} />
 
                 <div className="min-w-0 flex-1">
-                  {/* Horizontal strip — mobile only */}
-                  <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-border bg-panel/70 p-1 lg:hidden">
-                    {TABS.map((t) => (
-                      <Tooltip key={t.value}>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => setTab(t.value)}
-                            className={
-                              "flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-[11px] tracking-[0.16em] uppercase transition-colors " +
-                              (tab === t.value
-                                ? "bg-primary/20 text-primary"
-                                : "text-muted-foreground hover:bg-card/60 hover:text-foreground")
-                            }
-                          >
-                            <t.icon className="size-3.5" />
-                            {t.label}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-[200px] text-center font-sans normal-case tracking-normal">
-                          {t.hint}
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
+                  <RackMobileNav tab={tab} onTab={setTab} />
 
                   {/* Tab content — conditional rendering */}
                   {tab === "blend" && (
@@ -461,7 +390,7 @@ function Index() {
             )}
           </main>
 
-          <SystemPanel />
+          <KeySetupDialog />
           <Toaster />
         </div>
         </TooltipProvider>

@@ -1,3 +1,4 @@
+import { APP_NAME } from "@/lib/brand";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AudioLines, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,13 +14,13 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — Band Lookup & Lyric Forge" },
+      { title: `Sign in — ${APP_NAME}` },
       {
         name: "description",
         content:
           "Sign in to save your blend, lyrics, comparable artists and prompt presets across sessions.",
       },
-      { property: "og:title", content: "Sign in — Band Lookup & Lyric Forge" },
+      { property: "og:title", content: `Sign in — ${APP_NAME}` },
       {
         property: "og:description",
         content: "Save your song sessions and prompt library to your account.",
@@ -96,7 +97,7 @@ function AuthPage() {
           </span>
           <div>
             <h1 className="neon-text font-display text-lg font-bold">
-              Band Lookup &amp; Lyric Forge
+              {APP_NAME}
             </h1>
             <p className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
               {mode === "in" ? "Sign in" : "Create account"}
