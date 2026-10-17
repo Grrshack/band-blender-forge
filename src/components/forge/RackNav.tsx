@@ -26,45 +26,110 @@ export const TAB_GROUPS: Group[] = [
   {
     stage: "Create",
     tabs: [
-      { value: "assistant", label: "Start here", icon: Bot, hint: "Say what you're making or what went wrong, and get pointed to the right tool" },
-      { value: "blend", label: "Band Blender", icon: Sliders, hint: "Blend up to 3 artists into one produceable style for Suno" },
-      { value: "lyrics", label: "Lyric Forge", icon: Wand2, hint: "Hook-first lyrics with per-line control and section tags" },
-      { value: "genres", label: "Genre Guides", icon: Map, hint: "Genre presets with ready-to-use style tags and BPM ranges" },
-      { value: "compare", label: "Comparables", icon: Search, hint: "Find real artists that match your lyrics or style" },
+      {
+        value: "assistant",
+        label: "Start here",
+        icon: Bot,
+        hint: "Say what you're making or what went wrong, and get pointed to the right tool",
+      },
+      {
+        value: "blend",
+        label: "Band Blender",
+        icon: Sliders,
+        hint: "Blend up to 3 artists into one produceable style for Suno",
+      },
+      {
+        value: "lyrics",
+        label: "Lyric Forge",
+        icon: Wand2,
+        hint: "Hook-first lyrics with per-line control and section tags",
+      },
+      {
+        value: "genres",
+        label: "Genre Guides",
+        icon: Map,
+        hint: "Genre presets with ready-to-use style tags and BPM ranges",
+      },
+      {
+        value: "compare",
+        label: "Comparables",
+        icon: Search,
+        hint: "Find real artists that match your lyrics or style",
+      },
     ],
   },
   {
     stage: "Generate",
     tabs: [
-      { value: "suno", label: "Export Sheet", icon: Send, hint: "Copy your style and lyrics into Suno, Udio or ElevenLabs" },
+      {
+        value: "suno",
+        label: "Export Sheet",
+        icon: Send,
+        hint: "Copy your style and lyrics into Suno, Udio or ElevenLabs",
+      },
     ],
   },
   {
     stage: "Fix",
     tabs: [
-      { value: "fix", label: "Fix a Track", icon: Stethoscope, hint: "Find out why a generation sounds off and how to fix it" },
-      { value: "feedback", label: "Honest Feedback", icon: Gauge, hint: "A blunt critique of your lyrics" },
-      { value: "master", label: "Mastering", icon: AudioWaveform, hint: "EQ, loudness and finishing, in your browser" },
+      {
+        value: "fix",
+        label: "Fix a Track",
+        icon: Stethoscope,
+        hint: "Find out why a generation sounds off and how to fix it",
+      },
+      {
+        value: "feedback",
+        label: "Honest Feedback",
+        icon: Gauge,
+        hint: "A blunt critique of your lyrics",
+      },
+      {
+        value: "master",
+        label: "Mastering",
+        icon: AudioWaveform,
+        hint: "EQ, loudness and finishing, in your browser",
+      },
     ],
   },
   {
     stage: "Release",
     tabs: [
-      { value: "dossier", label: "Release Kit", icon: Rocket, hint: "Cover art prompt, metadata, social copy and a release checklist" },
-      { value: "library", label: "Prompt Library", icon: BookMarked, hint: "Your saved prompts and the community's" },
+      {
+        value: "dossier",
+        label: "Release Kit",
+        icon: Rocket,
+        hint: "Cover art prompt, metadata, social copy and a release checklist",
+      },
+      {
+        value: "library",
+        label: "Prompt Library",
+        icon: BookMarked,
+        hint: "Your saved prompts and the community's",
+      },
     ],
   },
 ];
 
 /** Only meaningful when the site offers a built-in model, since that's what it counts. */
-const USAGE_TAB: TabDef = { value: "usage", label: "Usage", icon: BarChart2, hint: "Your built-in model calls" };
+const USAGE_TAB: TabDef = {
+  value: "usage",
+  label: "Usage",
+  icon: BarChart2,
+  hint: "Your built-in model calls",
+};
 
-export const ALL_TAB_VALUES = [...TAB_GROUPS.flatMap((g) => g.tabs.map((t) => t.value)), USAGE_TAB.value];
+export const ALL_TAB_VALUES = [
+  ...TAB_GROUPS.flatMap((g) => g.tabs.map((t) => t.value)),
+  USAGE_TAB.value,
+];
 
 function useGroups(): Group[] {
   const { builtIn } = useSettings();
   if (!builtIn) return TAB_GROUPS;
-  return TAB_GROUPS.map((g) => (g.stage === "Release" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g));
+  return TAB_GROUPS.map((g) =>
+    g.stage === "Release" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g,
+  );
 }
 
 /** Desktop: grouped sidebar. */

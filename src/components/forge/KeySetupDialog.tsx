@@ -1,5 +1,14 @@
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useSettings } from "./settings";
@@ -17,7 +26,11 @@ import { testApiKey } from "@/lib/forge.functions";
 import { providerLabel } from "@/lib/provider";
 import { cn } from "@/lib/utils";
 
-type Check = { state: "idle" } | { state: "testing" } | { state: "ok"; label: string } | { state: "fail"; message: string };
+type Check =
+  | { state: "idle" }
+  | { state: "testing" }
+  | { state: "ok"; label: string }
+  | { state: "fail"; message: string };
 
 const GOOGLE_KEY_URL = "https://aistudio.google.com/apikey";
 const ANTHROPIC_KEY_URL = "https://console.anthropic.com/settings/keys";
@@ -72,7 +85,10 @@ export function KeySetupDialog() {
         setCheck({ state: "fail", message: r.message });
       }
     } catch (e) {
-      setCheck({ state: "fail", message: e instanceof Error ? e.message : "The key check failed." });
+      setCheck({
+        state: "fail",
+        message: e instanceof Error ? e.message : "The key check failed.",
+      });
     }
   };
 
@@ -195,8 +211,8 @@ export function KeySetupDialog() {
             <span className="text-sm leading-snug">
               Remember on this device
               <span className="block text-xs text-muted-foreground">
-                Off: the key is forgotten when you close this tab. On: it stays in this browser,
-                so anyone using it could use your key.
+                Off: the key is forgotten when you close this tab. On: it stays in this browser, so
+                anyone using it could use your key.
               </span>
             </span>
           </label>
@@ -231,8 +247,8 @@ export function KeySetupDialog() {
               or Anthropic): your prompts aren't used to improve their products.
             </p>
             <p>
-              We never save your key. It stays in your browser and passes through our server only
-              to make each request. Google requires API users to be 18 or older.
+              We never save your key. It stays in your browser and passes through our server only to
+              make each request. Google requires API users to be 18 or older.
             </p>
           </div>
         </div>
@@ -258,7 +274,11 @@ export function KeySetupDialog() {
           >
             Test key
           </Button>
-          <Button onClick={save} disabled={!trimmed} className={cn(check.state === "ok" && "glow-primary")}>
+          <Button
+            onClick={save}
+            disabled={!trimmed}
+            className={cn(check.state === "ok" && "glow-primary")}
+          >
             Save key
           </Button>
         </div>

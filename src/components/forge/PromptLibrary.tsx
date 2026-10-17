@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { BookMarked, ChevronUp, Clipboard, Globe, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { BookMarked, ChevronUp, Clipboard, ExternalLink, Globe, Loader2, Plus, Search, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { listPublicPrompts, submitPublicPrompt, toggleUpvote, type PublicPrompt } from "@/lib/community.functions";
 import { toast } from "sonner";
@@ -40,6 +40,8 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
   const [tab, setTab] = useState<"mine" | "community">("mine");
   const [community, setCommunity] = useState<PublicPrompt[]>([]);
   const [communityLoading, setCommunityLoading] = useState(false);
+  const [recipesOnly, setRecipesOnly] = useState(false);
+  const [communityError, setCommunityError] = useState<string | null>(null);
 
   const [presets, setPresets] = useState<Preset[]>([]);
   const [query, setQuery] = useState("");
@@ -125,24 +127,14 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
     }
   };
 
-  if (!session) {
-    return (
-      <Panel title="Prompt Library" subtitle="Reusable starting points for style and lyrics.">
-        <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-6 text-center">
-          <BookMarked className="size-8 text-muted-foreground" />
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Sign in to browse the starter presets and save your own reusable style and lyric
-            prompts.
-          </p>
-        </div>
-      </Panel>
-    );
-  }
 
-  const loadCommunityPrompts = async () => {
+  const loadCommunityPrompts = async (onlyRecipes = recipesOnly) => {
     setCommunityLoading(true);
+    setCommunityError(null);
     try {
-      setCommunity(await loadCommunity({ data: { limit: 24, offset: 0 } }));
+      setCommunity(await loadCommunity({ data: { limit: 24, offset: 0, recipesOnly: onlyRecipes } }));
+    } catch (e) {
+      setCommunityError(e instanceof Error ? e.message : "Could not load community prompts.");
     } finally {
       setCommunityLoading(false);
     }
@@ -175,6 +167,11 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
     if (tab === "community" && community.length === 0) void loadCommunityPrompts();
   }, [tab]);
 
+  // Signed-out visitors start on the community tab, which needs no account.
+  useEffect(() => {
+    if (!session) setTab("community");
+  }, [session]);
+
   return (
     <div className="space-y-4">
       {/* Tab toggle */}
@@ -199,12 +196,42 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
       </div>
 
       {tab === "community" && (
-        <div>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {([
+              [false, "Everything"],
+              [true, "Recipes with a song"],
+            ] as const).map(([only, label]) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={recipesOnly === only}
+                onClick={() => {
+                  setRecipesOnly(only);
+                  void loadCommunityPrompts(only);
+                }}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  recipesOnly === only
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+            <span className="text-xs text-muted-foreground">
+              Recipes are takes someone kept, with a link to hear the result.
+            </span>
+          </div>
+          {communityError ? (
+            <ErrorNote message={communityError} onRetry={() => void loadCommunityPrompts()} />
+          ) : null}
           {communityLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
-          ) : community.length === 0 ? (
+          ) : community.length === 0 && !communityError ? (
             <Panel title="Community Prompts" subtitle="No prompts submitted yet — be the first!">
               <p className="py-8 text-center text-sm text-muted-foreground">
                 Submit a prompt from your blends to share it here.
@@ -216,6 +243,11 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
                 <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card/50 p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
+                      {p.suno_url ? (
+                        <span className="mb-1 inline-flex items-center gap-1 rounded-full border border-signal-high/40 bg-signal-high/10 px-2 py-0.5 text-[10px] text-signal-high">
+                          <Star className="size-2.5 fill-current" /> Kept recipe
+                        </span>
+                      ) : null}
                       <div className="font-medium text-sm text-foreground">{p.title}</div>
                       {p.artists.length > 0 && (
                         <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
@@ -242,7 +274,20 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
                       {p.style_tag}
                     </p>
                   </div>
+                  {p.recipe_note ? (
+                    <p className="text-xs italic text-foreground/80">"{p.recipe_note}"</p>
+                  ) : null}
                   <div className="flex gap-1.5">
+                    {p.suno_url ? (
+                      <a
+                        href={p.suno_url}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className="flex items-center gap-1 rounded border border-signal-high/40 px-2 py-1 font-mono text-[10px] text-signal-high hover:bg-signal-high/10"
+                      >
+                        <ExternalLink className="size-3" /> Listen
+                      </a>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => { onApply("style", p.style_tag); }}
@@ -265,7 +310,22 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
         </div>
       )}
 
-      {tab === "mine" && (
+      {tab === "mine" && !session && (
+        <Panel title="My presets" subtitle="Reusable starting points for style and lyrics.">
+          <div className="flex h-56 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-6 text-center">
+            <BookMarked className="size-8 text-muted-foreground" />
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Sign in to browse the starter presets and save your own style and lyric prompts.
+              The community library is open to everyone.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setTab("community")}>
+              Browse community prompts
+            </Button>
+          </div>
+        </Panel>
+      )}
+
+      {tab === "mine" && session && (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
       <Panel title="Save a Preset" subtitle="Anything you find yourself typing twice.">
         {error ? <ErrorNote message={error} /> : null}

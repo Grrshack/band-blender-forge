@@ -1,4 +1,4 @@
-import { Loader2, MessageSquare, Send, Sparkles, Zap } from "lucide-react";
+import { AudioWaveform, Loader2, MessageSquare, PenLine, Send, Sparkles, Stethoscope, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { ERA_OPTIONS } from "@/lib/suno";
@@ -65,7 +65,11 @@ export function StudioAssistant({
   onApply,
   autoRun,
   onToggleAutoRun,
+  onGoTab,
+  onFixSong,
 }: {
+  onGoTab: (tab: string) => void;
+  onFixSong: (notes: string) => void;
   currentBlend: BlendSlice;
   onApply: (intent: IntentResponse) => void;
   autoRun: boolean;
@@ -145,9 +149,10 @@ export function StudioAssistant({
 
   return (
     <div className="space-y-5">
+      <StartPaths onGoTab={onGoTab} onFixSong={onFixSong} />
       <Panel
-        title="Studio Assistant"
-        subtitle="Describe a sound in plain English — the assistant sets up the Band Blender for you automatically."
+        title="Describe the sound you want"
+        subtitle="Plain English is fine. The assistant sets up the Band Blender for you."
         action={
           <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
             <Zap className="size-3.5 text-accent" />
@@ -231,6 +236,7 @@ export function StudioAssistant({
         {/* Input */}
         <div className="flex gap-2">
           <Textarea
+            id="assistant-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -256,5 +262,98 @@ export function StudioAssistant({
         </div>
       </Panel>
     </div>
+  );
+}
+
+const PATHS = [
+  {
+    id: "new",
+    icon: Sparkles,
+    title: "Start a new song",
+    body: "Describe the sound below, or blend up to three artists yourself.",
+    tab: "blend",
+  },
+  {
+    id: "fix",
+    icon: Stethoscope,
+    title: "Fix a song Suno made",
+    body: "Tell us what's wrong, add the audio file, and get the quickest fix.",
+    tab: "fix",
+  },
+  {
+    id: "lyrics",
+    icon: PenLine,
+    title: "Write or improve lyrics",
+    body: "Hook-first lyrics with per-line control, or a blunt critique of yours.",
+    tab: "lyrics",
+  },
+  {
+    id: "master",
+    icon: AudioWaveform,
+    title: "Master a song or stem",
+    body: "Clean up the low end, loudness and harshness. Runs in your browser.",
+    tab: "master",
+  },
+] as const;
+
+/** The front door: four plain choices so a new visitor knows where to go. */
+function StartPaths({
+  onGoTab,
+  onFixSong,
+}: {
+  onGoTab: (tab: string) => void;
+  onFixSong: (notes: string) => void;
+}) {
+  const [fixing, setFixing] = useState(false);
+  const [notes, setNotes] = useState("");
+  return (
+    <section className="panel-surface p-5 sm:p-6">
+      <h2 className="font-display text-xl font-semibold">What do you want to do?</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Pick one. You can move between tools any time from the menu.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {PATHS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => (p.id === "fix" ? setFixing((v) => !v) : p.id === "new" ? document.getElementById("assistant-input")?.focus() : onGoTab(p.tab))}
+            aria-expanded={p.id === "fix" ? fixing : undefined}
+            className={cn(
+              "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+              p.id === "fix" && fixing
+                ? "border-primary/60 bg-primary/10"
+                : "border-border bg-card/40 hover:border-primary/50 hover:bg-card/70",
+            )}
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/40 bg-primary/10">
+              <p.icon className="size-4 text-primary" />
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-foreground">{p.title}</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{p.body}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {fixing ? (
+        <div className="mt-4 space-y-2 rounded-xl border border-primary/40 bg-primary/5 p-4">
+          <label htmlFor="fix-notes" className="text-sm font-medium">
+            What's wrong with it?
+          </label>
+          <Textarea
+            id="fix-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="The chorus is great but the verses drag, and the vocals sound robotic…"
+            className="resize-y bg-card/60 text-sm"
+          />
+          <Button onClick={() => onFixSong(notes.trim())} className="gap-1.5">
+            <Stethoscope className="size-4" /> Continue to Fix a Track
+          </Button>
+        </div>
+      ) : null}
+    </section>
   );
 }

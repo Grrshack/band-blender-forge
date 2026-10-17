@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Disc3, Loader2, Rocket } from "lucide-react";
+import { ChevronDown, ChevronUp, Disc3, ExternalLink, Loader2, Rocket } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -82,6 +82,7 @@ export function ReleaseDossier({
   const m = current?.metadata;
 
   return (
+    <div className="space-y-5">
     <Panel
       title="Release Kit"
       subtitle="Cover art prompts, streaming metadata, pitch copy and social hooks — one click, one AI call."
@@ -198,6 +199,99 @@ export function ReleaseDossier({
           )}
         </>
       )}
+    </Panel>
+    <ReleaseChecklist />
+    </div>
+  );
+}
+
+const SUNO_HELP = "https://help.suno.com/en/articles/";
+
+/** Links go to Suno's own help pages rather than restating their terms, which change. */
+const CHECKLIST: Array<{ title: string; body: string; links?: Array<[string, string]> }> = [
+  {
+    title: "Check which Suno plan you made the song on",
+    body: "Songs made on the free plan are for non-commercial use and can't be monetized. Subscribing later doesn't automatically change that for songs you already made.",
+    links: [
+      ["Free plan rights", `${SUNO_HELP}9601601`],
+      ["Songs made before subscribing", `${SUNO_HELP}2425729`],
+    ],
+  },
+  {
+    title: "Read Suno's rules on streaming and ownership",
+    body: "Before uploading to Spotify, Apple Music or YouTube, read what Suno says about distribution and who owns the song.",
+    links: [
+      ["Distributing to Spotify and others", `${SUNO_HELP}2410177`],
+      ["Do I have the copyright?", `${SUNO_HELP}2746945`],
+      ["Does Suno own my music?", `${SUNO_HELP}2416769`],
+    ],
+  },
+  {
+    title: "Answer your distributor's AI questions honestly",
+    body: "Many distributors ask whether a track was made with AI. Check their policy before you upload.",
+  },
+  {
+    title: "Keep real artist names out of your title and credits",
+    body: "Don't title a song after an artist or list them as a featured performer. Describe the sound, not the person.",
+  },
+  {
+    title: "Master for streaming",
+    body: "Run the song through Mastering with the \"Streaming ready\" preset so it isn't quieter or harsher than everything around it.",
+  },
+  {
+    title: "Keep a record of how you made it",
+    body: "Your take log keeps each prompt, rating and Suno link. Signed in, it's saved with the song.",
+  },
+];
+
+function ReleaseChecklist() {
+  const [done, setDone] = useState<Set<number>>(new Set());
+  return (
+    <Panel
+      title="Before you release"
+      subtitle="A short checklist. Not legal advice: Suno's terms change, so the links go to their own pages."
+    >
+      <ol className="space-y-2.5">
+        {CHECKLIST.map((item, i) => (
+          <li key={item.title} className="flex gap-3 rounded-lg border border-border bg-card/40 p-3">
+            <input
+              type="checkbox"
+              checked={done.has(i)}
+              onChange={() =>
+                setDone((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(i)) next.delete(i);
+                  else next.add(i);
+                  return next;
+                })
+              }
+              aria-label={item.title}
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+            />
+            <div className="min-w-0">
+              <p className={done.has(i) ? "text-sm text-muted-foreground line-through" : "text-sm font-medium"}>
+                {item.title}
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.body}</p>
+              {item.links ? (
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                  {item.links.map(([label, href]) => (
+                    <a
+                      key={href}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2"
+                    >
+                      {label} <ExternalLink className="size-3" />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ol>
     </Panel>
   );
 }

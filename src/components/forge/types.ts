@@ -66,6 +66,11 @@ export type CritiqueResult = {
 };
 
 export type FixResult = {
+  /** Best next step: edit parts of this take in Suno v6, regenerate with a new prompt, or fix it in mastering. */
+  fixRoute?: "edit" | "regenerate" | "master";
+  routeWhy?: string;
+  /** Plain-language instructions for Suno v6's edit feature. */
+  sunoEdits?: Array<{ target?: string; instruction?: string }>;
   diagnosis?: string;
   changes?: Array<{ change?: string; why?: string }>;
   styleTag?: string;

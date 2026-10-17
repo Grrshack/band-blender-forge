@@ -29,6 +29,8 @@ import {
   mergeWordCounts,
 } from "@/lib/cliches";
 import { findBannedWords, parseBannedWords } from "@/lib/banned-words";
+import { findPronunciationRisks } from "@/lib/pronunciation";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +53,30 @@ function LineMarkers({
   const syllables = counts[index] ?? 0;
   const outlier = isSyllableOutlier(counts, index);
   const worn = locked ? [] : findCliches(text);
+  const say = findPronunciationRisks(text);
   return (
     <div className="mr-1 flex items-center gap-1.5">
+      {say.length ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Pronunciation check: ${say.map((r) => r.word).join(", ")}`}
+              className="rounded bg-accent/15 px-1 font-mono text-[10px] text-accent"
+            >
+              SAY
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs space-y-1.5 text-left">
+            {say.map((r) => (
+              <p key={r.word} className="text-xs leading-snug">
+                <span className="font-semibold">{r.word}</span>: {r.why}{" "}
+                <span className="font-medium">Try: {r.suggestion}</span>
+              </p>
+            ))}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
       {blocked.length ? (
         <span
           title={`Uses a banned word: "${blocked.join('", "')}". Regenerate or rewrite this line.`}

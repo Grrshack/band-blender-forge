@@ -1,9 +1,9 @@
-import { Star, Trash2 } from "lucide-react";
+import { ExternalLink, Share2, Star, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { bestTake, diffTags, newTake, tagPatterns, type Take } from "@/lib/takes";
+import { bestTake, diffTags, isSunoUrl, newTake, tagPatterns, type Take } from "@/lib/takes";
 import { cn } from "@/lib/utils";
 
 /** Log each generated take with a rating, see what changed between versions, and restore any prompt. */
@@ -13,7 +13,12 @@ export function TakeLog({
   style,
   exclude,
   onRestore,
+  onShareRecipe,
+  defaultTitle = "",
 }: {
+  /** Shares a kept take (5 stars, with a Suno link) to the community as a recipe. */
+  onShareRecipe?: (take: Take, title: string) => Promise<void>;
+  defaultTitle?: string;
   takes: Take[];
   onTakes: (next: Take[]) => void;
   style: string;
@@ -22,14 +27,18 @@ export function TakeLog({
 }) {
   const [rating, setRating] = useState<Take["rating"]>(3);
   const [note, setNote] = useState("");
+  const [link, setLink] = useState("");
+  const linkBad = link.trim() !== "" && !isSunoUrl(link);
 
   const best = useMemo(() => bestTake(takes), [takes]);
   const patterns = useMemo(() => tagPatterns(takes), [takes]);
 
   const log = () => {
     if (!style.trim()) return;
-    onTakes([...takes, newTake(style, exclude, rating, note)]);
+    if (linkBad) return;
+    onTakes([...takes, newTake(style, exclude, rating, note, new Date(), link)]);
     setNote("");
+    setLink("");
   };
 
   const ordered = [...takes].map((t, i) => ({ t, prev: takes[i - 1] ?? null })).reverse();
@@ -68,16 +77,31 @@ export function TakeLog({
             placeholder="What was it like? (optional)"
             className="h-9 min-w-[180px] flex-1 border-border bg-card/60 text-sm focus-visible:ring-primary"
           />
+          <Input
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            maxLength={300}
+            inputMode="url"
+            aria-invalid={linkBad}
+            placeholder="Suno link (optional)"
+            className={cn(
+              "h-9 min-w-[160px] flex-1 border-border bg-card/60 text-sm focus-visible:ring-primary",
+              linkBad && "border-destructive",
+            )}
+          />
           <Button
             type="button"
             size="sm"
-            disabled={!style.trim()}
+            disabled={!style.trim() || linkBad}
             onClick={log}
             className="h-9 text-xs"
           >
             Log this take
           </Button>
         </div>
+        {linkBad ? (
+          <p className="mt-2 text-xs text-destructive">Use the song's link from suno.com.</p>
+        ) : null}
         <p className="mt-2 text-[11px] text-muted-foreground">
           Saves the style prompt above with your rating. The diagnosis uses your last few takes, so
           it stops repeating changes that didn't help.
@@ -139,6 +163,16 @@ export function TakeLog({
                     {new Date(t.at).toLocaleString()}
                   </span>
                   <span className="ml-auto flex items-center gap-1">
+                    {t.sunoUrl ? (
+                      <a
+                        href={t.sunoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-7 items-center gap-1 rounded-md border border-border px-2 text-xs text-foreground/90 hover:border-primary/50"
+                      >
+                        <ExternalLink className="size-3" /> Listen
+                      </a>
+                    ) : null}
                     <Button
                       type="button"
                       size="sm"
@@ -159,6 +193,16 @@ export function TakeLog({
                   </span>
                 </div>
                 {t.note ? <p className="mt-2 text-sm text-foreground/90">{t.note}</p> : null}
+                {t.rating === 5 && onShareRecipe ? (
+                  <RecipeShare
+                    take={t}
+                    defaultTitle={defaultTitle}
+                    onAddLink={(url) =>
+                      onTakes(takes.map((x) => (x.id === t.id ? { ...x, sunoUrl: url } : x)))
+                    }
+                    onShare={onShareRecipe}
+                  />
+                ) : null}
                 {d && (d.added.length || d.removed.length) ? (
                   <p className="mt-2 flex flex-wrap gap-1.5 font-mono text-[11px]">
                     <span className="text-muted-foreground">vs previous:</span>
@@ -182,6 +226,94 @@ export function TakeLog({
           })}
         </ul>
       ) : null}
+    </div>
+  );
+}
+
+/** For a 5-star take: add its Suno link if missing, then share it as a community recipe. */
+function RecipeShare({
+  take,
+  defaultTitle,
+  onAddLink,
+  onShare,
+}: {
+  take: Take;
+  defaultTitle: string;
+  onAddLink: (url: string) => void;
+  onShare: (take: Take, title: string) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState(defaultTitle || "My keeper");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  if (done) {
+    return <p className="mt-2 text-xs text-signal-high">Shared to the community as a recipe.</p>;
+  }
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 flex items-center gap-1.5 text-xs text-primary hover:underline"
+      >
+        <Share2 className="size-3" /> Share this keeper as a recipe
+      </button>
+    );
+  }
+  if (!take.sunoUrl) {
+    const bad = url.trim() !== "" && !isSunoUrl(url);
+    return (
+      <div className="mt-2 space-y-1.5 rounded-md border border-primary/30 bg-primary/5 p-2.5">
+        <p className="text-xs text-foreground/90">
+          Recipes include the song, so others can hear it worked. Paste its suno.com link.
+        </p>
+        <div className="flex gap-1.5">
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://suno.com/song/…"
+            aria-invalid={bad}
+            className={cn("h-8 text-xs", bad && "border-destructive")}
+          />
+          <Button size="sm" className="h-8" disabled={!url.trim() || bad} onClick={() => onAddLink(url.trim())}>
+            Add link
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 p-2.5">
+      <Input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        maxLength={80}
+        aria-label="Recipe title"
+        className="h-8 min-w-[160px] flex-1 text-xs"
+      />
+      <Button
+        size="sm"
+        className="h-8"
+        disabled={busy || title.trim().length < 3}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await onShare(take, title.trim());
+            setDone(true);
+          } catch {
+            /* the caller shows the error */
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? "Sharing…" : "Share recipe"}
+      </Button>
+      <p className="w-full text-[11px] text-muted-foreground">
+        Shares the style prompt, exclude list, your note and the Suno link. Everyone can see it.
+      </p>
     </div>
   );
 }

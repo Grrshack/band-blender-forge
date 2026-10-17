@@ -33,6 +33,8 @@ import {
   DEFAULT_PARAMS,
   MasterChain,
   PRESETS,
+  STEM_OPTIONS,
+  type StemType,
   renderMaster,
   sliceBuffer,
   type MasterParams,
@@ -166,6 +168,10 @@ export function MasteringLab() {
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [suggestIntent, setSuggestIntent] = useState("");
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [stem, setStem] = useState<StemType>("mix");
+  const presetsForStem = PRESETS.filter(
+    (p) => p.name === "Flat" || (stem === "mix" ? !p.stem : p.stem === stem),
+  );
 
   const audioRef = useRef<Audio | null>(null);
   const srcRef = useRef<AudioBufferSourceNode | null>(null);
@@ -595,6 +601,7 @@ export function MasteringLab() {
           payload: {
             analysis,
             ...(suggestIntent.trim() ? { intent: suggestIntent.trim() } : {}),
+            stem,
           },
         },
       });
@@ -650,7 +657,7 @@ export function MasteringLab() {
       {/* ---------------- controls ---------------- */}
       <Panel
         title="Mastering Lab"
-        subtitle="Bass-focused EQ for a finished mix or a bass stem."
+        subtitle="EQ and loudness for a finished song or a single stem. Runs in your browser."
         action={<CopyButton value={settingsText} label="Copy settings" />}
       >
         <div className="space-y-4">
@@ -682,9 +689,43 @@ export function MasteringLab() {
             ))}
           </div>
 
+          <div>
+            <span className="mb-1.5 block text-xs font-medium text-foreground/90">
+              What did you load?
+            </span>
+            <div role="radiogroup" aria-label="What did you load?" className="flex flex-wrap gap-1.5">
+              {STEM_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={stem === o.value}
+                  onClick={() => {
+                    setStem(o.value);
+                    setActivePreset(null);
+                  }}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-xs transition-colors",
+                    stem === o.value
+                      ? "border-primary/60 bg-primary/15 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            {stem !== "mix" ? (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Stem mode: presets and AI Suggest are tuned for one instrument. Export it and drop it
+                back into your mix or Suno project.
+              </p>
+            ) : null}
+          </div>
+
           <div className="space-y-2">
             <div className="flex flex-wrap gap-1.5">
-              {PRESETS.map((p) => (
+              {presetsForStem.map((p) => (
                 <button
                   key={p.name}
                   type="button"
@@ -1075,7 +1116,7 @@ export function MasteringLab() {
       {/* ---------------- player / export ---------------- */}
       <Panel
         title="Preview & Export"
-        subtitle={song ? song.name : "Drop a song or a bass stem to start."}
+        subtitle={song ? song.name : "Drop a song or a single stem to start."}
         className={cn(!song && "lg:self-start")}
       >
         <div className="space-y-4">
@@ -1125,7 +1166,7 @@ export function MasteringLab() {
                 {loading ? "Decoding…" : "Drop an audio file here, or click to browse"}
               </p>
               <p className="max-w-sm text-xs text-muted-foreground">
-                Full mix or a bass stem (WAV, MP3, FLAC, M4A, OGG). Processing happens in this
+                Full song or a single stem (WAV, MP3, FLAC, M4A, OGG). Processing happens in this
                 browser tab — the file is never uploaded and nothing is saved to your account.
               </p>
             </div>

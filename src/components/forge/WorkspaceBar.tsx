@@ -15,7 +15,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "./auth";
-import { exportBrief, hasContent, mergeState, type ForgeState } from "./types";
+import { emptyState, exportBrief, hasContent, mergeState, type ForgeState } from "./types";
+import { SongProgress } from "./SongProgress";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,6 +37,8 @@ import {
 
 type Row = { id: string; name: string; updated_at: string };
 
+const UNTITLED = "Untitled song";
+
 export function WorkspaceBar({
   state,
   onLoadState,
@@ -52,7 +55,7 @@ export function WorkspaceBar({
 
   const [rows, setRows] = useState<Row[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const [name, setName] = useState("Untitled session");
+  const [name, setName] = useState(UNTITLED);
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const skipNext = useRef(true);
 
@@ -99,16 +102,16 @@ export function WorkspaceBar({
     if (!session) return;
     try {
       const row = (await create({
-        data: { name: label ?? "Untitled session", state: initial ?? state },
+        data: { name: label ?? UNTITLED, state: initial ?? state },
       })) as Row;
       skipNext.current = true;
       setCurrentId(row.id);
       setName(row.name);
       if (initial) onLoadState(initial);
       void refresh();
-      toast.success("Session created.");
+      toast.success(initial ? "New song started." : "Song saved.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create the session.");
+      toast.error(e instanceof Error ? e.message : "Could not create the song.");
     }
   };
 
@@ -126,7 +129,7 @@ export function WorkspaceBar({
       onLoadState(mergeState(row.state));
       setStatus("saved");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not open that session.");
+      toast.error(e instanceof Error ? e.message : "Could not open that song.");
     }
   };
 
@@ -139,13 +142,13 @@ export function WorkspaceBar({
       }
       void refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not delete that session.");
+      toast.error(e instanceof Error ? e.message : "Could not delete that song.");
     }
   };
 
   // Auto-suggest a session name when the first blend result arrives and the user hasn't renamed yet
   useEffect(() => {
-    if (name !== "Untitled session") return;
+    if (name !== UNTITLED && name !== "Untitled session") return;
     const { artists, lookupMode, songTitle, result } = state.blend;
     if (!result) return;
     let suggested = "";
@@ -183,17 +186,17 @@ export function WorkspaceBar({
                 className="h-8 gap-1.5 font-mono text-[11px] tracking-[0.14em] uppercase"
               >
                 <FolderOpen className="size-3.5 text-primary" />
-                Sessions
+                My songs
                 <ChevronDown className="size-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-72">
               <DropdownMenuLabel className="text-[10px] tracking-[0.2em] uppercase">
-                Your sessions
+                Your songs
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {rows.length === 0 ? (
-                <DropdownMenuItem disabled>No saved sessions yet</DropdownMenuItem>
+                <DropdownMenuItem disabled>No saved songs yet</DropdownMenuItem>
               ) : (
                 rows.map((r) => (
                   <DropdownMenuItem
@@ -221,7 +224,7 @@ export function WorkspaceBar({
                         void drop(r.id);
                       }}
                       className="text-muted-foreground hover:text-destructive"
-                      title="Delete session"
+                      title="Delete song"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -229,11 +232,11 @@ export function WorkspaceBar({
                 ))
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void startNew()}>
-                <Plus className="size-3.5" /> Save current work as a new session
+              <DropdownMenuItem onSelect={() => void startNew(emptyState(), UNTITLED)}>
+                <Plus className="size-3.5" /> Start a new song
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void startNew(state, `${name} (copy)`)}>
-                <Copy className="size-3.5" /> Duplicate current session
+                <Copy className="size-3.5" /> Duplicate this song
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -242,7 +245,7 @@ export function WorkspaceBar({
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="h-8 w-44 border-border bg-card/60 text-sm"
-            aria-label="Session name"
+            aria-label="Song name"
           />
 
           <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
@@ -256,6 +259,7 @@ export function WorkspaceBar({
             {status === "saving" ? <Loader2 className="ml-1 inline size-3 animate-spin" /> : null}
           </span>
 
+          <SongProgress state={state} />
           <div className="ml-auto flex items-center gap-1.5">
             <Button
               variant="outline"
@@ -292,8 +296,9 @@ export function WorkspaceBar({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal-high opacity-60" />
               <span className="relative inline-flex size-1.5 rounded-full bg-signal-high" />
             </span>
-            Working locally — nothing is saved
+            Not saved: sign in to keep your songs
           </span>
+          <SongProgress state={state} />
           <div className="ml-auto flex items-center gap-1.5">
             <Button
               variant="outline"
@@ -307,7 +312,7 @@ export function WorkspaceBar({
               <Copy className="size-3.5" /> Copy brief
             </Button>
             <Button asChild size="sm" className="glow-primary h-8 text-xs">
-              <Link to="/auth">Sign in to save sessions</Link>
+              <Link to="/auth">Sign in to save songs</Link>
             </Button>
           </div>
         </>
