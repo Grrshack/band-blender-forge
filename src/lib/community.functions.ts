@@ -2,10 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { optionalSupabaseAuth } from "@/lib/optional-auth";
+import { isSunoUrl } from "@/lib/takes";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function anonClient() {
+  if (!process.env["SUPABASE_URL"]) {
+    throw new Error("The community library isn't available right now. Try again later.");
+  }
   return createClient(
     process.env["SUPABASE_URL"] ?? "",
     // Lovable Cloud (and HOSTING.md) set SUPABASE_PUBLISHABLE_KEY; SUPABASE_ANON_KEY is the legacy name.
@@ -25,6 +29,9 @@ export type PublicPrompt = {
   genre_tags: string[];
   upvotes: number;
   created_at: string;
+  /** Present on recipes: a take someone kept, with its link on suno.com. */
+  suno_url: string | null;
+  recipe_note: string | null;
   /** True when the current user has upvoted this. */
   upvoted?: boolean | undefined;
 };
@@ -37,17 +44,23 @@ export const listPublicPrompts = createServerFn({ method: "GET" })
       query: z.string().optional(),
       limit: z.number().int().max(50).default(24),
       offset: z.number().int().default(0),
+      recipesOnly: z.boolean().default(false),
     }),
   )
   .handler(async ({ data, context }) => {
     const sb = anonClient();
     let q = sb
       .from("public_prompts")
-      .select("id, title, style_tag, vocal_prompt, exclude_styles, artists, genre_tags, upvotes, created_at")
+      .select(
+        "id, title, style_tag, vocal_prompt, exclude_styles, artists, genre_tags, upvotes, created_at, suno_url, recipe_note",
+      )
       .order("upvotes", { ascending: false })
       .order("created_at", { ascending: false })
       .range(data.offset, data.offset + data.limit - 1);
 
+    if (data.recipesOnly) {
+      q = q.not("suno_url", "is", null);
+    }
     if (data.genre) {
       q = q.contains("genre_tags", [data.genre]);
     }
@@ -83,11 +96,18 @@ export const submitPublicPrompt = createServerFn({ method: "POST" })
       exclude_styles: z.string().optional(),
       artists: z.array(z.string()).default([]),
       genre_tags: z.array(z.string()).default([]),
+      suno_url: z
+        .string()
+        .trim()
+        .max(300)
+        .refine(isSunoUrl, "Recipes need a link to the song on suno.com.")
+        .optional(),
+      recipe_note: z.string().trim().max(300).optional(),
     }),
   )
   .handler(async ({ data, context }) => {
     if (!context.supabase || !context.userId) {
-      throw new Error("Sign in to submit a prompt.");
+      throw new Error(data.suno_url ? "Sign in to share a recipe." : "Sign in to submit a prompt.");
     }
     const { error } = await context.supabase.from("public_prompts").insert({
       user_id: context.userId,
@@ -97,6 +117,8 @@ export const submitPublicPrompt = createServerFn({ method: "POST" })
       exclude_styles: data.exclude_styles ?? null,
       artists: data.artists,
       genre_tags: data.genre_tags,
+      suno_url: data.suno_url ?? null,
+      recipe_note: data.recipe_note || null,
     });
     if (error) throw new Error("Could not submit prompt: " + error.message);
     return { ok: true };

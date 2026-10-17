@@ -11,7 +11,19 @@ export type Take = {
   exclude: string;
   rating: 1 | 2 | 3 | 4 | 5;
   note: string;
+  /** Link to this take on suno.com, so a kept take can be shared as a recipe. */
+  sunoUrl?: string;
 };
+
+/** Only links to suno.com are accepted, so shared recipes can't point anywhere else. */
+export function isSunoUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === "https:" && (u.hostname === "suno.com" || u.hostname === "www.suno.com");
+  } catch {
+    return false;
+  }
+}
 
 export const splitTags = (s: string): string[] =>
   s
@@ -39,7 +51,9 @@ export function newTake(
   rating: Take["rating"],
   note: string,
   now: Date = new Date(),
+  sunoUrl = "",
 ): Take {
+  const link = sunoUrl.trim();
   return {
     id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
     at: now.toISOString(),
@@ -47,6 +61,7 @@ export function newTake(
     exclude,
     rating,
     note: note.trim().slice(0, 500),
+    ...(link && isSunoUrl(link) ? { sunoUrl: link } : {}),
   };
 }
 

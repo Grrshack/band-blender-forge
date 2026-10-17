@@ -160,18 +160,30 @@ Return JSON exactly:
 "fixFirst":["most important fix","second","third"]}
 Return every score. Return an empty array where nothing qualifies.`;
     case "fixTake":
-      return `You are a Suno prompt doctor. The user generated a take that came out wrong. Diagnose the PROMPT-side causes and revise the style prompt.
+      return `You are a Suno prompt doctor. The user generated a take that came out wrong. Diagnose the causes, pick the best way to fix it, and revise the style prompt.
 Input: ${p}
 Rules:
 - Change only what the complaints justify; keep everything else identical so the next take isolates the fix. Change at most 3 things.
+- If "style" is empty the user didn't keep their prompt: write a fresh style prompt from the complaints, lyrics and audio instead of a revision.
 - If "history" is present it lists earlier takes (oldest first) with 1-5 star ratings and notes. Use it: never repeat a change that coincided with a low rating, and keep what scored well.
 - Be honest: Suno is stochastic and some problems (e.g. a voice that sounds synthetic) cannot be fully fixed by prompting. Say so in the diagnosis when it applies.
 - Common prompt-side causes: contradictory tags, too many tags diluting each other, genre words buried late, negatives written inside the style box instead of Exclude styles, conflicting tempo or energy words, instrument lists that crowd the mix.
 - styleTag: the full revised style prompt, max ${STYLE_TARGET} characters, genre and mood first, NO real artist, band, producer, label or song names.
 - excludeStyles: the full revised comma-separated exclude list, no artist names.
 - lyricFixes: only if the complaints or lyrics justify it; quote the exact original line or section tag.
+- If "audio" is present, it holds measurements of the actual generated file, taken in the user's browser:
+    durationSec; clippedPercent (share of samples at full scale); contourDb (loudness across the song, up to 24 points, start to end);
+    contrastDb (loud vs quiet parts; under ~3 dB means sections barely change in level); leadInSec (silence before the music);
+    endTailDb (last second vs average; near 0 means the song stops abruptly);
+    spectrum: peakDb, rmsDb, dynamicRangeDb, lowPeakHz, and bands (sub 20-80 Hz, bass 80-250, lowMid 250-500, mid 500-2k, highMid 2k-8k, air 8k-20k) in dB relative to the full-range level, measured on 30 s from the middle of the song.
+    "flags" are findings the measurements already support; treat them as facts. Use the rest to confirm or question the user's complaints, and say plainly when the audio does not show what they describe.
+    Mix-level problems (boomy or muddy low end, harsh highs, clipping, too quiet) are often better fixed in mastering than by regenerating.
+- Suno v6 can edit part of an existing song from a plain-language instruction (change one section, one instrument or one lyric) while keeping the rest. When the take is mostly good and the problem is local, prefer that: write sunoEdits the user can paste into Suno's edit feature. Each instruction must be specific and under 200 characters, name the part to change, and contain no real artist, band or song names. Leave sunoEdits empty when the problem is the whole song.
+- fixRoute: "edit" if editing parts of this take is the best next step, "regenerate" if the prompt itself needs to change, "master" if the song is fine and only the mix needs treatment. routeWhy: one sentence.
 Return JSON exactly:
-{"diagnosis":"2-3 plain sentences naming the most likely prompt-side causes",
+{"fixRoute":"edit"|"regenerate"|"master","routeWhy":"one sentence",
+"diagnosis":"2-3 plain sentences naming the most likely causes",
+"sunoEdits":[{"target":"the part to change, e.g. Chorus 2, the bridge, the drums in verse 1","instruction":"plain-language edit for Suno v6"}],
 "changes":[{"change":"what you changed in the prompt","why":"which complaint it targets"}],
 "styleTag":"string","excludeStyles":"string",
 "lyricFixes":[{"line":"exact original line or [Section Tag]","fix":"specific rewrite or structural change"}],
@@ -215,7 +227,19 @@ Return 1–3 changes. No more.`;
         "Clean up boxy mix",
       ];
       const intent = (payload["intent"] as string | undefined)?.trim();
-      return `You are a mastering engineer advising on bass-focused treatment for a finished track or AI-generated song.
+      const stem = typeof payload["stem"] === "string" ? payload["stem"] : "mix";
+      const STEM_PRESETS: Record<string, string> = {
+        vocals: "Vocal stem: clear & present",
+        bass: "Bass stem: tight & solid",
+        drums: "Drum stem: punch",
+        other: "Instrument stem: make room",
+      };
+      const stemPreset = STEM_PRESETS[stem];
+      if (stemPreset) PRESET_NAMES.splice(0, PRESET_NAMES.length, "Flat", stemPreset);
+      const stemNote = stemPreset
+        ? `\nIMPORTANT: this file is a single ${stem === "other" ? "instrument" : stem} stem, not a full song. Choose ONLY "Flat" or "${stemPreset}" and judge the balance for that one instrument: a vocal or instrument stem naturally has little sub and bass energy, so never boost it; a bass stem is naturally bass-heavy, so only treat it if it is boomy or rumbling. The preset descriptions below are for full songs; ignore them except for parameter meanings.`
+        : "";
+      return `You are a mastering engineer advising on bass-focused treatment for a finished track or AI-generated song.${stemNote}
 Given the track's offline frequency analysis, recommend a starting preset and any parameter adjustments.${intent ? `\nUser's stated goal: "${intent}" — weight your recommendation toward serving this.` : ""}
 Input: ${p}
 The "analysis" field contains:
