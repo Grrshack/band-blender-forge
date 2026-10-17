@@ -69,6 +69,17 @@ function Index() {
   const [blendAutoRun, setBlendAutoRun] = useState(false);
   const [blendFlashKey, setBlendFlashKey] = useState(0);
 
+  // First-time visitors land on "Start here" unless a link asked for a specific tab.
+  useEffect(() => {
+    try {
+      const asked = new URLSearchParams(window.location.search).get("tab");
+      if (!asked && !localStorage.getItem("blf.visited")) setTab("assistant");
+      localStorage.setItem("blf.visited", "1");
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+
   useEffect(() => {
     try {
       const m = localStorage.getItem("blf.mode");
@@ -320,6 +331,7 @@ function Index() {
                       onBlend={(v) => patch("blend", v)}
                       takes={state.takes}
                       onTakes={(v) => patch("takes", v)}
+                      onOpenMastering={() => setTab("master")}
                     />
                   )}
                   {tab === "compare" && (
@@ -358,6 +370,11 @@ function Index() {
                   {tab === "assistant" && (
                     <StudioAssistant
                       currentBlend={state.blend}
+                      onGoTab={setTab}
+                      onFixSong={(notes) => {
+                        patch("fix", { ...state.fix, notes, result: null });
+                        setTab("fix");
+                      }}
                       autoRun={assistantAutoRun}
                       onToggleAutoRun={setAssistantAutoRun}
                       onApply={(intent) => {
