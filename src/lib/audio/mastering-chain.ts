@@ -96,7 +96,24 @@ export const DEFAULT_PARAMS: MasterParams = {
   subSolo: false,
 };
 
-export const PRESETS: Array<{ name: string; hint: string; params: Partial<MasterParams> }> = [
+/** What was loaded: a finished mix, or one stem exported from Suno or a DAW. */
+export type StemType = "mix" | "vocals" | "bass" | "drums" | "other";
+
+export const STEM_OPTIONS: Array<{ value: StemType; label: string }> = [
+  { value: "mix", label: "Full song" },
+  { value: "vocals", label: "Vocals" },
+  { value: "bass", label: "Bass" },
+  { value: "drums", label: "Drums" },
+  { value: "other", label: "Other instrument" },
+];
+
+/** `stem` unset = a full-mix preset. "Flat" is offered for everything. */
+export const PRESETS: Array<{
+  name: string;
+  hint: string;
+  params: Partial<MasterParams>;
+  stem?: StemType;
+}> = [
   { name: "Flat", hint: "Reset everything", params: { ...DEFAULT_PARAMS } },
   {
     name: "Suno rumble fix",
@@ -246,6 +263,84 @@ export const PRESETS: Array<{ name: string; hint: string; params: Partial<Master
       subCutHz: 30,
       lowMidCutDb: -3.5,
       airDb: 1.5,
+    },
+  },
+  // ── Single stems. Same chain, gentler settings; the 40 Hz sub-cut rule still applies. ──
+  {
+    name: "Vocal stem: clear & present",
+    stem: "vocals",
+    hint: "Thins out low rumble and boxiness, adds a little air and evens out the level. For a vocal stem exported from Suno.",
+    params: {
+      mode: "full",
+      crossoverHz: 140,
+      bassGainDb: -6,
+      subCutHz: 40,
+      subCutSlope: 2,
+      subCutQ: 0.707,
+      lowMidCutDb: -2.5,
+      airDb: 2.5,
+      glue: 0.35,
+      ceilingDb: -1,
+    },
+  },
+  {
+    name: "Bass stem: tight & solid",
+    stem: "bass",
+    hint: "Controls boom, keeps the low end mono and adds harmonics so the bass reads on phone speakers.",
+    params: {
+      mode: "band",
+      crossoverHz: 110,
+      bassGainDb: 0,
+      punchFreq: 70,
+      punchGainDb: 1,
+      punchQ: 1.2,
+      warmth: 0.35,
+      tighten: 0.55,
+      monoBass: true,
+      subCutHz: 28,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      subCompAmount: 0.4,
+      subCompFreq: 45,
+      glue: 0.25,
+      ceilingDb: -1,
+    },
+  },
+  {
+    name: "Drum stem: punch",
+    stem: "drums",
+    hint: "Lifts the kick, clears the 250 Hz box and adds some snap on top.",
+    params: {
+      mode: "full",
+      crossoverHz: 100,
+      bassGainDb: 0,
+      punchFreq: 60,
+      punchGainDb: 2,
+      punchQ: 1.4,
+      subCutHz: 25,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -2,
+      airDb: 1.5,
+      glue: 0.4,
+      ceilingDb: -1,
+    },
+  },
+  {
+    name: "Instrument stem: make room",
+    stem: "other",
+    hint: "Pulls back low end and mud so the instrument sits behind vocals and bass when you rebuild the mix.",
+    params: {
+      mode: "full",
+      crossoverHz: 150,
+      bassGainDb: -3,
+      subCutHz: 40,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -2,
+      airDb: 1,
+      glue: 0.25,
+      ceilingDb: -1,
     },
   },
 ];
