@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chooseProvider } from "@/lib/provider";
+import { chooseProvider, isBuiltInAiAllowed } from "@/lib/provider";
 
 describe("chooseProvider", () => {
   it("returns null when no keys are provided", () => {
@@ -81,5 +81,32 @@ describe("chooseProvider: Gemini", () => {
   it("skips an empty server Gemini key and uses the gateway", () => {
     const result = chooseProvider({ serverGeminiKey: "  ", gatewayKey: "gw-789" });
     expect(result).toEqual({ via: "gateway", key: "gw-789", ownerPays: true });
+  });
+});
+
+describe("chooseProvider: own-key mode", () => {
+  it("ignores every server key when built-in AI is not allowed", () => {
+    expect(
+      chooseProvider({
+        serverAnthropicKey: "sk-ant-server",
+        serverGeminiKey: "AIzaServer",
+        gatewayKey: "gw-789",
+        allowBuiltIn: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("still uses the caller's own key when built-in AI is not allowed", () => {
+    expect(chooseProvider({ userKey: "AIzaUser", gatewayKey: "gw", allowBuiltIn: false })).toEqual({
+      via: "gemini",
+      key: "AIzaUser",
+      ownerPays: false,
+    });
+  });
+
+  it("only allows built-in AI when the flag is exactly 'true'", () => {
+    expect(isBuiltInAiAllowed({})).toBe(false);
+    expect(isBuiltInAiAllowed({ ALLOW_BUILT_IN_AI: "1" })).toBe(false);
+    expect(isBuiltInAiAllowed({ ALLOW_BUILT_IN_AI: "true" })).toBe(true);
   });
 });
