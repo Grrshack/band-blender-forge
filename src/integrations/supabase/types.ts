@@ -203,7 +203,9 @@ export type Database = {
           exclude_styles: string | null
           genre_tags: string[] | null
           id: string
+          recipe_note: string | null
           style_tag: string
+          suno_url: string | null
           title: string
           upvotes: number
           user_id: string | null
@@ -215,7 +217,9 @@ export type Database = {
           exclude_styles?: string | null
           genre_tags?: string[] | null
           id?: string
+          recipe_note?: string | null
           style_tag: string
+          suno_url?: string | null
           title: string
           upvotes?: number
           user_id?: string | null
@@ -227,7 +231,9 @@ export type Database = {
           exclude_styles?: string | null
           genre_tags?: string[] | null
           id?: string
+          recipe_note?: string | null
           style_tag?: string
+          suno_url?: string | null
           title?: string
           upvotes?: number
           user_id?: string | null
