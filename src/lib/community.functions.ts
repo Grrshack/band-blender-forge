@@ -8,7 +8,8 @@ import { optionalSupabaseAuth } from "@/lib/optional-auth";
 function anonClient() {
   return createClient(
     process.env["SUPABASE_URL"] ?? "",
-    process.env["SUPABASE_ANON_KEY"] ?? "",
+    // Lovable Cloud (and HOSTING.md) set SUPABASE_PUBLISHABLE_KEY; SUPABASE_ANON_KEY is the legacy name.
+    process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_ANON_KEY"] || "",
   );
 }
 
