@@ -6,6 +6,7 @@
  *  - Prompt card builder (user's personal prompts formatted as a shareable image)
  *  - Session export trigger
  */
+import { APP_DOMAIN, APP_NAME } from "@/lib/brand";
 import { useRef, useState } from "react";
 import { Camera, Clipboard, Download, FileText, Globe, Share2, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -262,7 +263,7 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
           {/* Header */}
           <div className="mb-5 border-b border-white/10 pb-4">
             <div className="mb-1 font-mono text-[10px] tracking-[0.25em] text-white/40 uppercase">
-              Band Blender Forge · Style Card
+              {APP_NAME} · Style Card
             </div>
             <h2 className="text-xl font-semibold leading-tight text-white">
               {cardTitle ?? (artists.filter(Boolean).join(" × ") || "Custom Blend")}
@@ -348,7 +349,7 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
 
           {/* Footer */}
           <div className="mt-4 border-t border-white/8 pt-3 font-mono text-[9px] text-white/20">
-            suno-blender.lovable.app
+            {APP_DOMAIN}
           </div>
         </div>
     </div>

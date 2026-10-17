@@ -30,7 +30,7 @@ export function Panel({
   subtitle?: string;
   action?: ReactNode;
   children: ReactNode;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <section className={cn("panel-surface p-5 sm:p-6", className)}>

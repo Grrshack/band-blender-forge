@@ -1,13 +1,12 @@
-import { useServerFn } from "@tanstack/react-start";
 import { ChevronDown, ChevronUp, Disc3, Loader2, Rocket } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import type { BlendSlice, DossierResult, LyricSlice } from "./types";
 import { Button } from "@/components/ui/button";
-import { runForge } from "@/lib/forge.functions";
 import { composeSunoLyrics } from "@/lib/suno";
 
 function dossierText(d: DossierResult): string {
@@ -37,7 +36,7 @@ export function ReleaseDossier({
   value: DossierResult[];
   onChange: (v: DossierResult[]) => void;
 }) {
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

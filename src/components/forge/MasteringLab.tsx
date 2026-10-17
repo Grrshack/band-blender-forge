@@ -1,4 +1,3 @@
-import { useServerFn } from "@tanstack/react-start";
 import {
   AudioWaveform,
   Download,
@@ -18,6 +17,7 @@ import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
 import { ReferenceMatch } from "./ReferenceMatch";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -38,7 +38,6 @@ import {
   type MasterParams,
 } from "@/lib/audio/mastering-chain";
 import { analyzeTrack, type TrackAnalysis } from "@/lib/audio/track-analyzer";
-import { runForge } from "@/lib/forge.functions";
 import {
   applyGain,
   dbToLin,
@@ -161,7 +160,7 @@ export function MasteringLab() {
 
   // AI suggestion state
   const { apiKey, routing } = useSettings();
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const [suggesting, setSuggesting] = useState<string | null>(null); // step label while working
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);

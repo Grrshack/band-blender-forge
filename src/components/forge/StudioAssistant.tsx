@@ -1,10 +1,9 @@
-import { useServerFn } from "@tanstack/react-start";
 import { Loader2, MessageSquare, Send, Sparkles, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { runForge } from "@/lib/forge.functions";
 import { ERA_OPTIONS } from "@/lib/suno";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import { Panel } from "./Field";
 import type { BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,7 @@ export type IntentResponse = {
   brightness: number;
 };
 
-const VALID_ERAS = new Set(ERA_OPTIONS.map((e) => e.value));
+const VALID_ERAS = new Set<string>(ERA_OPTIONS.map((e) => e.value));
 
 const clampSlider = (v: unknown): number => {
   const n = typeof v === "number" ? v : 0;
@@ -72,7 +71,7 @@ export function StudioAssistant({
   autoRun: boolean;
   onToggleAutoRun: (v: boolean) => void;
 }) {
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {

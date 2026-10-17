@@ -1,15 +1,14 @@
-import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Stethoscope, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import { TakeLog } from "./TakeLog";
 import type { BlendSlice, FixResult, FixSlice, LyricSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { runForge } from "@/lib/forge.functions";
 import { SUNO_LIMITS, composeSunoLyrics } from "@/lib/suno";
 import { historyForPrompt, type Take } from "@/lib/takes";
 import { cn } from "@/lib/utils";
@@ -49,7 +48,7 @@ export function FixTake({
   takes: Take[];
   onTakes: (next: Take[]) => void;
 }) {
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [loading, setLoading] = useState(false);
   const [includeLyrics, setIncludeLyrics] = useState(true);

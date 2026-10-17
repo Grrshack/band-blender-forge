@@ -1,13 +1,12 @@
-import { useServerFn } from "@tanstack/react-start";
 import { FlaskConical, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote } from "./Field";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import type { BlendSlice, StyleVariant } from "./types";
 import { Button } from "@/components/ui/button";
-import { runForge } from "@/lib/forge.functions";
 import { SUNO_LIMITS } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +24,7 @@ export function StyleVariants({
   blend: BlendSlice;
   onBlend: (next: BlendSlice) => void;
 }) {
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

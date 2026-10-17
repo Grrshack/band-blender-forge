@@ -1,4 +1,4 @@
-import { composeSunoLyrics, vocalString } from "@/lib/suno";
+import { composeSunoLyrics, normalizeSunoVersion, type SunoVersion, vocalString } from "@/lib/suno";
 import type { Take } from "@/lib/takes";
 
 /** What MusicBrainz said about an artist. "unavailable" means the lookup failed — NOT that the artist doesn't exist. */
@@ -92,7 +92,7 @@ export type BlendSlice = {
   /** Used only when lookupMode === "song". */
   songTitle: string;
   /** Which Suno generation to target — affects style tag length and format. */
-  sunoVersion: "mini" | "v6" | "pro";
+  sunoVersion: SunoVersion;
   /** Optional genre to bias the blend toward. Empty = no bias. */
   targetGenre: string;
   /** When true, the style tag must stay within the target genre family. */
@@ -187,7 +187,7 @@ export const emptyState = (): ForgeState => ({
     result: null,
     lookupMode: "band",
     songTitle: "",
-    sunoVersion: "v6",
+    sunoVersion: "mini",
     targetGenre: "",
     genreLock: false,
     targetEra: "",
@@ -225,15 +225,17 @@ export function mergeState(raw: unknown): ForgeState {
   if (!raw || typeof raw !== "object") return base;
   // Use a loose record so we can handle both the new shape and legacy saves.
   const s = raw as Record<string, unknown>;
-  const blend = (s.blend && typeof s.blend === "object" ? s.blend : {}) as Partial<BlendSlice>;
-  const lyrics = (s.lyrics && typeof s.lyrics === "object" ? s.lyrics : {}) as Partial<LyricSlice>;
-  const master = (s.master && typeof s.master === "object" ? s.master : {}) as Partial<MasterSlice>;
+  const blend = (s["blend"] && typeof s["blend"] === "object" ? s["blend"] : {}) as Partial<BlendSlice>;
+  const lyrics = (s["lyrics"] && typeof s["lyrics"] === "object" ? s["lyrics"] : {}) as Partial<LyricSlice>;
+  const master = (s["master"] && typeof s["master"] === "object" ? s["master"] : {}) as Partial<MasterSlice>;
   return {
     blend: {
       ...base.blend,
       ...blend,
       // Deep-merge sliders so a save with only some keys still keeps defaults.
       sliders: { ...base.blend.sliders, ...(blend.sliders ?? {}) },
+      // Older saves may hold the retired "pro" option.
+      sunoVersion: normalizeSunoVersion(blend.sunoVersion ?? base.blend.sunoVersion),
     },
     lyrics: {
       ...base.lyrics,
@@ -244,16 +246,16 @@ export function mergeState(raw: unknown): ForgeState {
         ...(lyrics.recentWords && typeof lyrics.recentWords === "object" ? lyrics.recentWords : {}),
       },
     },
-    compare: { ...base.compare, ...(s.compare && typeof s.compare === "object" ? s.compare : {}) },
-    critique: { ...base.critique, ...(s.critique && typeof s.critique === "object" ? s.critique : {}) },
-    fix: { ...base.fix, ...(s.fix && typeof s.fix === "object" ? s.fix : {}) },
+    compare: { ...base.compare, ...(s["compare"] && typeof s["compare"] === "object" ? s["compare"] : {}) },
+    critique: { ...base.critique, ...(s["critique"] && typeof s["critique"] === "object" ? s["critique"] : {}) },
+    fix: { ...base.fix, ...(s["fix"] && typeof s["fix"] === "object" ? s["fix"] : {}) },
     master: { ...base.master, ...master },
-    takes: Array.isArray(s.takes) ? s.takes : base.takes,
+    takes: Array.isArray(s["takes"]) ? s["takes"] : base.takes,
     // Accept the new array shape or silently migrate a legacy single-dossier save.
-    dossiers: Array.isArray(s.dossiers)
-      ? (s.dossiers as DossierResult[])
-      : s.dossier && typeof s.dossier === "object"
-        ? [s.dossier as DossierResult]
+    dossiers: Array.isArray(s["dossiers"])
+      ? (s["dossiers"] as DossierResult[])
+      : s["dossier"] && typeof s["dossier"] === "object"
+        ? [s["dossier"] as DossierResult]
         : [],
   };
 }

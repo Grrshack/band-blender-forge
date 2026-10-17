@@ -1,5 +1,4 @@
 import type { Json } from "@/integrations/supabase/types";
-import { useServerFn } from "@tanstack/react-start";
 import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -7,12 +6,12 @@ import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import type { BlendResult, BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { runForge } from "@/lib/forge.functions";
 import { ALL_GENRES, ERA_OPTIONS, SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
 import { PromptCard } from "./PromptCard";
 import { shareBlend } from "@/lib/forge.functions";
@@ -124,7 +123,7 @@ export function BandBlender({
   /** Increments when the assistant updates the form — triggers a one-shot border flash. */
   flashKey?: number | undefined;
 }) {
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState("");
@@ -133,7 +132,7 @@ export function BandBlender({
   const {
     artists, sliders, result,
     lookupMode = "band", songTitle = "",
-    sunoVersion = "v6",
+    sunoVersion = "mini",
     targetGenre = "", genreLock = false,
     targetEra = "",
   } = value;
@@ -468,6 +467,10 @@ export function BandBlender({
                   </button>
                 ))}
               </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                v6-mini is the model on free Suno accounts. v6 and v6-wild need a Pro or Premier
+                plan; v6-wild is the less predictable one.
+              </p>
             </div>
           )}
 

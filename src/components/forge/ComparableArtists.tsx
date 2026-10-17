@@ -1,4 +1,3 @@
-import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, Loader2, Radar } from "lucide-react";
 import { useState } from "react";
 
@@ -6,10 +5,10 @@ import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
 import { MbBadge } from "./MbBadge";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import type { CompareResult, CompareSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { runForge } from "@/lib/forge.functions";
 import { cn } from "@/lib/utils";
 
 const SEEDS = [
@@ -52,7 +51,7 @@ export function ComparableArtists({
   onSendToBlender?: (name: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>("both");
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

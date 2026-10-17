@@ -1,4 +1,3 @@
-import { useServerFn } from "@tanstack/react-start";
 import {
   AlertTriangle,
   Loader2,
@@ -16,12 +15,12 @@ import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
 import { LengthPlanner } from "./LengthPlanner";
 import { useSettings } from "./settings";
+import { useForge } from "./use-forge";
 import type { BlendResult, LyricSlice, Section } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { runForge } from "@/lib/forge.functions";
 import {
   countSyllables,
   countWatchWordOccurrences,
@@ -104,7 +103,7 @@ export function LyricForge({
   onChange: (next: LyricSlice) => void;
   blend: BlendResult | null;
 }) {
-  const forge = useServerFn(runForge);
+  const forge = useForge();
   const { apiKey, routing } = useSettings();
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
