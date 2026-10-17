@@ -28,11 +28,18 @@ export function chooseProvider(env: {
   serverAnthropicKey?: string | undefined;
   serverGeminiKey?: string | undefined;
   gatewayKey?: string | undefined;
+  /**
+   * When false, only the caller's own key is ever used: the owner's keys and Lovable's
+   * gateway are ignored even if they are configured. Defaults to true for backwards
+   * compatibility; the live server passes isBuiltInAiAllowed().
+   */
+  allowBuiltIn?: boolean | undefined;
 }): ProviderChoice | null {
   const user = env.userKey?.trim();
   if (user) {
     return { via: isGeminiKey(user) ? "gemini" : "anthropic", key: user, ownerPays: false };
   }
+  if (env.allowBuiltIn === false) return null;
   const server = env.serverAnthropicKey?.trim();
   if (server) return { via: "anthropic", key: server, ownerPays: true };
   const serverGemini = env.serverGeminiKey?.trim();
@@ -40,4 +47,21 @@ export function chooseProvider(env: {
   const gateway = env.gatewayKey?.trim();
   if (gateway) return { via: "gateway", key: gateway, ownerPays: true };
   return null;
+}
+
+/**
+ * Own-key mode is the default: the site owner's keys are only used when the server
+ * explicitly sets ALLOW_BUILT_IN_AI=true. Without it, every visitor must bring a key.
+ */
+export function isBuiltInAiAllowed(env: Record<string, string | undefined>): boolean {
+  return env["ALLOW_BUILT_IN_AI"] === "true";
+}
+
+/** Shown (and matched on the client) when an AI call arrives without a key in own-key mode. */
+export const NO_KEY_MESSAGE =
+  "Add your AI key to use this tool. A free Google Gemini key takes about a minute to get.";
+
+/** Human-readable provider name for a key, used in the UI. */
+export function providerLabel(key: string): "Google Gemini" | "Anthropic" {
+  return isGeminiKey(key.trim()) ? "Google Gemini" : "Anthropic";
 }

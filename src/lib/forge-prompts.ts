@@ -1,6 +1,12 @@
 import { bannedWordsInstruction } from "@/lib/banned-words";
 import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
-import { STYLE_TARGET, STYLE_TARGET_FOR_VERSION, type SunoVersion } from "@/lib/suno";
+import {
+  normalizeSunoVersion,
+  STYLE_TARGET,
+  STYLE_TARGET_FOR_VERSION,
+  SUNO_VERSION_NAMES,
+  type SunoVersion,
+} from "@/lib/suno";
 
 export const SYSTEM = `You are a pre-production planning engine for AI music generation (Suno-style).
 You are ruthlessly specific. You never produce generic AI-slop language.
@@ -26,18 +32,15 @@ function promptBody(task: string, payload: Record<string, unknown>): string {
   const p = JSON.stringify(payload);
   switch (task) {
     case "blend": {
-      const rawVersion = payload["sunoVersion"];
-      const version: SunoVersion =
-        rawVersion === "mini" || rawVersion === "pro" ? rawVersion : "v6";
+      const version: SunoVersion = normalizeSunoVersion(payload["sunoVersion"]);
       const vTarget = STYLE_TARGET_FOR_VERSION[version];
-      const vLabel =
-        version === "mini" ? "Suno v6 Mini" : version === "pro" ? "Suno v6 Pro" : "Suno v6";
+      const vLabel = SUNO_VERSION_NAMES[version];
       const vNote =
         version === "mini"
-          ? "Keep the style tag concise and punchy — Mini responds better to short, direct prompts than long tag lists."
-          : version === "pro"
-            ? "Pro handles rich detail — use flowing descriptive phrases mixed with genre tags, and use the full character budget where it adds specificity."
-            : "v6 understands natural language well — mix descriptive phrases with genre tags rather than tag-only lists.";
+          ? "Keep the style tag concise and punchy — v6-mini responds better to short, direct prompts than long tag lists."
+          : version === "wild"
+            ? "v6-wild is deliberately less predictable — anchor genre, tempo and mood clearly up front, then leave room for surprise instead of specifying every instrument."
+            : "v6 understands musician vocabulary and natural language well — mix descriptive phrases with genre tags rather than tag-only lists, and use the budget where it adds specificity.";
       const targetGenre =
         typeof payload["targetGenre"] === "string" ? payload["targetGenre"].trim() : "";
       const genreLock = payload["genreLock"] === true;
@@ -184,9 +187,7 @@ Rules: differences must be audible, not cosmetic — do not just reorder tags. E
 Return JSON exactly:
 {"variants":[{"label":"Safe","angle":"one sentence: what is different about this take","styleTag":"string","excludeStyles":"string","vocalLine":"one short line describing the vocal"},{"label":"Experimental","angle":"","styleTag":"","excludeStyles":"","vocalLine":""},{"label":"Hybrid","angle":"","styleTag":"","excludeStyles":"","vocalLine":""}]}`;
     case "refine": {
-      const rawVersion = payload["sunoVersion"];
-      const version: SunoVersion =
-        rawVersion === "mini" || rawVersion === "pro" ? rawVersion : "v6";
+      const version: SunoVersion = normalizeSunoVersion(payload["sunoVersion"]);
       const vTarget = STYLE_TARGET_FOR_VERSION[version];
       return `Refine this Suno style tag according to the user's instruction. Keep everything not explicitly asked to change; make targeted edits only.
 Input: ${p}

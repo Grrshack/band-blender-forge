@@ -12,26 +12,42 @@ export const SUNO_LIMITS = { style: 1000, exclude: 1000, lyrics: 5000, title: 10
 /** Keep the style prompt a little under the hard cap so edits have headroom. */
 export const STYLE_TARGET = 850;
 
-/** Suno generation versions supported for targeting. */
-export type SunoVersion = "mini" | "v6" | "pro";
+/**
+ * Suno's v6 models (launched Sept 2026): v6-mini for everyone, v6 and v6-wild on Pro/Premier
+ * plans. There is no "v6 Pro" model; "Pro" is a subscription plan.
+ */
+export type SunoVersion = "mini" | "v6" | "wild";
 
 /** Per-version style tag character targets.
- * - mini: shorter prompts, less complex model
- * - v6:   balanced, natural language descriptions work well
- * - pro:  near-full limit, supports richer detail
+ * - mini: shorter prompts, lighter model
+ * - v6:   flagship; natural-language descriptions work well
+ * - wild: less predictable by design; anchor genre and mood, leave room for surprise
  */
 export const STYLE_TARGET_FOR_VERSION: Record<SunoVersion, number> = {
   mini: 400,
   v6: 700,
-  pro: 950,
+  wild: 600,
 };
 
 /** Human-readable labels for the version selector. */
 export const SUNO_VERSION_LABELS: Record<SunoVersion, string> = {
-  mini: "v6 Mini",
-  v6: "Suno v6",
-  pro: "v6 Pro",
+  mini: "v6-mini",
+  v6: "v6",
+  wild: "v6-wild",
 };
+
+/** Full names used in prompts and exports. */
+export const SUNO_VERSION_NAMES: Record<SunoVersion, string> = {
+  mini: "Suno v6-mini",
+  v6: "Suno v6",
+  wild: "Suno v6-wild",
+};
+
+/** Accepts saved or AI-supplied values; maps the retired "pro" option to v6. */
+export function normalizeSunoVersion(raw: unknown): SunoVersion {
+  if (raw === "mini" || raw === "v6" || raw === "wild") return raw;
+  return raw === "pro" ? "v6" : "mini";
+}
 
 type Json = Record<string, unknown>;
 

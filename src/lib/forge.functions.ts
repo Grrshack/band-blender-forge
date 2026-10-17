@@ -5,7 +5,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { runPipeline } from "@/lib/forge-pipeline";
 import { lookupArtists, lookupRecording } from "@/lib/musicbrainz";
 import { optionalSupabaseAuth } from "@/lib/optional-auth";
-import { chooseProvider } from "@/lib/provider";
+import { chooseProvider, isBuiltInAiAllowed, NO_KEY_MESSAGE } from "@/lib/provider";
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
 import { SYSTEM } from "@/lib/forge-prompts";
 
@@ -99,12 +99,15 @@ class RateLimitError extends Error {
 }
 
 function failure(status: number, provider: string, message: string): Error {
-  if (status === 401 || status === 403) {
+  // Google answers a bad key with 400 + API_KEY_INVALID rather than 401.
+  const badGoogleKey =
+    status === 400 && /API_KEY_INVALID|API key not valid|valid API key/i.test(message);
+  if (status === 401 || status === 403 || badGoogleKey) {
     return new Error(
       provider === "anthropic"
-        ? "Your Anthropic API key was rejected. Check the key in the System panel."
+        ? "Your Anthropic API key was rejected. Check you copied the whole key."
         : provider === "gemini"
-          ? "Your Gemini API key was rejected. Check the key in the System panel."
+          ? "Your Google Gemini key was rejected. Check you copied the whole key."
           : `Built-in AI is unavailable (${status}). ${message}`,
     );
   }
@@ -217,12 +220,9 @@ export const runForge = createServerFn({ method: "POST" })
       serverAnthropicKey: process.env["ANTHROPIC_API_KEY"],
       serverGeminiKey: process.env["GEMINI_API_KEY"],
       gatewayKey: process.env["LOVABLE_API_KEY"],
+      allowBuiltIn: isBuiltInAiAllowed(process.env),
     });
-    if (!choice) {
-      throw new Error(
-        "No Anthropic API key set and no built-in AI available. Add a key in the System panel.",
-      );
-    }
+    if (!choice) throw new Error(NO_KEY_MESSAGE);
     const provider: "anthropic" | "built-in" = choice.ownerPays ? "built-in" : "anthropic";
 
     // A model the site owner pays for requires sign-in and is rate-limited.
@@ -239,7 +239,7 @@ export const runForge = createServerFn({ method: "POST" })
       const usage = await consumeUsage(context.supabase, context.userId, data.task);
       if (!usage.allowed) {
         throw new Error(
-          `You've used the ${BUILT_IN_CALLS_PER_HOUR} built-in model calls allowed per hour. Try again later, or add your own Anthropic API key in System & Credentials.`,
+          `You've used the ${BUILT_IN_CALLS_PER_HOUR} built-in model calls allowed per hour. Try again later, or add your own API key (Google Gemini or Anthropic).`,
         );
       }
     }
@@ -296,6 +296,42 @@ export const runForge = createServerFn({ method: "POST" })
     }
 
     return { provider, json: JSON.stringify(result) };
+  });
+
+// ─── AI configuration + key check ───────────────────────────────────────────
+
+/** Tells the client whether a key is required (own-key mode) or a built-in model exists. */
+export const getAiConfig = createServerFn({ method: "GET" }).handler(async () => {
+  const builtIn =
+    isBuiltInAiAllowed(process.env) &&
+    Boolean(
+      process.env["ANTHROPIC_API_KEY"]?.trim() ||
+        process.env["GEMINI_API_KEY"]?.trim() ||
+        process.env["LOVABLE_API_KEY"]?.trim(),
+    );
+  return { builtIn };
+});
+
+/**
+ * Makes the smallest possible request with the caller's key so they know it works
+ * before they start. The key is used for this one request only and never stored.
+ */
+export const testApiKey = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ apiKey: z.string().trim().min(10).max(300) }).parse(input))
+  .handler(async ({ data }) => {
+    const choice = chooseProvider({ userKey: data.apiKey, allowBuiltIn: false });
+    if (!choice) return { ok: false as const, message: "That doesn't look like a key." };
+    try {
+      if (choice.via === "anthropic") await callAnthropic(choice.key, "fast", "Reply with OK.", 256);
+      else await callGemini(choice.key, "fast", "Reply with OK.", 256);
+      return { ok: true as const, provider: choice.via };
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        // The provider recognised the key but is throttling it, so the key itself is fine.
+        return { ok: true as const, provider: choice.via };
+      }
+      return { ok: false as const, message: e instanceof Error ? e.message : "The key check failed." };
+    }
   });
 
 // ─── Share blend ─────────────────────────────────────────────────────────────
