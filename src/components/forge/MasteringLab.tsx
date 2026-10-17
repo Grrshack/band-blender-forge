@@ -968,7 +968,7 @@ export function MasteringLab() {
               label="Sub-rumble cut"
               value={params.subCutHz}
               min={0}
-              max={60}
+              max={40}
               step={1}
               format={(v) => (v === 0 ? "Off" : `${v} Hz`)}
               onChange={(v) => patch({ subCutHz: v > 0 && v < 18 ? 18 : v })}

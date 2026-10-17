@@ -16,6 +16,7 @@ import { runForge } from "@/lib/forge.functions";
 import { ALL_GENRES, ERA_OPTIONS, SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
 import { PromptCard } from "./PromptCard";
 import { shareBlend } from "@/lib/forge.functions";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
@@ -785,8 +786,10 @@ export function BandBlender({
                 },
               });
               setShareSlug(slug);
-            } catch {
-              // share failed silently — user can retry
+            } catch (e) {
+              toast.error(
+                e instanceof Error && e.message ? e.message : "Could not create a share link. Try again.",
+              );
             } finally {
               setSharing(false);
             }

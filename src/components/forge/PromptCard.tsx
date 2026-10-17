@@ -9,6 +9,7 @@
 import { useRef, useState } from "react";
 import { Camera, Clipboard, Download, FileText, Globe, Share2, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import type { BlendResult } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +126,13 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
   const inner = (
     <div className={cn("flex w-full max-w-2xl flex-col gap-3", inline && "mx-auto")}>
         {/* Actions toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-2",
+            !inline &&
+              "sticky top-0 z-10 rounded-xl border border-border bg-background/95 p-2 backdrop-blur",
+          )}
+        >
           <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
             Prompt card
           </span>
@@ -216,16 +223,22 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
                       data: {
                         title: communityTitle.trim(),
                         style_tag: data.result.styleTag,
-                        vocal_prompt: data.result.vocalPrompt as Record<string, string> | undefined,
-                        exclude_styles: data.result.excludeStyles,
+                        vocal_prompt: cleanVocalPrompt(data.result.vocalPrompt),
+                        exclude_styles: data.result.excludeStyles || undefined,
                         artists: data.artists.filter(Boolean),
                         genre_tags: data.targetGenre ? [data.targetGenre] : [],
                       },
                     });
                     setCommunityDone(true);
                     setShowCommunityForm(false);
-                  } catch {
-                    // leave form open on error
+                    toast.success("Shared to the community library.");
+                  } catch (e) {
+                    // Leave the form open so they can retry, but say why it failed.
+                    toast.error(
+                      e instanceof Error && e.message
+                        ? e.message
+                        : "Could not submit to the community. Try again.",
+                    );
                   } finally {
                     setCommunitySubmitting(false);
                   }
@@ -344,10 +357,30 @@ export function PromptCard({ data, onClose, shareSlug, onShare, sharing, inline 
   if (inline) return inner;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      {inner}
+    // The overlay itself scrolls, so a card taller than the window is never clipped.
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+    >
+      <div className="flex min-h-full items-start justify-center p-4 sm:items-center sm:py-8">
+        {inner}
+      </div>
     </div>
   );
+}
+
+/** The community validator only accepts string values; drop empty or non-string fields. */
+function cleanVocalPrompt(vp: BlendResult["vocalPrompt"]): Record<string, string> | undefined {
+  if (!vp) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(vp)) {
+    if (typeof v === "string" && v.trim()) out[k] = v.trim();
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function CardField({
