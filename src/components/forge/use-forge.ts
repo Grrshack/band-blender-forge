@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useSettings } from "./settings";
 import { runForge } from "@/lib/forge.functions";
 import { NO_KEY_MESSAGE } from "@/lib/provider";
+import { track } from "@/lib/stats";
 
 type ForgeCall = ReturnType<typeof useServerFn<typeof runForge>>;
 
@@ -22,9 +23,12 @@ export function useForge(): ForgeCall {
         openKeyDialog();
         throw new Error(NO_KEY_MESSAGE);
       }
+      const task = (args as { data?: { task?: string } } | undefined)?.data?.task ?? "";
+      track("ai_call", task);
       try {
         return await forge(args);
       } catch (e) {
+        track("ai_error", task);
         if (e instanceof Error && e.message.includes(NO_KEY_MESSAGE)) openKeyDialog();
         throw e;
       }

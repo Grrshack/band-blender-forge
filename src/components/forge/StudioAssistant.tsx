@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/stats";
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -334,15 +335,16 @@ function StartPaths({
           <button
             key={p.id}
             type="button"
-            onClick={() =>
-              p.id === "fix"
+            onClick={() => {
+              track("start_choice", p.id);
+              return p.id === "fix"
                 ? setFixing((v) => !v)
                 : p.id === "beat"
                   ? setBeat((v) => !v)
                   : p.id === "new"
                     ? document.getElementById("assistant-input")?.focus()
-                    : onGoTab(p.tab)
-            }
+                    : onGoTab(p.tab);
+            }}
             aria-expanded={p.id === "fix" ? fixing : p.id === "beat" ? beat : undefined}
             className={cn(
               "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",

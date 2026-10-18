@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { getAiConfig } from "@/lib/forge.functions";
+import { track } from "@/lib/stats";
 
 export type Routing = "fast" | "craft";
 
@@ -89,7 +90,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [routing]);
 
-  const openKeyDialog = useCallback(() => setKeyDialogOpen(true), []);
+  const openKeyDialog = useCallback(() => {
+    track("key_dialog_open");
+    setKeyDialogOpen(true);
+  }, []);
   const aiReady = builtIn || apiKey.trim().length > 0;
 
   const value = useMemo(

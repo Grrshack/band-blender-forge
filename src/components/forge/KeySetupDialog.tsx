@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { testApiKey } from "@/lib/forge.functions";
 import { providerLabel } from "@/lib/provider";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/stats";
 
 type Check =
   | { state: "idle" }
@@ -78,6 +79,7 @@ export function KeySetupDialog() {
     setCheck({ state: "testing" });
     try {
       const r = await test({ data: { apiKey: trimmed } });
+      track("key_test", r.ok ? "ok" : "fail");
       if (r.ok) {
         setCheck({ state: "ok", label: providerLabel(trimmed) });
         setApiKey(trimmed);
@@ -93,6 +95,7 @@ export function KeySetupDialog() {
   };
 
   const save = () => {
+    track("key_saved", providerLabel(trimmed) === "Google Gemini" ? "gemini" : "anthropic");
     setApiKey(trimmed);
     setKeyDialogOpen(false);
   };

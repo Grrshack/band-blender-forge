@@ -2,6 +2,7 @@ import {
   AudioWaveform,
   Download,
   FileAudio,
+  ChevronDown,
   Headphones,
   Loader2,
   Pause,
@@ -53,6 +54,7 @@ import {
   measureTruePeak,
 } from "@/lib/audio/mastering-dsp";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/stats";
 
 const MAX_FILE_MB = 250;
 const FMIN = 20;
@@ -125,21 +127,65 @@ function ParamSlider({
   );
 }
 
+type GroupId = "bass" | "lowband" | "sub" | "finish";
+const ALL_GROUPS: GroupId[] = ["bass", "lowband", "sub", "finish"];
+
+/**
+ * A control group that starts closed. The closed header still shows the current settings
+ * and a dot when the group is doing something, so nobody forgets it's there.
+ */
 function Group({
+  id,
   title,
+  summary,
+  active,
+  open,
+  onToggle,
   children,
   dim,
 }: {
+  id: GroupId;
   title: string;
+  summary: string;
+  active: boolean;
+  open: boolean;
+  onToggle: (id: GroupId) => void;
   children: React.ReactNode;
   dim?: boolean;
 }) {
   return (
-    <div className={cn("rounded-lg border border-border bg-card/50 p-3.5", dim && "opacity-60")}>
-      <h3 className="mb-3 font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
-        {title}
-      </h3>
-      <div className="space-y-3.5">{children}</div>
+    <div
+      id={`master-group-${id}`}
+      className={cn("rounded-lg border bg-card/50", open ? "border-primary/40" : "border-border", dim && "opacity-60")}
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        aria-expanded={open}
+        aria-controls={`master-group-body-${id}`}
+        className="flex w-full items-start gap-2.5 p-3.5 text-left"
+      >
+        <ChevronDown
+          className={cn("mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            {title}
+            {active ? (
+              <span className="flex items-center gap-1 text-[10px] font-normal text-signal-high">
+                <span className="size-1.5 rounded-full bg-signal-high" /> in use
+              </span>
+            ) : null}
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">{summary}</span>
+        </span>
+        <span className="shrink-0 text-xs text-primary">{open ? "Close" : "Adjust"}</span>
+      </button>
+      {open ? (
+        <div id={`master-group-body-${id}`} className="space-y-3.5 border-t border-border/60 p-3.5">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -196,6 +242,38 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
       alive = false;
     };
   }, [song]);
+
+  // Detail groups start closed; "Show all controls" is remembered on this device.
+  const [openGroups, setOpenGroups] = useState<Set<GroupId>>(new Set());
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("blf.master.allOpen") === "1") setOpenGroups(new Set(ALL_GROUPS));
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const rememberAll = (all: boolean) => {
+    try {
+      localStorage.setItem("blf.master.allOpen", all ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  const toggleGroup = (id: GroupId) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const openGroup = (id: GroupId) => {
+    setOpenGroups((prev) => new Set(prev).add(id));
+    setTimeout(
+      () => document.getElementById(`master-group-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      50,
+    );
+  };
+  const allOpen = openGroups.size === ALL_GROUPS.length;
 
   const applyPresetByName = (name: string) => {
     const p = PRESETS.find((x) => x.name === name);
@@ -520,6 +598,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
       const a = ensureAudio();
       const buffer = await a.ctx.decodeAudioData(await file.arrayBuffer());
       setSong({ name: file.name, size: file.size, buffer });
+      track("master_loaded", stem);
       setPosition(0);
     } catch {
       setError(
@@ -535,6 +614,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
   const exportMaster = async () => {
     const s = song;
     if (!s) return;
+    track("master_export", stem);
     setError(null);
     setResult(null);
     pause();
@@ -686,6 +766,38 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
 
   const band = params.mode === "band";
   const noSong = !song;
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const groupInfo: Record<GroupId, { summary: string; active: boolean }> = {
+    bass: {
+      summary: `${band ? "Low band" : "Bass shelf"} ${fmtDb(params.bassGainDb)} at ${params.crossoverHz} Hz · punch ${fmtDb(params.punchGainDb)} at ${params.punchFreq} Hz`,
+      active: params.bassGainDb !== 0 || params.punchGainDb !== 0,
+    },
+    lowband: {
+      summary: band
+        ? `Warmth ${pct(params.warmth)} · tighten ${pct(params.tighten)} · mono bass ${params.monoBass ? "on" : "off"}`
+        : "Only works in Low band mode (above)",
+      active: band && (params.warmth > 0 || params.tighten > 0 || params.monoBass),
+    },
+    sub: {
+      summary:
+        params.subCompAmount > 0 || params.subScoopDb < 0
+          ? `Sub compressor ${params.subCompAmount ? pct(params.subCompAmount) : "off"} · scoop ${fmtDb(params.subScoopDb)} at ${params.subScoopFreq} Hz`
+          : "Off",
+      active: params.subCompAmount > 0 || params.subScoopDb < 0,
+    },
+    finish: {
+      summary: `Rumble cut ${params.subCutHz ? `${params.subCutHz} Hz` : "off"} · mud ${fmtDb(params.lowMidCutDb)} · air ${fmtDb(params.airDb)} · glue ${pct(params.glue)} · ceiling ${params.ceilingDb.toFixed(1)} dBFS`,
+      active:
+        params.subCutHz > 0 || params.lowMidCutDb < 0 || params.airDb > 0 || params.glue > 0,
+    },
+  };
+  const groupProps = (id: GroupId) => ({
+    id,
+    summary: groupInfo[id].summary,
+    active: groupInfo[id].active,
+    open: openGroups.has(id),
+    onToggle: toggleGroup,
+  });
 
   return (
     <div className="space-y-5">
@@ -694,6 +806,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
       verdict={verdict}
       measuring={measuring}
       onApplyPreset={applyPresetByName}
+      onShowControls={(g) => openGroup(g)}
       onOpenFix={onOpenFix}
     />
     <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
@@ -866,7 +979,25 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
             ) : null}
           </div>
 
-          <Group title="Bass">
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-xs font-medium text-foreground/90">Detailed controls</span>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !allOpen;
+                setOpenGroups(next ? new Set(ALL_GROUPS) : new Set());
+                rememberAll(next);
+              }}
+              className="text-xs text-primary underline underline-offset-2"
+            >
+              {allOpen ? "Close all" : "Show all controls"}
+            </button>
+          </div>
+          <p className="-mt-2 text-[11px] text-muted-foreground">
+            Presets and AI Suggest set these for you. Open a section to fine-tune it.
+          </p>
+
+          <Group title="Bass" {...groupProps("bass")}>
             <ParamSlider
               label={band ? "Low-band level" : "Bass shelf"}
               value={params.bassGainDb}
@@ -926,7 +1057,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
             </div>
           </Group>
 
-          <Group title="Low-band treatment" dim={!band}>
+          <Group title="Low-band treatment" dim={!band} {...groupProps("lowband")}>
             <ParamSlider
               label="Warmth (saturation)"
               value={params.warmth}
@@ -965,7 +1096,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
             </label>
           </Group>
 
-          <Group title="Sub-40 rumble control">
+          <Group title="Sub-40 rumble control" {...groupProps("sub")}>
             <ParamSlider
               label="Sub compressor"
               value={params.subCompAmount}
@@ -1046,7 +1177,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
             </div>
           </Group>
 
-          <Group title="Clean-up & finish">
+          <Group title="Clean-up & finish" {...groupProps("finish")}>
             <ParamSlider
               label="Sub-rumble cut"
               value={params.subCutHz}
@@ -1160,7 +1291,8 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
       <Panel
         title="Preview & Export"
         subtitle={song ? song.name : "Drop a song or a single stem to start."}
-        className={cn(!song && "lg:self-start")}
+        // On phones the upload/preview comes first, since loading a song is step one.
+        className={cn("order-first lg:order-none", !song && "lg:self-start")}
       >
         <div className="space-y-4">
           {error ? <ErrorNote message={error} /> : null}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { bestTake, diffTags, isSunoUrl, newTake, tagPatterns, type Take } from "@/lib/takes";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/stats";
 
 /** Log each generated take with a rating, see what changed between versions, and restore any prompt. */
 export function TakeLog({
@@ -37,6 +38,7 @@ export function TakeLog({
     if (!style.trim()) return;
     if (linkBad) return;
     onTakes([...takes, newTake(style, exclude, rating, note, new Date(), link)]);
+    track("take_logged", String(rating));
     setNote("");
     setLink("");
   };

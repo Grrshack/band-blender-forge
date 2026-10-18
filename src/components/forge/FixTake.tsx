@@ -17,6 +17,7 @@ import { historyForPrompt, type Take } from "@/lib/takes";
 import { measureTake, type TakeMeasurements } from "@/lib/audio/take-diagnosis";
 import { submitPublicPrompt } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/stats";
 
 const SYMPTOMS = [
   "Vocals sound robotic or over-polished",
@@ -81,6 +82,7 @@ export function FixTake({
         },
       });
       toast.success("Recipe shared to the community library.");
+      track("recipe_shared");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't share the recipe.");
       throw e;

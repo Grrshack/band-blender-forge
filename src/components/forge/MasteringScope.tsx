@@ -59,7 +59,9 @@ export function MasteringScope({
   measuring,
   onApplyPreset,
   onOpenFix,
+  onShowControls,
 }: {
+  onShowControls?: ((group: NonNullable<VerdictItem["group"]>) => void) | undefined;
   songName: string | null;
   verdict: VerdictItem[] | null;
   measuring: boolean;
@@ -127,6 +129,16 @@ export function MasteringScope({
                   {v.preset ? (
                     <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => onApplyPreset(v.preset!)}>
                       <Wand2 className="size-3" /> Use "{v.preset}"
+                    </Button>
+                  ) : null}
+                  {v.group && onShowControls ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs text-muted-foreground"
+                      onClick={() => onShowControls(v.group!)}
+                    >
+                      Show the controls
                     </Button>
                   ) : null}
                   {v.route === "fix" && onOpenFix ? (
