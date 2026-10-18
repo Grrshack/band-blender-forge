@@ -54,14 +54,9 @@ export const Route = createFileRoute("/")({
 
 
 function Index() {
-  const [tab, setTab] = useState(() => {
-    // Read ?tab= param on first render so shared genre links land on the right tab.
-    try {
-      const p = new URLSearchParams(window.location.search).get("tab");
-      if (p && ALL_TAB_VALUES.includes(p)) return p;
-    } catch { /* SSR */ }
-    return "blend";
-  });
+  // Always "blend" on the server and first paint; a ?tab= link is applied right after
+  // hydration (reading the URL during render made server and client disagree).
+  const [tab, setTab] = useState("blend");
   const [state, setState] = useState<ForgeState>(emptyState);
   const [shared, setShared] = useState<SharePayload | null>(null);
   const [mode, setMode] = useState<"guided" | "rack">("rack");
@@ -69,11 +64,12 @@ function Index() {
   const [blendAutoRun, setBlendAutoRun] = useState(false);
   const [blendFlashKey, setBlendFlashKey] = useState(0);
 
-  // First-time visitors land on "Start here" unless a link asked for a specific tab.
+  // A ?tab= link opens that tool; otherwise first-time visitors land on "Start here".
   useEffect(() => {
     try {
       const asked = new URLSearchParams(window.location.search).get("tab");
-      if (!asked && !localStorage.getItem("blf.visited")) setTab("assistant");
+      if (asked && ALL_TAB_VALUES.includes(asked)) setTab(asked);
+      else if (!localStorage.getItem("blf.visited")) setTab("assistant");
       localStorage.setItem("blf.visited", "1");
     } catch {
       /* storage unavailable */
@@ -356,7 +352,7 @@ function Index() {
                       lyrics={state.lyrics}
                     />
                   )}
-                  {tab === "master" && <MasteringLab />}
+                  {tab === "master" && <MasteringLab onOpenFix={() => setTab("fix")} />}
                   {tab === "library" && <PromptLibrary onApply={applyPreset} />}
                   {tab === "genres" && (
                     <GenreGuide
@@ -371,6 +367,14 @@ function Index() {
                     <StudioAssistant
                       currentBlend={state.blend}
                       onGoTab={setTab}
+                      onAddToStyle={(line) => {
+                        const cur = state.blend.result?.styleTag?.trim() ?? "";
+                        patch("blend", {
+                          ...state.blend,
+                          result: { ...(state.blend.result ?? {}), styleTag: cur ? `${cur}, ${line}` : line },
+                        });
+                        toast.success("Added to your style prompt. Find it in Band Blender and the Export Sheet.");
+                      }}
                       onFixSong={(notes) => {
                         patch("fix", { ...state.fix, notes, result: null });
                         setTab("fix");
