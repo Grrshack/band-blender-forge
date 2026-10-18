@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AudioLines } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/components/forge/auth";
@@ -30,6 +30,7 @@ import { getSharedBlend } from "@/lib/forge.functions";
 import type { BlendResult } from "@/components/forge/types";
 import { toast } from "sonner";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
+import { track } from "@/lib/stats";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,7 +57,12 @@ export const Route = createFileRoute("/")({
 function Index() {
   // Always "blend" on the server and first paint; a ?tab= link is applied right after
   // hydration (reading the URL during render made server and client disagree).
-  const [tab, setTab] = useState("blend");
+  const [tab, setTabState] = useState("blend");
+  // Every tool switch goes through here so usage counts match what people open.
+  const setTab = useCallback((t: string) => {
+    setTabState(t);
+    track("tab_open", t, { once: true });
+  }, []);
   const [state, setState] = useState<ForgeState>(emptyState);
   const [shared, setShared] = useState<SharePayload | null>(null);
   const [mode, setMode] = useState<"guided" | "rack">("rack");
@@ -68,8 +74,12 @@ function Index() {
   useEffect(() => {
     try {
       const asked = new URLSearchParams(window.location.search).get("tab");
-      if (asked && ALL_TAB_VALUES.includes(asked)) setTab(asked);
-      else if (!localStorage.getItem("blf.visited")) setTab("assistant");
+      const first = asked && ALL_TAB_VALUES.includes(asked)
+        ? asked
+        : !localStorage.getItem("blf.visited")
+          ? "assistant"
+          : "blend";
+      setTab(first);
       localStorage.setItem("blf.visited", "1");
     } catch {
       /* storage unavailable */
@@ -93,6 +103,8 @@ function Index() {
       /* ignore */
     }
   };
+
+
 
   // ?remix=<slug> loads a community blend into the studio as a starting point.
   useEffect(() => {

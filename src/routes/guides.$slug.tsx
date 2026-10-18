@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/brand";
 import { guideBySlug } from "@/lib/guides";
+import { track } from "@/lib/stats";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/guides/$slug")({
   loader: ({ params }) => {
@@ -34,6 +36,9 @@ export const Route = createFileRoute("/guides/$slug")({
 
 function GuidePage() {
   const g = Route.useLoaderData();
+  useEffect(() => {
+    track("guide_view", g.slug, { once: true });
+  }, [g.slug]);
   return (
     <div className="min-h-screen bg-background px-4 py-10">
       <article className="mx-auto max-w-2xl">
