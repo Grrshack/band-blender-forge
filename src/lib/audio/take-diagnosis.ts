@@ -127,21 +127,29 @@ export function flagsFor(m: {
 }
 
 /** Decodes an audio file and measures it. Throws a readable error if the file can't be decoded. */
-export async function measureTake(file: File): Promise<TakeMeasurements> {
+/** Decodes an audio file in the browser. Throws a readable error if it can't. */
+export async function decodeAudioFile(file: File): Promise<AudioBuffer> {
   const Ctx =
     window.AudioContext ??
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctx) throw new Error("This browser can't decode audio.");
   const ctx = new Ctx();
-  let buffer: AudioBuffer;
   try {
-    buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+    return await ctx.decodeAudioData(await file.arrayBuffer());
   } catch {
     throw new Error("Couldn't read that file. Try an MP3, WAV, M4A or FLAC.");
   } finally {
     void ctx.close();
   }
+}
 
+/** Decodes an audio file and measures it. Throws a readable error if the file can't be decoded. */
+export async function measureTake(file: File): Promise<TakeMeasurements> {
+  return measureBuffer(await decodeAudioFile(file));
+}
+
+/** Measures an already-decoded song. Used by Fix a Track and Mastering. */
+export async function measureBuffer(buffer: AudioBuffer): Promise<TakeMeasurements> {
   const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) =>
     buffer.getChannelData(c),
   );

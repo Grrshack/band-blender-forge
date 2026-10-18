@@ -116,6 +116,28 @@ export const PRESETS: Array<{
 }> = [
   { name: "Flat", hint: "Reset everything", params: { ...DEFAULT_PARAMS } },
   {
+    name: "Suno v6 starter",
+    hint: "Built for how Suno v6 usually sounds: heavy lows and a dull, noisy top. Tightens the lows, trims mud, adds no high boost. A safe first move.",
+    params: {
+      mode: "band",
+      crossoverHz: 120,
+      bassGainDb: 0,
+      punchFreq: 70,
+      punchGainDb: 0.5,
+      punchQ: 1.2,
+      warmth: 0.2,
+      tighten: 0.5,
+      monoBass: true,
+      subCutHz: 30,
+      subCutSlope: 1,
+      subCutQ: 0.707,
+      lowMidCutDb: -2,
+      airDb: 0,
+      glue: 0.25,
+      ceilingDb: -1,
+    },
+  },
+  {
     name: "Suno rumble fix",
     hint: "Dedicated sub compressor targets rumble below 50 Hz without touching punch. Start here for muddy, vibrating Suno bass.",
     params: {
