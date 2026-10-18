@@ -14,6 +14,9 @@ export function songStages(state: ForgeState) {
       done: state.takes.length > 0,
     },
     { label: "Keeper", done: kept },
+    ...(state.takes.some((t) => t.downloaded)
+      ? [{ label: `Downloads ${state.takes.filter((t) => t.downloaded).length}`, done: true }]
+      : []),
     { label: "Release", done: state.dossiers.length > 0 },
   ];
 }

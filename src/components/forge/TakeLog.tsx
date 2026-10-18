@@ -46,9 +46,13 @@ export function TakeLog({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-card/40 p-3">
-        <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+        <span className="mb-1 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
           Log the take you just generated
         </span>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Rate takes by listening on Suno. Downloads are limited (free: 7 ever; Pro: 20 a month;
+          Premier: 60), so download only the keeper.
+        </p>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-0.5" role="radiogroup" aria-label="Rating">
             {([1, 2, 3, 4, 5] as const).map((n) => (
@@ -163,6 +167,17 @@ export function TakeLog({
                     {new Date(t.at).toLocaleString()}
                   </span>
                   <span className="ml-auto flex items-center gap-1">
+                    <label className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(t.downloaded)}
+                        onChange={(e) =>
+                          onTakes(takes.map((x) => (x.id === t.id ? { ...x, downloaded: e.target.checked } : x)))
+                        }
+                        className="size-3.5 accent-primary"
+                      />
+                      Downloaded
+                    </label>
                     {t.sunoUrl ? (
                       <a
                         href={t.sunoUrl}

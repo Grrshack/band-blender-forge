@@ -1,10 +1,11 @@
-import { AudioWaveform, Loader2, MessageSquare, PenLine, Send, Sparkles, Stethoscope, Zap } from "lucide-react";
+import { AudioWaveform, Drum, Loader2, MessageSquare, PenLine, Send, Sparkles, Stethoscope, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { ERA_OPTIONS } from "@/lib/suno";
 import { useSettings } from "./settings";
 import { useForge } from "./use-forge";
 import { Panel } from "./Field";
+import { BeatStart } from "./BeatStart";
 import type { BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,9 +68,11 @@ export function StudioAssistant({
   onToggleAutoRun,
   onGoTab,
   onFixSong,
+  onAddToStyle,
 }: {
   onGoTab: (tab: string) => void;
   onFixSong: (notes: string) => void;
+  onAddToStyle?: (line: string) => void;
   currentBlend: BlendSlice;
   onApply: (intent: IntentResponse) => void;
   autoRun: boolean;
@@ -149,7 +152,7 @@ export function StudioAssistant({
 
   return (
     <div className="space-y-5">
-      <StartPaths onGoTab={onGoTab} onFixSong={onFixSong} />
+      <StartPaths onGoTab={onGoTab} onFixSong={onFixSong} onAddToStyle={onAddToStyle} />
       <Panel
         title="Describe the sound you want"
         subtitle="Plain English is fine. The assistant sets up the Band Blender for you."
@@ -288,6 +291,13 @@ const PATHS = [
     tab: "lyrics",
   },
   {
+    id: "beat",
+    icon: Drum,
+    title: "Start from a beat",
+    body: "Make a beat with a free tool, then bring it into Suno.",
+    tab: "blend",
+  },
+  {
     id: "master",
     icon: AudioWaveform,
     title: "Master a song or stem",
@@ -300,28 +310,43 @@ const PATHS = [
 function StartPaths({
   onGoTab,
   onFixSong,
+  onAddToStyle,
 }: {
   onGoTab: (tab: string) => void;
   onFixSong: (notes: string) => void;
+  onAddToStyle?: ((line: string) => void) | undefined;
 }) {
   const [fixing, setFixing] = useState(false);
+  const [beat, setBeat] = useState(false);
   const [notes, setNotes] = useState("");
   return (
     <section className="panel-surface p-5 sm:p-6">
       <h2 className="font-display text-xl font-semibold">What do you want to do?</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Pick one. You can move between tools any time from the menu.
+        Pick one. You can move between tools any time from the menu, or read the{" "}
+        <a href="/guides" className="text-primary underline underline-offset-2">
+          guides
+        </a>
+        .
       </p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {PATHS.map((p) => (
           <button
             key={p.id}
             type="button"
-            onClick={() => (p.id === "fix" ? setFixing((v) => !v) : p.id === "new" ? document.getElementById("assistant-input")?.focus() : onGoTab(p.tab))}
-            aria-expanded={p.id === "fix" ? fixing : undefined}
+            onClick={() =>
+              p.id === "fix"
+                ? setFixing((v) => !v)
+                : p.id === "beat"
+                  ? setBeat((v) => !v)
+                  : p.id === "new"
+                    ? document.getElementById("assistant-input")?.focus()
+                    : onGoTab(p.tab)
+            }
+            aria-expanded={p.id === "fix" ? fixing : p.id === "beat" ? beat : undefined}
             className={cn(
               "flex items-start gap-3 rounded-xl border p-4 text-left transition-colors",
-              p.id === "fix" && fixing
+              (p.id === "fix" && fixing) || (p.id === "beat" && beat)
                 ? "border-primary/60 bg-primary/10"
                 : "border-border bg-card/40 hover:border-primary/50 hover:bg-card/70",
             )}
@@ -336,6 +361,7 @@ function StartPaths({
           </button>
         ))}
       </div>
+      {beat ? <BeatStart onAddToStyle={onAddToStyle} /> : null}
       {fixing ? (
         <div className="mt-4 space-y-2 rounded-xl border border-primary/40 bg-primary/5 p-4">
           <label htmlFor="fix-notes" className="text-sm font-medium">

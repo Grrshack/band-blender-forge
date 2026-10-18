@@ -2,6 +2,7 @@ import {
   AudioWaveform,
   BarChart2,
   BookMarked,
+  BookOpen,
   Bot,
   Gauge,
   Map,
@@ -65,7 +66,7 @@ export const TAB_GROUPS: Group[] = [
         value: "suno",
         label: "Export Sheet",
         icon: Send,
-        hint: "Copy your style and lyrics into Suno, Udio or ElevenLabs",
+        hint: "Copy your style and lyrics into Suno (or ElevenLabs Music)",
       },
     ],
   },
@@ -172,6 +173,12 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
           </div>
         </div>
       ))}
+      <a
+        href="/guides"
+        className="mt-1 flex items-center gap-2.5 rounded-lg border-t border-border px-3 pt-3 pb-1 text-sm text-foreground/75 hover:text-foreground"
+      >
+        <BookOpen className="size-4 shrink-0" /> Guides
+      </a>
     </nav>
   );
 }
@@ -208,7 +215,12 @@ export function RackMobileNav({ tab, onTab }: { tab: string; onTab: (t: string) 
           ▾
         </span>
       </div>
-      {current && <p className="mt-1.5 px-1 text-xs text-muted-foreground">{current.hint}</p>}
+      <div className="mt-1.5 flex items-start justify-between gap-3 px-1">
+        {current ? <p className="text-xs text-muted-foreground">{current.hint}</p> : <span />}
+        <a href="/guides" className="shrink-0 text-xs text-primary underline underline-offset-2">
+          Guides
+        </a>
+      </div>
     </div>
   );
 }

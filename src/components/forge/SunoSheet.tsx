@@ -18,6 +18,7 @@ import {
   vocalString,
 } from "@/lib/suno";
 import { ENGINE_LABELS, buildEngineExport, type Engine } from "@/lib/engines";
+import { preflight } from "@/lib/preflight";
 import { cn } from "@/lib/utils";
 
 function Counter({ n, max }: { n: number; max: number }) {
@@ -160,7 +161,7 @@ export function SunoSheet({
   return (
     <Panel
       title="Export Sheet"
-      subtitle="Pick your engine — every box is paste-ready for it."
+      subtitle="Check, then paste into Suno. Every box is ready to copy."
       action={
         <div className="flex flex-wrap justify-end gap-1.5">
           <CopyButton value={everything} label="Copy all" />
@@ -178,10 +179,13 @@ export function SunoSheet({
       }
     >
       <div className="space-y-4">
+        <PreflightCard
+          issues={preflight({ style, exclude, version: blend.sunoVersion, artistNames: names })}
+        />
         <div
           role="radiogroup"
           aria-label="Target engine"
-          className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background/40 p-1"
+          className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background/40 p-1"
         >
           {(Object.keys(ENGINE_LABELS) as Engine[]).map((e) => (
             <button
@@ -364,5 +368,58 @@ export function SunoSheet({
         )}
       </div>
     </Panel>
+  );
+}
+
+/**
+ * Runs before the person goes to Suno: a generation (and, after it, one of their limited
+ * downloads) is the expensive part, so catch prompt problems first.
+ */
+function PreflightCard({ issues }: { issues: ReturnType<typeof preflight> }) {
+  const stops = issues.filter((i) => i.level === "stop");
+  const ok = issues.length === 0;
+  return (
+    <section
+      aria-label="Pre-flight check"
+      className={cn(
+        "rounded-lg border p-3",
+        ok
+          ? "border-signal-high/40 bg-signal-high/5"
+          : stops.length
+            ? "border-destructive/50 bg-destructive/5"
+            : "border-signal-mid/50 bg-signal-mid/5",
+      )}
+    >
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        {ok ? (
+          <CheckCircle2 className="size-4 text-signal-high" />
+        ) : (
+          <AlertTriangle className={cn("size-4", stops.length ? "text-destructive" : "text-signal-mid")} />
+        )}
+        {ok
+          ? "Pre-flight check passed"
+          : `Pre-flight check: ${issues.length} thing${issues.length > 1 ? "s" : ""} to look at before you generate`}
+      </p>
+      {ok ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          No contradictions, artist names or overlong prompt found. Suno downloads are limited, so
+          judge takes by listening on Suno first and download only the keeper.
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-1">
+          {issues.map((i) => (
+            <li key={i.message} className="flex gap-2 text-xs text-foreground/90">
+              <span
+                className={cn(
+                  "mt-1.5 size-1.5 shrink-0 rounded-full",
+                  i.level === "stop" ? "bg-destructive" : "bg-signal-mid",
+                )}
+              />
+              {i.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

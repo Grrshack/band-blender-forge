@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Disc3,
   Download,
   FolderOpen,
   Loader2,
@@ -235,6 +236,16 @@ export function WorkspaceBar({
               <DropdownMenuItem onSelect={() => void startNew(emptyState(), UNTITLED)}>
                 <Plus className="size-3.5" /> Start a new song
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  void startNew(
+                    { ...emptyState(), blend: state.blend, master: state.master },
+                    `${name} (next track)`,
+                  )
+                }
+              >
+                <Disc3 className="size-3.5" /> Next track, same sound (album or EP)
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void startNew(state, `${name} (copy)`)}>
                 <Copy className="size-3.5" /> Duplicate this song
               </DropdownMenuItem>
@@ -299,6 +310,20 @@ export function WorkspaceBar({
             Not saved: sign in to keep your songs
           </span>
           <SongProgress state={state} />
+          {state.blend.result?.styleTag ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs text-muted-foreground"
+              title="For an album or EP: keeps the sound and mastering settings, starts fresh lyrics and takes."
+              onClick={() => {
+                if (!confirm("Start the next track? This keeps the sound and clears lyrics, takes and fixes.")) return;
+                onLoadState({ ...emptyState(), blend: state.blend, master: state.master });
+              }}
+            >
+              <Disc3 className="size-3.5" /> Next track, same sound
+            </Button>
+          ) : null}
           <div className="ml-auto flex items-center gap-1.5">
             <Button
               variant="outline"

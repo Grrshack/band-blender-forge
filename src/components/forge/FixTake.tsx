@@ -10,6 +10,7 @@ import { useForge } from "./use-forge";
 import { TakeLog } from "./TakeLog";
 import type { BlendSlice, FixResult, FixSlice, LyricSlice } from "./types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SUNO_LIMITS, composeSunoLyrics } from "@/lib/suno";
 import { historyForPrompt, type Take } from "@/lib/takes";
@@ -103,6 +104,9 @@ export function FixTake({
   const style = blend.result?.styleTag ?? "";
   const exclude = blend.result?.excludeStyles ?? "";
   const { symptoms, notes, result, undo } = value;
+  const moments = value.moments ?? [];
+  const setMoment = (i: number, patch: Partial<{ time: string; note: string }>) =>
+    onChange({ ...value, moments: moments.map((m, j) => (j === i ? { ...m, ...patch } : m)) });
 
   const setBlendFields = (patch: { styleTag?: string; excludeStyles?: string }) =>
     onBlend({ ...blend, result: { ...(blend.result ?? {}), ...patch } });
@@ -114,7 +118,8 @@ export function FixTake({
     });
 
   const run = async () => {
-    if (!symptoms.length && !notes.trim() && !audio) {
+    const noted = moments.filter((m) => m.note.trim());
+    if (!symptoms.length && !notes.trim() && !audio && !noted.length) {
       setError("Pick at least one problem, describe what you heard, or add the song file.");
       return;
     }
@@ -135,6 +140,7 @@ export function FixTake({
             lyrics: includeLyrics ? composeSunoLyrics(lyrics.sections).slice(0, 3500) : "",
             ...(takes.length ? { history: historyForPrompt(takes) } : {}),
             ...(audio ? { audio } : {}),
+            ...(noted.length ? { moments: noted.slice(0, 12) } : {}),
           },
         },
       });
@@ -182,6 +188,56 @@ export function FixTake({
                 placeholder="Paste the style prompt from Suno, or run Band Blender. Leave empty if you don't have it."
                 className="resize-y border-border bg-card/60 font-mono text-sm focus-visible:ring-primary"
               />
+            </div>
+
+            <div>
+              <span className="mb-1 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Where in the song? (no download needed)
+              </span>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Play the take on Suno and note the times. Suno downloads are limited, so save them
+                for keepers.
+              </p>
+              <div className="space-y-1.5">
+                {moments.map((m, i) => (
+                  <div key={i} className="flex gap-1.5">
+                    <Input
+                      value={m.time}
+                      onChange={(e) => setMoment(i, { time: e.target.value })}
+                      placeholder="1:32"
+                      aria-label="Time"
+                      maxLength={6}
+                      className="h-8 w-16 shrink-0 font-mono text-xs"
+                    />
+                    <Input
+                      value={m.note}
+                      onChange={(e) => setMoment(i, { note: e.target.value })}
+                      placeholder="Vocal goes robotic on the high note"
+                      aria-label="What you heard"
+                      maxLength={200}
+                      className="h-8 text-xs"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove"
+                      onClick={() => onChange({ ...value, moments: moments.filter((_, j) => j !== i) })}
+                      className="rounded p-1 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={moments.length >= 12}
+                  onClick={() => onChange({ ...value, moments: [...moments, { time: "", note: "" }] })}
+                >
+                  + Add a moment
+                </Button>
+              </div>
             </div>
 
             <AudioDrop
@@ -543,7 +599,7 @@ function AudioDrop({
   return (
     <div>
       <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-        The song Suno made (optional)
+        The song file (optional, if you already downloaded it)
       </span>
       {!audio && !measuring ? (
         <button

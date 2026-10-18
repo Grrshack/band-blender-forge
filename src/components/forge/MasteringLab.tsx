@@ -40,6 +40,9 @@ import {
   type MasterParams,
 } from "@/lib/audio/mastering-chain";
 import { analyzeTrack, type TrackAnalysis } from "@/lib/audio/track-analyzer";
+import { measureBuffer, type TakeMeasurements } from "@/lib/audio/take-diagnosis";
+import { masteringVerdict } from "@/lib/audio/mastering-verdict";
+import { MasteringScope } from "./MasteringScope";
 import {
   applyGain,
   dbToLin,
@@ -141,7 +144,7 @@ function Group({
   );
 }
 
-export function MasteringLab() {
+export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
   const [song, setSong] = useState<Song | null>(null);
   const [params, setParams] = useState<MasterParams>(DEFAULT_PARAMS);
   const [target, setTarget] = useState<string>("off");
@@ -169,6 +172,38 @@ export function MasteringLab() {
   const [suggestIntent, setSuggestIntent] = useState("");
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [stem, setStem] = useState<StemType>("mix");
+  const [measured, setMeasured] = useState<TakeMeasurements | null>(null);
+  const [measuring, setMeasuring] = useState(false);
+  const verdict = useMemo(() => (measured ? masteringVerdict(measured, stem) : null), [measured, stem]);
+
+  // Measure each newly loaded song once, for the verdict at the top of the tab.
+  useEffect(() => {
+    setMeasured(null);
+    if (!song) return;
+    let alive = true;
+    setMeasuring(true);
+    measureBuffer(song.buffer)
+      .then((m) => {
+        if (alive) setMeasured(m);
+      })
+      .catch(() => {
+        /* the verdict is optional; mastering still works */
+      })
+      .finally(() => {
+        if (alive) setMeasuring(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [song]);
+
+  const applyPresetByName = (name: string) => {
+    const p = PRESETS.find((x) => x.name === name);
+    if (!p) return;
+    if (p.stem && p.stem !== stem) setStem(p.stem);
+    setParams((prev) => ({ ...DEFAULT_PARAMS, ...p.params, makeupDb: prev.makeupDb }));
+    setActivePreset(p.name);
+  };
   const presetsForStem = PRESETS.filter(
     (p) => p.name === "Flat" || (stem === "mix" ? !p.stem : p.stem === stem),
   );
@@ -653,6 +688,14 @@ export function MasteringLab() {
   const noSong = !song;
 
   return (
+    <div className="space-y-5">
+    <MasteringScope
+      songName={song?.name ?? null}
+      verdict={verdict}
+      measuring={measuring}
+      onApplyPreset={applyPresetByName}
+      onOpenFix={onOpenFix}
+    />
     <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
       {/* ---------------- controls ---------------- */}
       <Panel
@@ -1365,6 +1408,8 @@ export function MasteringLab() {
             </div>
           ) : null}
 
+          <BandLabFinish />
+
           <p className="hairline-top flex items-start gap-2 pt-3 text-[11px] leading-relaxed text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-signal-high" />
             <span>
@@ -1376,6 +1421,35 @@ export function MasteringLab() {
           </p>
         </div>
       </Panel>
+    </div>
+    </div>
+  );
+}
+
+/** Optional last step: BandLab is free and is where many people finish AI songs. */
+function BandLabFinish() {
+  return (
+    <div className="rounded-lg border border-border bg-card/40 p-3">
+      <p className="text-sm font-semibold">Finishing in BandLab (optional)</p>
+      <ul className="mt-1.5 space-y-1 text-xs leading-relaxed text-muted-foreground">
+        <li>
+          <span className="text-foreground/90">Rebalance stems:</span> BandLab's free online studio
+          lets you raise a buried vocal or lower a loud instrument, which mastering can't do. Load
+          your Suno stems, mix, then master the result here.
+        </li>
+        <li>
+          <span className="text-foreground/90">Second opinion:</span> BandLab Mastering has 4 free
+          presets (Universal, Fire, Clarity, Tape). Compare its result with yours.
+        </li>
+      </ul>
+      <div className="mt-2 flex flex-wrap gap-3 text-xs">
+        <a href="https://www.bandlab.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+          BandLab
+        </a>
+        <a href="https://www.bandlab.com/mastering" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+          BandLab Mastering
+        </a>
+      </div>
     </div>
   );
 }

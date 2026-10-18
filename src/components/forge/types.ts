@@ -83,6 +83,8 @@ export type FixResult = {
 export type FixSlice = {
   symptoms: string[];
   notes: string;
+  /** What was heard where, noted while listening on Suno, so no download is needed. */
+  moments?: Array<{ time: string; note: string }>;
   result: FixResult | null;
   /** The style/exclude text that was replaced by "Apply", so it can be undone. */
   undo: { styleTag: string; excludeStyles: string } | null;
