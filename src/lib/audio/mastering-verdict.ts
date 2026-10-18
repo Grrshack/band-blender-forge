@@ -19,6 +19,8 @@ export type VerdictItem = {
   preset?: string;
   /** Where to go instead, when it can't. */
   route?: "fix" | "lyrics";
+  /** The Mastering control section that handles it, opened on request. */
+  group?: "bass" | "lowband" | "sub" | "finish";
 };
 
 /** What mastering can and can't do, shown before any upload. */
@@ -66,6 +68,7 @@ export function masteringVerdict(m: TakeMeasurements, stem: StemType = "mix"): V
       title: "Clipping in the file",
       detail: `${m.clippedPercent.toFixed(2)}% of samples hit full scale. The limiter stops new clipping, but distortion already baked in stays.`,
       route: "fix",
+      group: "finish",
     });
   }
 
@@ -75,6 +78,7 @@ export function masteringVerdict(m: TakeMeasurements, stem: StemType = "mix"): V
       title: "Heavy low end",
       detail: "The lows look louder than usual, which is common with Suno v6. Tightening controls the boom without cutting the bass.",
       preset: "Suno v6 starter",
+      group: "lowband",
     });
   }
 
@@ -84,6 +88,7 @@ export function masteringVerdict(m: TakeMeasurements, stem: StemType = "mix"): V
       title: "Possible mud around 250–500 Hz",
       detail: "A small cut (1–3 dB) usually clears it.",
       preset: "Clean up boxy mix",
+      group: "finish",
     });
   }
 
@@ -93,6 +98,7 @@ export function masteringVerdict(m: TakeMeasurements, stem: StemType = "mix"): V
       title: "Bright or harsh upper mids",
       detail: "A gentle cut helps harshness, but shimmer or fizz from generation can't be removed by EQ.",
       route: "fix",
+      group: "finish",
     });
   }
 
