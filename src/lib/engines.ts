@@ -3,20 +3,20 @@
  * Character limits are third-party measurements and may change; update them here.
  */
 
-export type Engine = "suno" | "eleven" | "udio";
+/**
+ * Suno first; ElevenLabs as a secondary export. Udio was removed in Oct 2026 because it has
+ * blocked all downloads since its Oct 2025 settlement; add it back here if that changes.
+ */
+export type Engine = "suno" | "eleven";
 
 export const ENGINE_LABELS: Record<Engine, string> = {
   suno: "Suno v6",
   eleven: "ElevenLabs Music",
-  udio: "Udio",
 };
 
 export const ENGINE_LIMITS = {
   /** ElevenLabs Music prompt field (lyrics included). */
   elevenPrompt: 4100,
-  /** Udio's prompt box works best short; tags past this get ignored. */
-  udioPrompt: 300,
-  udioLyrics: 3000,
 } as const;
 
 export type EngineInput = {
@@ -34,14 +34,6 @@ export type EngineInput = {
 export type EngineField = { label: string; value: string; max?: number; hint?: string };
 
 const clean = (s: string | undefined) => (s ?? "").trim().replace(/[.\s]+$/, "");
-
-/** Cuts at the last comma so no tag is sliced in half. */
-function fitTags(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const comma = cut.lastIndexOf(",");
-  return (comma > max * 0.5 ? cut.slice(0, comma) : cut).trim();
-}
 
 /** ElevenLabs reads plain-English direction better than tag lists. */
 export function elevenPrompt(i: EngineInput): string {
@@ -66,24 +58,6 @@ export function buildEngineExport(engine: Engine, i: EngineInput): EngineField[]
         value: elevenPrompt(i),
         max: ENGINE_LIMITS.elevenPrompt,
         hint: "Paste into ElevenLabs Music. Plain sentences, lyrics at the end, section tags kept.",
-      },
-    ];
-  }
-  if (engine === "udio") {
-    const tags = [i.style, i.vocal].filter((x) => x.trim()).join(", ");
-    return [
-      { label: "Title", value: i.title },
-      {
-        label: "Prompt",
-        value: fitTags(tags, ENGINE_LIMITS.udioPrompt),
-        max: ENGINE_LIMITS.udioPrompt,
-        hint: "Short tag list — Udio weights the first few tags most.",
-      },
-      {
-        label: "Custom lyrics",
-        value: i.lyrics,
-        max: ENGINE_LIMITS.udioLyrics,
-        hint: "Choose Custom lyrics in Udio. Section tags like [Verse] work as-is.",
       },
     ];
   }

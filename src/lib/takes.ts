@@ -13,6 +13,8 @@ export type Take = {
   note: string;
   /** Link to this take on suno.com, so a kept take can be shared as a recipe. */
   sunoUrl?: string;
+  /** True once the person spent one of their limited Suno downloads on this take. */
+  downloaded?: boolean;
 };
 
 /** Only links to suno.com are accepted, so shared recipes can't point anywhere else. */

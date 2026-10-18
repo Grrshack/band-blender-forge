@@ -164,6 +164,7 @@ Return every score. Return an empty array where nothing qualifies.`;
 Input: ${p}
 Rules:
 - Change only what the complaints justify; keep everything else identical so the next take isolates the fix. Change at most 3 things.
+- If "moments" is present, the user listened on Suno and noted problems at timestamps (m:ss). Tie each fix to its moment, and name the timestamp and section in sunoEdits targets (e.g. "Chorus 2, around 1:32").
 - If "style" is empty the user didn't keep their prompt: write a fresh style prompt from the complaints, lyrics and audio instead of a revision.
 - If "history" is present it lists earlier takes (oldest first) with 1-5 star ratings and notes. Use it: never repeat a change that coincided with a low rating, and keep what scored well.
 - Be honest: Suno is stochastic and some problems (e.g. a voice that sounds synthetic) cannot be fully fixed by prompting. Say so in the diagnosis when it applies.
@@ -217,6 +218,7 @@ Return 1–3 changes. No more.`;
     case "masterSuggest": {
       const PRESET_NAMES = [
         "Flat",
+        "Suno v6 starter",
         "Suno rumble fix",
         "Suno sub tame",
         "Suno deep clean",
@@ -256,6 +258,7 @@ ${PRESET_NAMES.map((n) => `"${n}"`).join(", ")}
 
 Preset purposes:
 - "Flat" — no processing; use when the track is already balanced
+- "Suno v6 starter" — Band tighten 50% at 120 Hz, mono bass, −2 dB low-mid cut, NO air boost; matches Suno v6's typical heavy lows and dull/noisy top. Good default when nothing stands out.
 - "Suno rumble fix" — Dedicated sub compressor (70%) below 50 Hz + sub scoop at 32 Hz; targets vibrating/rumbling sub-40 Hz bass without affecting punch. START HERE for muddy Suno bass.
 - "Suno sub tame" — Band mode + 65% tighten at 100 Hz crossover; suppresses AI-generated sub boom dynamically without cutting
 - "Suno deep clean" — Aggressive band tighten (80%) at 110 Hz; for very heavy bass
@@ -277,6 +280,7 @@ Preset purposes:
 HARD RULES — never violate these:
 1. subCutHz must NEVER exceed 40 — values above 40 permanently remove audible bass fundamentals.
 2. For boomy bass (sub or bass band significantly above 0 dB), recommend Band mode + high tighten, NOT a high subCutHz.
+2b. If the air band is very low (below about −32 dB), the top end is mostly missing or noise: do NOT add airDb, and say in a warning that a muffled top can't be fixed by mastering.
 3. If the sub band (20–80 Hz) is significantly above 0 dB AND lowPeakHz is at or below 50 Hz, strongly prefer "Suno rumble fix" or add subCompAmount (0.5–0.9) and subScoopDb (−2 to −4 dB at lowPeakHz) to target the rumble directly. Mention the sub-40 Hz rumble in your reasoning and warn the user to check on good speakers or headphones.
 4. punchFreq in adjustments should be close to lowPeakHz (35–160 Hz range only).
 5. Never include makeupDb in adjustments — the exporter controls that.
