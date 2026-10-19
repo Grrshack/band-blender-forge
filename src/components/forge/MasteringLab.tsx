@@ -53,6 +53,7 @@ import {
   measureLoudness,
   measureTruePeak,
 } from "@/lib/audio/mastering-dsp";
+import { encodeMp3 } from "@/lib/audio/mp3-encode";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/stats";
 
@@ -68,6 +69,7 @@ type Suggestion = {
 };
 
 type Song = { name: string; size: number; buffer: AudioBuffer };
+type ExportFormat = "wav24" | "wav16" | "mp3";
 type Result = { lufs: number; truePeakDb: number; makeupDb: number; bits: number; file: string };
 type Audio = {
   ctx: AudioContext;
@@ -194,7 +196,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
   const [song, setSong] = useState<Song | null>(null);
   const [params, setParams] = useState<MasterParams>(DEFAULT_PARAMS);
   const [target, setTarget] = useState<string>("off");
-  const [bits, setBits] = useState<"16" | "24">("24");
+  const [format, setFormat] = useState<ExportFormat>("wav24");
   const [autoClear, setAutoClear] = useState(true);
 
   const [loading, setLoading] = useState(false);
@@ -649,13 +651,28 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
         truePeak = measureTruePeak(pcm);
       }
 
-      setExporting("Encoding WAV…");
-      await tick();
-      const bitDepth = bits === "16" ? 16 : 24;
-      const wav = encodeWav(pcm, fs, bitDepth);
       const base = s.name.replace(/\.[^.]+$/, "") || "track";
-      const file = `${base}-mastered.wav`;
-      const url = URL.createObjectURL(new Blob([wav], { type: "audio/wav" }));
+      let file: string;
+      let blob: Blob;
+      let bitDepth: number;
+
+      if (format === "mp3") {
+        setExporting("Encoding MP3…");
+        await tick();
+        const mp3 = encodeMp3(pcm, fs);
+        file = `${base}-mastered.mp3`;
+        blob = new Blob([mp3], { type: "audio/mpeg" });
+        bitDepth = 16; // MP3 is lossy; reported for display only
+      } else {
+        setExporting("Encoding WAV…");
+        await tick();
+        bitDepth = format === "wav16" ? 16 : 24;
+        const wav = encodeWav(pcm, fs, bitDepth);
+        file = `${base}-mastered.wav`;
+        blob = new Blob([wav], { type: "audio/wav" });
+      }
+
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = file;
@@ -1467,15 +1484,16 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
                 </div>
                 <div className="space-y-1.5">
                   <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                    WAV bit depth
+                    Export format
                   </span>
-                  <Select value={bits} onValueChange={(v) => setBits(v as "16" | "24")}>
+                  <Select value={format} onValueChange={(v) => setFormat(v as ExportFormat)}>
                     <SelectTrigger className="border-border bg-card/60">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="24">24-bit (keep for further mixing)</SelectItem>
-                      <SelectItem value="16">16-bit (CD / final, dithered)</SelectItem>
+                      <SelectItem value="wav24">WAV 24-bit (highest quality, for mixing)</SelectItem>
+                      <SelectItem value="wav16">WAV 16-bit (CD / final, dithered)</SelectItem>
+                      <SelectItem value="mp3">MP3 320 kbps (smallest, share-ready)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1499,7 +1517,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
                 ) : (
                   <Download className="size-4" />
                 )}
-                {exporting ?? "Render & Download WAV"}
+                {exporting ?? `Render & Download ${format === "mp3" ? "MP3" : "WAV"}`}
               </Button>
             </>
           )}
