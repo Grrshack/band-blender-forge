@@ -40,7 +40,7 @@ const ANTHROPIC_KEY_URL = "https://console.anthropic.com/settings/keys";
 function modelNames(key: string): string {
   if (!key.trim()) return "";
   return providerLabel(key) === "Google Gemini"
-    ? " (Gemini Flash vs Gemini Pro)"
+    ? " (Gemini Flash vs Gemini Pro; Pro needs a Google key with billing turned on, free keys use Flash for everything)"
     : " (Claude Haiku vs Claude Sonnet)";
 }
 

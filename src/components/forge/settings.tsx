@@ -26,6 +26,9 @@ type Settings = {
   /** True when AI tools can run right now (own key set, or a built-in model exists). */
   aiReady: boolean;
   keyDialogOpen: boolean;
+  /** True once Google has said this key can't use Gemini Pro (free tier); later calls use Flash. */
+  geminiNoPro: boolean;
+  setGeminiNoPro: (v: boolean) => void;
   openKeyDialog: () => void;
   setKeyDialogOpen: (v: boolean) => void;
 };
@@ -42,6 +45,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [remember, setRemember] = useState(false);
   const [builtIn, setBuiltIn] = useState(false);
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
+  const [geminiNoPro, setGeminiNoPro] = useState(false);
+  // A different key may have different access, so forget what we learned about the last one.
+  useEffect(() => setGeminiNoPro(false), [apiKey]);
   const [loaded, setLoaded] = useState(false);
 
   // Read after hydration so SSR markup stays stable.
@@ -107,10 +113,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       builtIn,
       aiReady,
       keyDialogOpen,
+      geminiNoPro,
+      setGeminiNoPro,
       openKeyDialog,
       setKeyDialogOpen,
     }),
-    [apiKey, routing, remember, builtIn, aiReady, keyDialogOpen, openKeyDialog],
+    [apiKey, routing, remember, builtIn, aiReady, keyDialogOpen, geminiNoPro, openKeyDialog],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
