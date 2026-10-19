@@ -21,7 +21,7 @@ describe("parseRateLimit", () => {
   });
 
   it("falls back to unknown for a bare 429", () => {
-    expect(parseRateLimit("Too Many Requests")).toEqual({ kind: "unknown", retryMs: null });
+    expect(parseRateLimit("Too Many Requests")).toEqual({ kind: "unknown", retryMs: null, reason: "Too Many Requests" });
   });
 });
 

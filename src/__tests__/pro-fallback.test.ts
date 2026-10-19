@@ -15,11 +15,22 @@ describe("withProFallback", () => {
     expect(run.mock.calls.map((c) => c[0])).toEqual(["craft", "fast"]);
   });
 
-  it("doesn't fall back for a per-minute limit (Flash shares it)", async () => {
+  it("falls back on any Pro failure, including a bare 429 or an unknown model", async () => {
+    for (const err of [perMinute, new Error("models/gemini-3.1-pro-preview is not found")]) {
+      const run = vi.fn(async (r: string) => {
+        if (r === "craft") throw err;
+        return "ok";
+      });
+      await expect(withProFallback(true, "craft", run)).resolves.toEqual({ value: "ok", downgraded: true });
+    }
+  });
+
+  it("doesn't fall back when the key itself is rejected", async () => {
+    const bad = new Error("Your Google Gemini key was rejected. Check you copied the whole key.");
     const run = vi.fn(async () => {
-      throw perMinute;
+      throw bad;
     });
-    await expect(withProFallback(true, "craft", run)).rejects.toBe(perMinute);
+    await expect(withProFallback(true, "craft", run)).rejects.toBe(bad);
     expect(run).toHaveBeenCalledTimes(1);
   });
 
