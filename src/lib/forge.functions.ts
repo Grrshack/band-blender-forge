@@ -8,6 +8,7 @@ import { optionalSupabaseAuth } from "@/lib/optional-auth";
 import { chooseProvider, isBuiltInAiAllowed, NO_KEY_MESSAGE } from "@/lib/provider";
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
 import { SYSTEM } from "@/lib/forge-prompts";
+import { parseRateLimit, rateLimitMessage, type RateLimitInfo } from "@/lib/provider-errors";
 
 const RoutingSchema = z.enum(["fast", "craft"]);
 
@@ -32,6 +33,8 @@ const InputSchema = z.object({
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),
+  /** Set by the browser once it learns this Google key can't use Gemini Pro. */
+  preferFast: z.boolean().optional(),
   payload: z
     .record(z.any())
     .refine((p) => JSON.stringify(p).length <= MAX_PAYLOAD_CHARS, "That input is too large."),
@@ -92,8 +95,11 @@ function extractJson(text: string): unknown {
 }
 
 class RateLimitError extends Error {
-  constructor() {
-    super("Rate limited by the model provider. Wait a moment and try again.");
+  constructor(
+    readonly info: RateLimitInfo = { kind: "unknown", retryMs: null },
+    provider = "",
+  ) {
+    super(rateLimitMessage(provider, info));
     this.name = "RateLimitError";
   }
 }
@@ -115,22 +121,53 @@ function failure(status: number, provider: string, message: string): Error {
     return new Error(`Out of AI credits. ${message}`);
   }
   if (status === 429) {
-    return new RateLimitError();
+    return new RateLimitError(parseRateLimit(message), provider);
   }
   return new Error(message || `Model request failed (${status}).`);
 }
 
+/**
+ * Free Google keys can't use Gemini Pro at all. When a "craft" call on a Google key fails
+ * that way, run it on Flash instead of failing, and report the downgrade.
+ */
+export async function withProFallback<T>(
+  isGemini: boolean,
+  routing: Routing,
+  run: (r: Routing) => Promise<T>,
+): Promise<{ value: T; downgraded: boolean }> {
+  try {
+    return { value: await run(routing), downgraded: false };
+  } catch (e) {
+    const noPro =
+      isGemini &&
+      routing === "craft" &&
+      e instanceof RateLimitError &&
+      (e.info.kind === "unavailable" || e.info.kind === "day");
+    if (!noPro) throw e;
+    return { value: await run("fast"), downgraded: true };
+  }
+}
+
+export { RateLimitError };
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Retries a call up to 5 attempts on rate limiting, waiting 2s, 4s, 8s, 16s. */
+/**
+ * Retries a per-minute rate limit at most twice, waiting as long as the provider asks
+ * (up to 20 s). Daily limits and models the key can't use are not retried: waiting a few
+ * seconds won't help, and every retry spends the caller's free quota.
+ */
 async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
-  const delays = [2000, 4000, 8000, 16000];
+  const fallbackDelays = [3000, 8000];
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (e) {
-      if (!(e instanceof RateLimitError) || attempt >= delays.length) throw e;
-      await sleep(delays[attempt]!);
+      if (!(e instanceof RateLimitError) || attempt >= fallbackDelays.length) throw e;
+      const { kind, retryMs } = e.info;
+      if (kind === "day" || kind === "unavailable") throw e;
+      if (retryMs !== null && retryMs > 20000) throw e;
+      await sleep(retryMs ?? fallbackDelays[attempt]!);
     }
   }
 }
@@ -244,16 +281,28 @@ export const runForge = createServerFn({ method: "POST" })
       }
     }
 
-    const routing: Routing = CRAFT_TASKS.has(data.task) ? "craft" : data.routing;
+    let routing: Routing = CRAFT_TASKS.has(data.task) ? "craft" : data.routing;
+    // A Google key that's known to lack Pro access goes straight to Flash.
+    if (choice.via === "gemini" && data.preferFast) routing = "fast";
+    let downgraded = false;
 
-    const call = (text: string, maxTokens: number) =>
+    const once = (r: Routing, text: string, maxTokens: number) =>
       withRateLimitRetry(() =>
         choice.via === "anthropic"
-          ? callAnthropic(choice.key, routing, text, maxTokens)
+          ? callAnthropic(choice.key, r, text, maxTokens)
           : choice.via === "gemini"
-            ? callGemini(choice.key, routing, text, maxTokens)
-            : callGateway(choice.key, routing, text, maxTokens),
+            ? callGemini(choice.key, r, text, maxTokens)
+            : callGateway(choice.key, r, text, maxTokens),
       );
+
+    const call = async (text: string, maxTokens: number) => {
+      const r = await withProFallback(choice.via === "gemini", routing, (rt) => once(rt, text, maxTokens));
+      if (r.downgraded) {
+        routing = "fast";
+        downgraded = true;
+      }
+      return r.value;
+    };
 
     // Lyrics tasks generate full song sections and need more room than a blend or critique.
     const initialTokens = ["lyrics", "regenSection"].includes(data.task) ? 4000 : 3000;
@@ -295,7 +344,7 @@ export const runForge = createServerFn({ method: "POST" })
       throw e;
     }
 
-    return { provider, json: JSON.stringify(result) };
+    return { provider, json: JSON.stringify(result), downgraded };
   });
 
 // ─── AI configuration + key check ───────────────────────────────────────────
