@@ -127,8 +127,10 @@ function failure(status: number, provider: string, message: string): Error {
 }
 
 /**
- * Free Google keys can't use Gemini Pro at all. When a "craft" call on a Google key fails
- * that way, run it on Flash instead of failing, and report the downgrade.
+ * Free Google keys can't use Gemini Pro, and Google reports that in several ways (a 429
+ * with or without details, a 404 or 400 for the model). So for a Google key, any failure
+ * of a "craft" call other than a rejected key is retried once on Flash, and the downgrade
+ * is reported so later calls skip Pro.
  */
 export async function withProFallback<T>(
   isGemini: boolean,
@@ -138,12 +140,8 @@ export async function withProFallback<T>(
   try {
     return { value: await run(routing), downgraded: false };
   } catch (e) {
-    const noPro =
-      isGemini &&
-      routing === "craft" &&
-      e instanceof RateLimitError &&
-      (e.info.kind === "unavailable" || e.info.kind === "day");
-    if (!noPro) throw e;
+    const badKey = e instanceof Error && /was rejected/i.test(e.message);
+    if (!isGemini || routing !== "craft" || badKey) throw e;
     return { value: await run("fast"), downgraded: true };
   }
 }
@@ -286,14 +284,18 @@ export const runForge = createServerFn({ method: "POST" })
     if (choice.via === "gemini" && data.preferFast) routing = "fast";
     let downgraded = false;
 
+    const send = (r: Routing, text: string, maxTokens: number) =>
+      choice.via === "anthropic"
+        ? callAnthropic(choice.key, r, text, maxTokens)
+        : choice.via === "gemini"
+          ? callGemini(choice.key, r, text, maxTokens)
+          : callGateway(choice.key, r, text, maxTokens);
+    // Gemini Pro on a Google key fails fast (no waiting and retrying) so the Flash fallback
+    // kicks in at once; everything else retries short rate limits.
     const once = (r: Routing, text: string, maxTokens: number) =>
-      withRateLimitRetry(() =>
-        choice.via === "anthropic"
-          ? callAnthropic(choice.key, r, text, maxTokens)
-          : choice.via === "gemini"
-            ? callGemini(choice.key, r, text, maxTokens)
-            : callGateway(choice.key, r, text, maxTokens),
-      );
+      choice.via === "gemini" && r === "craft"
+        ? send(r, text, maxTokens)
+        : withRateLimitRetry(() => send(r, text, maxTokens));
 
     const call = async (text: string, maxTokens: number) => {
       const r = await withProFallback(choice.via === "gemini", routing, (rt) => once(rt, text, maxTokens));

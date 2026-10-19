@@ -12,7 +12,7 @@ export type RateLimitKind =
   /** A 429 without details. */
   | "unknown";
 
-export type RateLimitInfo = { kind: RateLimitKind; retryMs: number | null };
+export type RateLimitInfo = { kind: RateLimitKind; retryMs: number | null; reason?: string | undefined };
 
 export function parseRateLimit(body: string): RateLimitInfo {
   const text = body || "";
@@ -24,7 +24,14 @@ export function parseRateLimit(body: string): RateLimitInfo {
   }
   if (/per\s*day|PerDay|daily/i.test(text)) return { kind: "day", retryMs };
   if (/per\s*minute|PerMinute|RPM|TPM/i.test(text) || retryMs !== null) return { kind: "minute", retryMs };
-  return { kind: "unknown", retryMs: null };
+  return { kind: "unknown", retryMs: null, reason: shortReason(text) };
+}
+
+/** The provider's own wording, trimmed, so an unrecognised limit still says something useful. */
+function shortReason(text: string): string | undefined {
+  const m = /"message"\s*:\s*"([^"]{1,200})/.exec(text);
+  const raw = (m?.[1] ?? text).replace(/\s+/g, " ").trim();
+  return raw ? raw.slice(0, 140) : undefined;
 }
 
 export function rateLimitMessage(provider: string, info: RateLimitInfo): string {
@@ -45,6 +52,6 @@ export function rateLimitMessage(provider: string, info: RateLimitInfo): string 
         : `Too many requests this minute.${secs ? ` Wait about ${secs} seconds` : " Wait a moment"} and try again.`;
     }
     default:
-      return "Rate limited by the model provider. Wait a moment and try again.";
+      return `${google ? "Google" : "The model provider"} is limiting requests. Wait a minute and try again.${info.reason ? ` (${info.reason})` : ""}`;
   }
 }
