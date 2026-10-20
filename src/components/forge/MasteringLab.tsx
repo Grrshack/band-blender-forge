@@ -54,6 +54,9 @@ import {
   measureTruePeak,
 } from "@/lib/audio/mastering-dsp";
 import { encodeMp3 } from "@/lib/audio/mp3-encode";
+
+/** MP3s are exported no hotter than this true peak (dBTP). */
+const MP3_MAX_CEILING_DB = -1;
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/stats";
 
@@ -641,7 +644,9 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
 
       setExporting("Checking true peak…");
       await tick();
-      const ceiling = dbToLin(params.ceilingDb);
+      // MP3 encoding adds small overshoots, so MP3s get at least 1 dB of headroom.
+      const ceilingDb = format === "mp3" ? Math.min(params.ceilingDb, MP3_MAX_CEILING_DB) : params.ceilingDb;
+      const ceiling = dbToLin(ceilingDb);
       let m = measureLoudness(pcm, fs);
       let truePeak = measureTruePeak(pcm);
       if (truePeak > ceiling) {
@@ -654,12 +659,12 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
       const base = s.name.replace(/\.[^.]+$/, "") || "track";
       let file: string;
       let blob: Blob;
-      let bitDepth: number;
+      let bitDepth: 16 | 24;
 
       if (format === "mp3") {
         setExporting("Encoding MP3…");
         await tick();
-        const mp3 = encodeMp3(pcm, fs);
+        const mp3 = await encodeMp3(pcm, fs, (f) => setExporting(`Encoding MP3… ${Math.round(f * 100)}%`));
         file = `${base}-mastered.mp3`;
         blob = new Blob([mp3], { type: "audio/mpeg" });
         bitDepth = 16; // MP3 is lossy; reported for display only
@@ -1496,6 +1501,13 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
                       <SelectItem value="mp3">MP3 320 kbps (smallest, share-ready)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {format === "mp3" ? (
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                      Good for sharing and previews. For distributors and streaming uploads, use WAV:
+                      MP3 drops detail that can't be put back. MP3s are kept at least 1 dB under 0 so
+                      they don't clip.
+                    </p>
+                  ) : null}
                 </div>
                 <label className="flex items-center justify-between gap-3 sm:col-span-2">
                   <span className="text-xs text-foreground/90">

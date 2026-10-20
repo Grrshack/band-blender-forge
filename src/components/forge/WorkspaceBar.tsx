@@ -21,6 +21,8 @@ import {
   deleteLocalSong,
   getLocalSong,
   listLocalSongs,
+  isLocalId,
+  MAX_LOCAL_SONGS,
   saveLocalSong,
   type LocalSong,
 } from "@/lib/local-songs";
@@ -54,7 +56,7 @@ export function WorkspaceBar({
   state: ForgeState;
   onLoadState: (s: ForgeState) => void;
 }) {
-  const { session, email, signOut } = useAuth();
+  const { session, email, signOut, ready } = useAuth();
   const list = useServerFn(listWorkspaces);
   const get = useServerFn(getWorkspace);
   const create = useServerFn(createWorkspace);
@@ -65,7 +67,7 @@ export function WorkspaceBar({
   const [localRows, setLocalRows] = useState<LocalSong[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [name, setName] = useState(UNTITLED);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const skipNext = useRef(true);
 
   const refresh = async () => {
@@ -78,21 +80,54 @@ export function WorkspaceBar({
   };
 
   const refreshLocal = () => setLocalRows(listLocalSongs());
+  const noteDropped = (title: string) =>
+    toast.warning(`This browser keeps your ${MAX_LOCAL_SONGS} most recent songs, so "${title}" was removed. Sign in to keep more.`);
 
   useEffect(() => {
     void refresh();
     refreshLocal();
+    // Signing in or out switches where songs are kept. Forget the current song's id so
+    // the next autosave creates the song in the new place instead of failing silently.
+    setCurrentId((id) => {
+      if (!id) return id;
+      const local = isLocalId(id);
+      return (session && local) || (!session && !local) ? null : id;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
+
+  // Not signed in: songs live in this browser but don't reopen by themselves (a shared
+  // link or a landing-page prompt may be loading). Offer the latest one once per visit.
+  const offered = useRef(false);
+  useEffect(() => {
+    if (!ready || session || offered.current) return;
+    offered.current = true;
+    const last = listLocalSongs()[0];
+    if (!last || currentId) return;
+    try {
+      if (sessionStorage.getItem("blf.resume-offered") === last.id) return;
+      sessionStorage.setItem("blf.resume-offered", last.id);
+    } catch {
+      /* storage unavailable */
+    }
+    toast(`Pick up where you left off: "${last.name}"?`, {
+      duration: 12000,
+      action: { label: "Open", onClick: () => void open(last.id) },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, session]);
 
   // Debounced autosave. Signed-in users save to the cloud; unsigned users save
   // to localStorage so work survives reloads.
   useEffect(() => {
-    if (!hasContent(state)) return;
+    // Skip the render right after mount or after opening a song (nothing new to save).
+    // This check comes first: if it came after the "empty" check below, the skip would
+    // still be pending when the person starts typing and their first edit would be lost.
     if (skipNext.current) {
       skipNext.current = false;
       return;
     }
+    if (!hasContent(state)) return;
     if (session) {
       setStatus("saving");
       const t = setTimeout(() => {
@@ -104,17 +139,22 @@ export function WorkspaceBar({
         op.then(() => {
           setStatus("saved");
           void refresh();
-        }).catch(() => setStatus("idle"));
+        }).catch(() => setStatus("failed"));
       }, 1200);
       return () => clearTimeout(t);
     }
     // Local autosave for unsigned users
     setStatus("saving");
     const t = setTimeout(() => {
-      const song = saveLocalSong(currentId, name, state);
+      const { song, ok, dropped } = saveLocalSong(currentId, name, state);
+      if (!ok) {
+        setStatus("failed");
+        return;
+      }
       setCurrentId(song.id);
       setStatus("saved");
       refreshLocal();
+      if (dropped) noteDropped(dropped);
     }, 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,12 +179,17 @@ export function WorkspaceBar({
     }
     // Local save for unsigned users
     skipNext.current = true;
-    const song = saveLocalSong(null, label ?? UNTITLED, initial ?? state);
+    const { song, ok, dropped } = saveLocalSong(null, label ?? UNTITLED, initial ?? state);
+    if (!ok) {
+      toast.error("This browser wouldn't save the song (storage may be full). Delete an old song, or sign in to save to your account.");
+      return;
+    }
     setCurrentId(song.id);
     setName(song.name);
     if (initial) onLoadState(initial);
     refreshLocal();
     toast.success(initial ? "New song started." : "Song saved.");
+    if (dropped) noteDropped(dropped);
   };
 
   const open = async (id: string) => {
@@ -316,7 +361,9 @@ export function WorkspaceBar({
                 ? "Saving…"
                 : status === "saved"
                   ? "Saved"
-                  : "Ready"}
+                  : status === "failed"
+                    ? "Not saved, try again"
+                    : "Ready"}
             {status === "saving" ? <Loader2 className="ml-1 inline size-3 animate-spin" /> : null}
           </span>
 
@@ -439,7 +486,9 @@ export function WorkspaceBar({
                 ? "Saving…"
                 : status === "saved"
                   ? "Saved"
-                  : "Ready"}
+                  : status === "failed"
+                    ? "Not saved, try again"
+                    : "Ready"}
             {status === "saving" ? <Loader2 className="ml-1 inline size-3 animate-spin" /> : null}
           </span>
 
