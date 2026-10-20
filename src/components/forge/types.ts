@@ -194,7 +194,7 @@ export const emptyState = (): ForgeState => ({
     result: null,
     lookupMode: "band",
     songTitle: "",
-    sunoVersion: "mini",
+    sunoVersion: "v6",
     targetGenre: "",
     genreLock: false,
     targetEra: "",

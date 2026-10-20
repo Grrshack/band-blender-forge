@@ -132,7 +132,7 @@ export function BandBlender({
   const {
     artists, sliders, result,
     lookupMode = "band", songTitle = "",
-    sunoVersion = "mini",
+    sunoVersion = "v6",
     targetGenre = "", genreLock = false,
     targetEra = "",
   } = value;
@@ -468,8 +468,8 @@ export function BandBlender({
                 ))}
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
-                v6-mini is the model on free Suno accounts. v6 and v6-wild need a Pro or Premier
-                plan; v6-wild is the less predictable one.
+                v6 is Suno's main model and needs a Pro or Premier plan, like v6-wild (the less
+                predictable one). On a free Suno account, pick v6-mini.
               </p>
             </div>
           )}
