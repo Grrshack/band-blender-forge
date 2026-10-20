@@ -8,7 +8,7 @@ import {
   profileFromBlend,
   saveLocalProfile,
 } from "@/lib/sound-profiles";
-import { QUICK_SYMPTOMS, SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
+import { LYRIC_QUICK_SYMPTOMS, QUICK_SYMPTOMS, SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
 
 function memoryStorage() {
   const m = new Map<string, string>();
@@ -76,7 +76,7 @@ describe("sound profiles", () => {
 
 describe("symptoms", () => {
   it("quick picks all exist in Fix a Track's list", () => {
-    for (const s of QUICK_SYMPTOMS) expect(SYMPTOMS).toContain(s);
+    for (const s of [...QUICK_SYMPTOMS, ...LYRIC_QUICK_SYMPTOMS]) expect(SYMPTOMS).toContain(s);
   });
   it("merges without duplicates", () => {
     expect(mergeSymptoms(["Too slow", "Wrong genre"], ["Wrong genre", "Mix is too busy"])).toEqual([
