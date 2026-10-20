@@ -31,6 +31,7 @@ import type { BlendResult } from "@/components/forge/types";
 import { toast } from "sonner";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 import { track } from "@/lib/stats";
+import { mergeSymptoms } from "@/lib/symptoms";
 import { HANDOFF_KEYS, readHandoff, type ParsedHandoff } from "@/lib/handoff";
 
 export const Route = createFileRoute("/studio")({
@@ -350,6 +351,16 @@ function Index() {
                       autoRun={blendAutoRun}
                       onAutoRunDone={() => setBlendAutoRun(false)}
                       flashKey={blendFlashKey}
+                      takes={state.takes}
+                      onTakes={(v) => patch("takes", v)}
+                      onFix={(symptoms) => {
+                        setState((prev) => ({
+                          ...prev,
+                          fix: { ...prev.fix, symptoms: mergeSymptoms(prev.fix.symptoms, symptoms), result: null },
+                        }));
+                        setTab("fix");
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
                     />
                   )}
                   {tab === "lyrics" && (
