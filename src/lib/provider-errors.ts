@@ -55,3 +55,66 @@ export function rateLimitMessage(provider: string, info: RateLimitInfo): string 
       return `${google ? "Google" : "The model provider"} is limiting requests. Wait a minute and try again.${info.reason ? ` (${info.reason})` : ""}`;
   }
 }
+
+/**
+ * "The model is busy" rather than "you're over a limit": Google's 503 UNAVAILABLE ("high
+ * demand"), Anthropic's 529 overloaded_error, and plain 500/502/504 gateway errors.
+ * Waiting a moment or switching model helps; it says nothing about the user's key or quota.
+ */
+export function isOverloaded(status: number, body = ""): boolean {
+  if ([500, 502, 503, 504, 529].includes(status)) return true;
+  return /overloaded|high demand|"status"\s*:\s*"UNAVAILABLE"/i.test(body);
+}
+
+export function overloadMessage(provider: string): string {
+  return provider === "gemini"
+    ? "Google's Gemini models are overloaded right now (this is on Google's side, not your key). We tried backup models too. Wait a minute and try again."
+    : provider === "anthropic"
+      ? "Anthropic's servers are overloaded right now (not your key). Wait a minute and try again."
+      : "The AI service is busy right now. Wait a minute and try again.";
+}
+
+/**
+ * Runs a Gemini call, and if the model is busy, retries it once and then tries each backup
+ * model in turn. A backup that fails for any reason other than a bad key is skipped, so one
+ * overloaded model never blocks the whole tool. Network-free so it's unit tested.
+ */
+export async function withModelBackups<T>(
+  models: readonly string[],
+  run: (model: string) => Promise<T>,
+  opts: {
+    isBusy: (e: unknown) => boolean;
+    isFatal: (e: unknown) => boolean;
+    wait?: (ms: number) => Promise<void>;
+    retryDelayMs?: number;
+    /** The error to throw once every model was busy or failed. Defaults to the last error. */
+    exhausted?: (last: unknown) => unknown;
+  },
+): Promise<{ value: T; model: string }> {
+  const wait = opts.wait ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const [primary, ...backups] = models;
+  if (!primary) throw new Error("No model configured.");
+  let lastError: unknown;
+  try {
+    return { value: await run(primary), model: primary };
+  } catch (e) {
+    if (!opts.isBusy(e)) throw e;
+    lastError = e;
+  }
+  await wait(opts.retryDelayMs ?? 1500);
+  try {
+    return { value: await run(primary), model: primary };
+  } catch (e) {
+    if (!opts.isBusy(e)) throw e;
+    lastError = e;
+  }
+  for (const m of backups) {
+    try {
+      return { value: await run(m), model: m };
+    } catch (e) {
+      if (opts.isFatal(e)) throw e;
+      lastError = e;
+    }
+  }
+  throw opts.exhausted ? opts.exhausted(lastError) : lastError;
+}

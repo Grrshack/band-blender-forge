@@ -8,7 +8,14 @@ import { optionalSupabaseAuth } from "@/lib/optional-auth";
 import { chooseProvider, isBuiltInAiAllowed, NO_KEY_MESSAGE } from "@/lib/provider";
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
 import { SYSTEM } from "@/lib/forge-prompts";
-import { parseRateLimit, rateLimitMessage, type RateLimitInfo } from "@/lib/provider-errors";
+import {
+  isOverloaded,
+  overloadMessage,
+  parseRateLimit,
+  rateLimitMessage,
+  withModelBackups,
+  type RateLimitInfo,
+} from "@/lib/provider-errors";
 
 const RoutingSchema = z.enum(["fast", "craft"]);
 
@@ -59,6 +66,13 @@ const GEMINI_MODELS: Record<Routing, string> = {
   craft: "gemini-3.1-pro-preview",
 };
 
+/**
+ * Tried in order when the main Flash model is overloaded (Google's 503 "high demand").
+ * Both are stable models listed at ai.google.dev/gemini-api/docs/models; update when
+ * Google retires them.
+ */
+const GEMINI_BACKUP_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite"] as const;
+
 /** Writing quality is the product, so these always use the stronger model, whatever the toggle says. */
 const CRAFT_TASKS = new Set([
   "lyrics",
@@ -94,6 +108,14 @@ function extractJson(text: string): unknown {
   }
 }
 
+/** The model is busy (503/529), not a limit on the user's key. */
+class OverloadedError extends Error {
+  constructor(provider = "") {
+    super(overloadMessage(provider));
+    this.name = "OverloadedError";
+  }
+}
+
 class RateLimitError extends Error {
   constructor(
     readonly info: RateLimitInfo = { kind: "unknown", retryMs: null },
@@ -123,6 +145,9 @@ function failure(status: number, provider: string, message: string): Error {
   if (status === 429) {
     return new RateLimitError(parseRateLimit(message), provider);
   }
+  if (isOverloaded(status, message)) {
+    return new OverloadedError(provider);
+  }
   return new Error(message || `Model request failed (${status}).`);
 }
 
@@ -142,11 +167,12 @@ export async function withProFallback<T>(
   } catch (e) {
     const badKey = e instanceof Error && /was rejected/i.test(e.message);
     if (!isGemini || routing !== "craft" || badKey) throw e;
-    return { value: await run("fast"), downgraded: true };
+    // A busy Pro (503) says nothing about the key's access, so don't switch later calls to Flash.
+    return { value: await run("fast"), downgraded: !(e instanceof OverloadedError) };
   }
 }
 
-export { RateLimitError };
+export { RateLimitError, OverloadedError };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -161,6 +187,10 @@ async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
     } catch (e) {
+      if (e instanceof OverloadedError && attempt < fallbackDelays.length) {
+        await sleep(fallbackDelays[attempt]!);
+        continue;
+      }
       if (!(e instanceof RateLimitError) || attempt >= fallbackDelays.length) throw e;
       const { kind, retryMs } = e.info;
       if (kind === "day" || kind === "unavailable") throw e;
@@ -193,7 +223,13 @@ async function callAnthropic(apiKey: string, routing: Routing, user: string, max
   return json.content?.map((c) => c.text ?? "").join("") ?? "";
 }
 
-async function callGemini(key: string, routing: Routing, user: string, maxTokens: number) {
+async function callGemini(
+  key: string,
+  routing: Routing,
+  user: string,
+  maxTokens: number,
+  model: string = GEMINI_MODELS[routing],
+) {
   const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
     headers: {
@@ -201,7 +237,7 @@ async function callGemini(key: string, routing: Routing, user: string, maxTokens
       Authorization: `Bearer ${key}`,
     },
     body: JSON.stringify({
-      model: GEMINI_MODELS[routing],
+      model,
       max_tokens: maxTokens,
       messages: [
         { role: "system", content: SYSTEM },
@@ -217,6 +253,22 @@ async function callGemini(key: string, routing: Routing, user: string, maxTokens
     choices?: Array<{ message?: { content?: string } }>;
   };
   return json.choices?.[0]?.message?.content ?? "";
+}
+
+/** Flash, and if Google says it's overloaded, a retry and then the backup models. */
+async function geminiFlashWithBackups(key: string, user: string, maxTokens: number) {
+  const r = await withModelBackups(
+    [GEMINI_MODELS.fast, ...GEMINI_BACKUP_MODELS],
+    (model) => callGemini(key, "fast", user, maxTokens, model),
+    {
+      isBusy: (e) => e instanceof OverloadedError,
+      // A rejected key fails every model the same way, so stop there.
+      isFatal: (e) => e instanceof Error && /was rejected/i.test(e.message),
+      // A plain Error, so the outer retry doesn't run the whole chain again.
+      exhausted: () => new Error(overloadMessage("gemini")),
+    },
+  );
+  return r.value;
 }
 
 async function callGateway(key: string, routing: Routing, user: string, maxTokens: number) {
@@ -288,7 +340,9 @@ export const runForge = createServerFn({ method: "POST" })
       choice.via === "anthropic"
         ? callAnthropic(choice.key, r, text, maxTokens)
         : choice.via === "gemini"
-          ? callGemini(choice.key, r, text, maxTokens)
+          ? r === "craft"
+            ? callGemini(choice.key, r, text, maxTokens) // a busy Pro falls back to Flash below
+            : geminiFlashWithBackups(choice.key, text, maxTokens)
           : callGateway(choice.key, r, text, maxTokens);
     // Gemini Pro on a Google key fails fast (no waiting and retrying) so the Flash fallback
     // kicks in at once; everything else retries short rate limits.
@@ -377,8 +431,8 @@ export const testApiKey = createServerFn({ method: "POST" })
       else await callGemini(choice.key, "fast", "Reply with OK.", 256);
       return { ok: true as const, provider: choice.via };
     } catch (e) {
-      if (e instanceof RateLimitError) {
-        // The provider recognised the key but is throttling it, so the key itself is fine.
+      if (e instanceof RateLimitError || e instanceof OverloadedError) {
+        // The provider recognised the key but is throttling it or busy, so the key itself is fine.
         return { ok: true as const, provider: choice.via };
       }
       return { ok: false as const, message: e instanceof Error ? e.message : "The key check failed." };
