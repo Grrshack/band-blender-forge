@@ -262,7 +262,7 @@ export function BandBlender({
     <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <div className="space-y-5">
         <Panel
-          title="Band Lookup"
+          title="Band Blender"
           subtitle={
             lookupMode === "song"
               ? "Analyse one specific song's production style."
