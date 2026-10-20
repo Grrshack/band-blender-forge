@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as StudioRouteImport } from './routes/studio'
 import { Route as BlendSlugRouteImport } from './routes/blend.$slug'
 import { Route as GuidesIndexRouteImport } from './routes/guides.index'
 import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlendSlugRoute = BlendSlugRouteImport.update({
@@ -44,6 +50,7 @@ const GuidesSlugRoute = GuidesSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/studio': typeof StudioRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/': typeof GuidesIndexRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/studio': typeof StudioRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides': typeof GuidesIndexRoute
@@ -59,21 +67,31 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/studio': typeof StudioRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/guides/': typeof GuidesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/blend/$slug' | '/guides/$slug' | '/guides/'
+  fullPaths:
+    '/' | '/auth' | '/studio' | '/blend/$slug' | '/guides/$slug' | '/guides/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/blend/$slug' | '/guides/$slug' | '/guides'
-  id: '__root__' | '/' | '/auth' | '/blend/$slug' | '/guides/$slug' | '/guides/'
+  to: '/' | '/auth' | '/studio' | '/blend/$slug' | '/guides/$slug' | '/guides'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/studio'
+    | '/blend/$slug'
+    | '/guides/$slug'
+    | '/guides/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  StudioRoute: typeof StudioRoute
   BlendSlugRoute: typeof BlendSlugRoute
   GuidesSlugRoute: typeof GuidesSlugRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
@@ -93,6 +111,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blend/$slug': {
@@ -122,6 +147,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  StudioRoute: StudioRoute,
   BlendSlugRoute: BlendSlugRoute,
   GuidesSlugRoute: GuidesSlugRoute,
   GuidesIndexRoute: GuidesIndexRoute,
