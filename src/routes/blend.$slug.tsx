@@ -60,7 +60,7 @@ function SharedBlendPage() {
           <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
             <p className="text-sm text-muted-foreground">{error}</p>
             <Link
-              to="/"
+              to="/studio"
               className="mt-4 inline-block font-mono text-xs text-primary underline underline-offset-2"
             >
               Make your own blend →
@@ -74,7 +74,7 @@ function SharedBlendPage() {
               Shared blend · {artists.join(" × ")}
             </p>
             <a
-              href={`/?remix=${encodeURIComponent(slug)}`}
+              href={`/studio?remix=${encodeURIComponent(slug)}`}
               className="mb-4 inline-flex items-center rounded-md bg-primary px-3 py-2 font-mono text-xs tracking-wide text-primary-foreground uppercase"
             >
               Remix this blend in the studio

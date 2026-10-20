@@ -1,433 +1,376 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AudioLines } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
 
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/components/forge/auth";
-import { BandBlender } from "@/components/forge/BandBlender";
-import { ComparableArtists } from "@/components/forge/ComparableArtists";
-import { FixTake } from "@/components/forge/FixTake";
-import { GuidedFlow } from "@/components/forge/GuidedFlow";
-import { HonestFeedback } from "@/components/forge/HonestFeedback";
-import { LyricForge } from "@/components/forge/LyricForge";
-import { MasteringLab } from "@/components/forge/MasteringLab";
-import { PromptLibrary } from "@/components/forge/PromptLibrary";
-import { ReleaseDossier } from "@/components/forge/ReleaseDossier";
-import { GenreGuide } from "@/components/forge/GenreGuide";
-import { UsageDashboard } from "@/components/forge/UsageDashboard";
-import { SettingsProvider } from "@/components/forge/settings";
-import { SharedView } from "@/components/forge/SharedView";
-import { StudioAssistant, type IntentResponse } from "@/components/forge/StudioAssistant";
-import { SunoSheet } from "@/components/forge/SunoSheet";
-import { AiStatusButton } from "@/components/forge/SystemPanel";
-import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
-import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
-import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import { emptyState, type ForgeState, type BlendSlice } from "@/components/forge/types";
-import { WorkspaceBar } from "@/components/forge/WorkspaceBar";
-import { Toaster } from "@/components/ui/sonner";
-import { getSharedBlend } from "@/lib/forge.functions";
-import type { BlendResult } from "@/components/forge/types";
-import { toast } from "sonner";
-import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
-import { track } from "@/lib/stats";
+import landingCss from "../styles/landing.css?url";
+import { APP_NAME } from "@/lib/brand";
+import { GUIDES } from "@/lib/guides";
+import { buildStudioHref, legacyStudioRedirect, type HandoffInput } from "@/lib/handoff";
+import { SUNO_VERSION_LABELS, type SunoVersion } from "@/lib/suno";
+
+const DESCRIPTION =
+  "Describe the sound and get a Suno v6 style prompt that's checked for problems before you generate. Then write lyrics, fix a take and master in your browser. Free on your own AI key.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: `${APP_NAME} — AI Music Pre-Production` },
-      {
-        name: "description",
-        content: APP_DESCRIPTION,
-      },
-      { property: "og:title", content: APP_NAME },
-      {
-        property: "og:description",
-        content:
-          "A studio console for AI music pre-production: style blending, lyric forging, comparable artists, honest feedback and a prompt library.",
-      },
+      { title: `${APP_NAME} — Better Suno prompts, fewer wasted downloads` },
+      { name: "description", content: DESCRIPTION },
+      { property: "og:title", content: `${APP_NAME} — Better Suno prompts` },
+      { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "stylesheet", href: landingCss }],
   }),
-  component: Index,
+  component: Landing,
 });
 
+type Mode = "describe" | "artists" | "song";
 
-function Index() {
-  // Always "blend" on the server and first paint; a ?tab= link is applied right after
-  // hydration (reading the URL during render made server and client disagree).
-  const [tab, setTabState] = useState("blend");
-  // Every tool switch goes through here so usage counts match what people open.
-  const setTab = useCallback((t: string) => {
-    setTabState(t);
-    track("tab_open", t, { once: true });
-  }, []);
-  const [state, setState] = useState<ForgeState>(emptyState);
-  const [shared, setShared] = useState<SharePayload | null>(null);
-  const [mode, setMode] = useState<"guided" | "rack">("rack");
-  const [assistantAutoRun, setAssistantAutoRun] = useState(true);
-  const [blendAutoRun, setBlendAutoRun] = useState(false);
-  const [blendFlashKey, setBlendFlashKey] = useState(0);
+const CHIPS = ["Dark cinematic trap", "90s grunge revival", "Lo-fi jazz hip-hop"];
+const MODELS: SunoVersion[] = ["mini", "v6", "wild"];
+const EXAMPLE_STYLE =
+  "alternative grunge, dreamy synthwave chorus, 96 bpm, fuzzed guitars, analog poly pads, breathy female vocal, tape saturation, bittersweet";
 
-  // A ?tab= link opens that tool; otherwise first-time visitors land on "Start here".
+const JUMPS = [
+  { tab: "fix", title: "Fix a song Suno made", body: "Get the exact edit to paste into Suno. No download needed." },
+  { tab: "lyrics", title: "Write lyrics", body: "Hook-first, with pronunciation and line-length checks." },
+  { tab: "master", title: "Master a song or stem", body: "A verdict on what mastering can fix. Runs in your browser." },
+  { tab: "assistant", title: "Start from a beat", body: "Make one free, find its tempo, bring it into Suno." },
+];
+
+const FAQ = [
+  ["Is it free?", "Yes. The AI tools run on your own Google or Anthropic key. A free Google key works."],
+  ["Does it make the music?", "No. Suno does. This helps you get a better result from it and finish the song."],
+  ["Do I need an account?", "Only to save songs. Everything else works without one."],
+  ["Which Suno versions?", "v6-mini, v6 and v6-wild."],
+  ["Is this made by Suno?", "No. It's an independent tool and isn't affiliated with Suno."],
+];
+
+function Landing() {
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("describe");
+  const [text, setText] = useState("");
+  const [artists, setArtists] = useState(["", "", ""]);
+  const [song, setSong] = useState("");
+  const [sliders, setSliders] = useState({ energy: 70, complexity: 50, brightness: 55 });
+  const [model, setModel] = useState<SunoVersion>("mini");
+  const [hint, setHint] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Old links to "/" (?tab=, ?remix=, #share=, sign-up returns) belong to the studio.
   useEffect(() => {
-    try {
-      const asked = new URLSearchParams(window.location.search).get("tab");
-      const first = asked && ALL_TAB_VALUES.includes(asked)
-        ? asked
-        : !localStorage.getItem("blf.visited")
-          ? "assistant"
-          : "blend";
-      setTab(first);
-      localStorage.setItem("blf.visited", "1");
-    } catch {
-      /* storage unavailable */
-    }
+    const to = legacyStudioRedirect(window.location.search, window.location.hash);
+    if (to) window.location.replace(to);
   }, []);
 
-  useEffect(() => {
-    try {
-      const m = localStorage.getItem("blf.mode");
-      if (m === "guided" || m === "rack") setMode(m);
-    } catch {
-      /* storage unavailable */
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const base =
+      mode === "describe"
+        ? { kind: "describe" as const, text }
+        : mode === "artists"
+          ? { kind: "artists" as const, artists }
+          : { kind: "song" as const, song };
+    const input: HandoffInput = { ...base, sliders, sunoVersion: model };
+    const href = buildStudioHref(input);
+    if (!href) {
+      setHint(
+        mode === "describe"
+          ? "Type a sound first, or tap one of the ideas."
+          : mode === "artists"
+            ? "Add at least one artist."
+            : "Add a song title and artist.",
+      );
+      return;
     }
-  }, []);
-
-  const changeMode = (m: "guided" | "rack") => {
-    setMode(m);
-    try {
-      localStorage.setItem("blf.mode", m);
-    } catch {
-      /* ignore */
-    }
+    router.history.push(href);
   };
 
-
-
-  // ?remix=<slug> loads a community blend into the studio as a starting point.
-  useEffect(() => {
-    const slug = new URLSearchParams(window.location.search).get("remix");
-    if (!slug) return;
-    void getSharedBlend({ data: { slug } })
-      .then((row) => {
-        setState((prev) => ({
-          ...prev,
-          blend: {
-            ...prev.blend,
-            lookupMode: "band",
-            artists: [...(row.artists ?? []), "", "", ""].slice(0, 3),
-            result: row.blend_data as BlendResult,
-          },
-        }));
-        setTab("blend");
-        toast.success("Blend remixed into your studio — tweak it and make it yours.");
-      })
-      .catch(() => toast.error("That blend couldn't be loaded."))
-      .finally(() => window.history.replaceState(null, "", window.location.pathname));
-  }, []);
-
-  // A link like /#share=... opens a read-only view. The data lives in the link itself.
-  useEffect(() => {
-    const read = () => {
-      const token = tokenFromHash(window.location.hash);
-      if (!token) return;
-      void decodeShare(token).then((p) => {
-        if (p) setShared(p);
-      });
-    };
-    read();
-    window.addEventListener("hashchange", read);
-    return () => window.removeEventListener("hashchange", read);
-  }, []);
-
-  const patch = <K extends keyof ForgeState>(key: K, value: ForgeState[K]) =>
-    setState((prev) => ({ ...prev, [key]: value }));
-
-  const applyPreset = (kind: string, body: string) => {
-    if (kind === "style") {
-      patch("compare", { ...state.compare, tags: body });
-      setState((prev) => ({
-        ...prev,
-        lyrics: {
-          ...prev.lyrics,
-          notes: [prev.lyrics.notes, `Style: ${body}`].filter(Boolean).join("\n"),
-        },
-      }));
-    } else {
-      setState((prev) => ({
-        ...prev,
-        lyrics: {
-          ...prev.lyrics,
-          notes: [prev.lyrics.notes, body].filter(Boolean).join("\n"),
-        },
-      }));
+  const copyExample = async () => {
+    try {
+      await navigator.clipboard.writeText(EXAMPLE_STYLE);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard blocked; nothing to do */
     }
-    setTab("lyrics");
   };
-
-  if (shared) {
-    return (
-      <AuthProvider>
-        <SettingsProvider>
-          <SharedView
-            payload={shared}
-            onRemix={() => {
-              setState((prev) => ({
-                ...prev,
-                blend: {
-                  ...prev.blend,
-                  result: {
-                    ...(prev.blend.result ?? {}),
-                    styleTag: shared.style,
-                    excludeStyles: shared.exclude,
-                  },
-                },
-                lyrics: {
-                  ...prev.lyrics,
-                  title: shared.title,
-                  manualStyle: shared.style,
-                  sections: shared.lyrics
-                    .split(/\n\s*\n/)
-                    .map((block) => {
-                      const rows = block.split("\n").filter((r) => r.trim());
-                      const tag = /^\[.*\]$/.test(rows[0] ?? "") ? rows.shift()! : "[Section]";
-                      return { tag, lines: rows.map((text) => ({ text, locked: false })) };
-                    })
-                    .filter((sec) => sec.lines.length || sec.tag !== "[Section]"),
-                },
-              }));
-              window.history.replaceState(null, "", window.location.pathname);
-              setShared(null);
-              setTab("lyrics");
-              toast.success("Remixed into your studio.");
-            }}
-            onClose={() => {
-              window.history.replaceState(
-                null,
-                "",
-                window.location.pathname + window.location.search,
-              );
-              setShared(null);
-            }}
-          />
-          <Toaster />
-        </SettingsProvider>
-      </AuthProvider>
-    );
-  }
 
   return (
-    <AuthProvider>
-      <SettingsProvider>
-        <TooltipProvider delayDuration={400}>
-        <div className="min-h-screen pb-12">
-          <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="glow-primary flex size-11 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
-                  <AudioLines className="size-5 text-primary" />
-                </span>
-                <div>
-                  <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                    {APP_NAME}
-                  </h1>
-                  <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-                    {APP_TAGLINE}
-                  </p>
-                </div>
-              </div>
+    <div className="bb-landing">
+      <header className="wrap top">
+        <Link to="/" className="logo">
+          <i aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 9v0M6.5 6v6M10 3v12M13.5 6v6" />
+            </svg>
+          </i>
+          {APP_NAME}
+        </Link>
+        <nav aria-label="Main">
+          <a className="hide-sm" href="#how">How it works</a>
+          <Link className="hide-sm" to="/guides">Guides</Link>
+          <a href="#faq">FAQ</a>
+          <a className="open" href="/studio">Open the studio</a>
+        </nav>
+      </header>
 
-              <div className="flex flex-wrap items-center gap-2">
-              <AiStatusButton />
-              {/* ── Guided / Rack mode toggle ── */}
-              <div
-                role="radiogroup"
-                aria-label="Studio mode"
-                className="flex rounded-lg border border-border bg-panel/70 p-1"
-              >
+      <main>
+        {/* The tool itself is the hero. */}
+        <section id="top" className="wrap hero">
+          <h1 className="display">
+            Describe the sound. <span>Get a Suno prompt that works.</span>
+          </h1>
+          <p className="lede">Free, built for Suno v6, checked for problems before you generate.</p>
+
+          <div className="split">
+            <form className="card" aria-label="Build a style prompt" onSubmit={submit} noValidate>
+              <div className="tabs" role="tablist" aria-label="How to start">
                 {(
                   [
-                    ["guided", "Guided"],
-                    ["rack",   "Full rack"],
+                    ["describe", "Describe it"],
+                    ["artists", "Blend artists"],
+                    ["song", "One song"],
                   ] as const
                 ).map(([m, label]) => (
                   <button
                     key={m}
                     type="button"
-                    role="radio"
-                    aria-checked={mode === m}
-                    onClick={() => changeMode(m)}
-                    className={
-                      "rounded-md px-3 py-1.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors " +
-                      (mode === m
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground")
-                    }
+                    role="tab"
+                    aria-selected={mode === m}
+                    onClick={() => {
+                      setMode(m);
+                      setHint(null);
+                    }}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-              </div>
-            </div>
-          </header>
 
-          <main className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6">
-            <WorkspaceBar state={state} onLoadState={setState} />
-
-            {/* ── Guided Flow (4-step wizard) ── */}
-            {mode === "guided" ? (
-              <GuidedFlow
-                state={state}
-                patch={patch}
-                onExitToRack={() => changeMode("rack")}
-                onExitToTab={(t) => { changeMode("rack"); setTab(t); }}
-                onExitToFixTake={() => { changeMode("rack"); setTab("fix"); }}
-              />
-            ) : (
-              /* ── Rack Console (left nav + content) ── */
-              <div className="flex gap-5 lg:items-start">
-                <RackSidebar tab={tab} onTab={setTab} />
-
-                <div className="min-w-0 flex-1">
-                  <RackMobileNav tab={tab} onTab={setTab} />
-
-                  {/* Tab content — conditional rendering */}
-                  {tab === "blend" && (
-                    <BandBlender
-                      value={state.blend}
-                      onChange={(v) => patch("blend", v)}
-                      onSendToForge={() => setTab("lyrics")}
-                      onOpenSunoSheet={() => setTab("suno")}
-                      autoRun={blendAutoRun}
-                      onAutoRunDone={() => setBlendAutoRun(false)}
-                      flashKey={blendFlashKey}
-                    />
-                  )}
-                  {tab === "lyrics" && (
-                    <LyricForge
-                      value={state.lyrics}
-                      onChange={(v) => patch("lyrics", v)}
-                      blend={state.blend.result}
-                    />
-                  )}
-                  {tab === "suno" && (
-                    <SunoSheet
-                      blend={state.blend}
-                      lyrics={state.lyrics}
-                      onBlend={(v) => patch("blend", v)}
-                      onLyrics={(v) => patch("lyrics", v)}
-                      onOpenForge={() => setTab("lyrics")}
-                    />
-                  )}
-                  {tab === "dossier" && (
-                    <ReleaseDossier
-                      blend={state.blend}
-                      lyrics={state.lyrics}
-                      value={state.dossiers}
-                      onChange={(v) => patch("dossiers", v)}
-                    />
-                  )}
-                  {tab === "fix" && (
-                    <FixTake
-                      blend={state.blend}
-                      lyrics={state.lyrics}
-                      value={state.fix}
-                      onChange={(v) => patch("fix", v)}
-                      onBlend={(v) => patch("blend", v)}
-                      takes={state.takes}
-                      onTakes={(v) => patch("takes", v)}
-                      onOpenMastering={() => setTab("master")}
-                    />
-                  )}
-                  {tab === "compare" && (
-                    <ComparableArtists
-                      value={state.compare}
-                      onChange={(v) => patch("compare", v)}
-                      onSendToBlender={(name) => {
-                        const rest = state.blend.artists.filter((a) => a.trim() && a !== name);
-                        patch("blend", {
-                          ...state.blend,
-                          lookupMode: "band",
-                          artists: [name, ...rest].slice(0, 3),
-                        });
-                        setTab("blend");
-                      }}
-                    />
-                  )}
-                  {tab === "feedback" && (
-                    <HonestFeedback
-                      value={state.critique}
-                      onChange={(v) => patch("critique", v)}
-                      lyrics={state.lyrics}
-                    />
-                  )}
-                  {tab === "master" && <MasteringLab onOpenFix={() => setTab("fix")} />}
-                  {tab === "library" && <PromptLibrary onApply={applyPreset} />}
-                  {tab === "genres" && (
-                    <GenreGuide
-                      onApplyToBlend={(genre) => {
-                        patch("blend", { ...state.blend, targetGenre: genre });
-                        setTab("blend");
-                      }}
-                    />
-                  )}
-                  {tab === "usage" && <UsageDashboard />}
-                  {tab === "assistant" && (
-                    <StudioAssistant
-                      currentBlend={state.blend}
-                      onGoTab={setTab}
-                      onAddToStyle={(line) => {
-                        const cur = state.blend.result?.styleTag?.trim() ?? "";
-                        patch("blend", {
-                          ...state.blend,
-                          result: { ...(state.blend.result ?? {}), styleTag: cur ? `${cur}, ${line}` : line },
-                        });
-                        toast.success("Added to your style prompt. Find it in Band Blender and the Export Sheet.");
-                      }}
-                      onFixSong={(notes) => {
-                        patch("fix", { ...state.fix, notes, result: null });
-                        setTab("fix");
-                      }}
-                      autoRun={assistantAutoRun}
-                      onToggleAutoRun={setAssistantAutoRun}
-                      onApply={(intent) => {
-                        const newBlend: BlendSlice = {
-                          ...state.blend,
-                          lookupMode: "band",
-                          artists: [intent.artist_1, intent.artist_2, intent.artist_3].map(
-                            (a, i) => a || (state.blend.artists[i] ?? ""),
-                          ),
-                          targetGenre: intent.target_genre || state.blend.targetGenre,
-                          targetEra: intent.era || state.blend.targetEra,
-                          sliders: {
-                            energy: intent.energy,
-                            complexity: intent.complexity,
-                            brightness: intent.brightness,
-                          },
-                          result: null,
-                        };
-                        patch("blend", newBlend);
-                        setTab("blend");
-                        setBlendFlashKey((k) => k + 1);
-                        if (assistantAutoRun) {
-                          setBlendAutoRun(true);
-                        }
-                      }}
-                    />
-                  )}
+              {mode === "describe" && (
+                <div className="field">
+                  <label className="field-label" htmlFor="l-desc">The sound you want</label>
+                  <textarea
+                    id="l-desc"
+                    rows={3}
+                    maxLength={500}
+                    value={text}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      setHint(null);
+                    }}
+                    placeholder="90s grunge guitars with a dreamy synthwave chorus, female vocal…"
+                  />
+                  <div className="chips">
+                    {CHIPS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          setText(c);
+                          setHint(null);
+                        }}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </main>
+              )}
+              {mode === "artists" && (
+                <div className="field">
+                  <span className="field-label">Up to three artists</span>
+                  <div className="three">
+                    {artists.map((a, i) => (
+                      <input
+                        key={i}
+                        type="text"
+                        maxLength={80}
+                        aria-label={`Artist ${i + 1}${i === 2 ? " (optional)" : ""}`}
+                        placeholder={`Artist ${i + 1}${i === 2 ? " (optional)" : ""}`}
+                        value={a}
+                        onChange={(e) => {
+                          const next = [...artists];
+                          next[i] = e.target.value;
+                          setArtists(next);
+                          setHint(null);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {mode === "song" && (
+                <div className="field">
+                  <label className="field-label" htmlFor="l-song">A song you love</label>
+                  <input
+                    id="l-song"
+                    type="text"
+                    maxLength={160}
+                    placeholder="Song title and artist"
+                    value={song}
+                    onChange={(e) => {
+                      setSong(e.target.value);
+                      setHint(null);
+                    }}
+                  />
+                </div>
+              )}
 
-          <KeySetupDialog />
-          <Toaster />
+              <div className="three sliders">
+                {(["energy", "complexity", "brightness"] as const).map((k) => (
+                  <label key={k}>
+                    <span>
+                      {k[0]!.toUpperCase() + k.slice(1)} <output>{sliders[k]}</output>
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={sliders[k]}
+                      onChange={(e) => setSliders({ ...sliders, [k]: Number(e.target.value) })}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div className="row">
+                <div className="models" role="radiogroup" aria-label="Suno model">
+                  {MODELS.map((m) => (
+                    <button key={m} type="button" role="radio" aria-checked={model === m} onClick={() => setModel(m)}>
+                      {SUNO_VERSION_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
+                <button className="go" type="submit">Build my prompt</button>
+              </div>
+              {hint ? (
+                <p className="hint" role="alert">{hint}</p>
+              ) : (
+                <p className="fineprint">v6-mini works on free Suno. v6 and v6-wild need Pro or Premier.</p>
+              )}
+            </form>
+
+            <aside className="card" aria-label="Example result">
+              <div className="row">
+                <p className="label mono">EXAMPLE RESULT</p>
+                <span className="pill">Pre-flight passed</span>
+              </div>
+              <div className="facts">
+                <div className="box"><small>Genre</small><p><b>Grunge / Synthwave</b></p></div>
+                <div className="box"><small>Tempo</small><p><b>96 bpm, half-time chorus</b></p></div>
+              </div>
+              <div className="box"><small>Style prompt</small><p className="mono">{EXAMPLE_STYLE}</p></div>
+              <div className="box"><small>Exclude styles</small><p className="mono">trap beats, EDM drops, acoustic folk</p></div>
+              <div className="btns">
+                <button type="button" className="light" onClick={copyExample}>
+                  {copied ? "Copied" : "Copy for Suno"}
+                </button>
+                <a className="ghost" href="/studio?tab=lyrics">Write lyrics next →</a>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="tools" className="wrap jump">
+          <h2 className="display">Or jump straight to</h2>
+          <div className="grid">
+            {JUMPS.map((j) => (
+              <a key={j.title} className="tile" href={`/studio?tab=${j.tab}`}>
+                <b>{j.title}</b>
+                <span>{j.body}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="limits" aria-label="Suno download limits">
+          <div className="wrap">
+            <h2 className="display">Suno now limits downloads. Make each one count.</h2>
+            <div><p className="num">7</p><p className="sub">downloads, ever, on the free plan</p></div>
+            <div><p className="num">20</p><p className="sub">a month on Pro</p></div>
+            <div><p className="num">60</p><p className="sub">a month on Premier</p></div>
+          </div>
+        </section>
+
+        <section id="how" className="wrap how">
+          <h2 className="display">How it works</h2>
+          <ol>
+            <li>
+              <p className="step mono">01</p>
+              <h3>Shape the sound</h3>
+              <p>Blend up to three artists or describe it in plain English. Get a Suno style prompt checked for contradictions before you generate.</p>
+            </li>
+            <li>
+              <p className="step mono">02</p>
+              <h3>Write lyrics that sing</h3>
+              <p>Hook-first lyrics with per-line control, plus flags for clichés, awkward line lengths and words Suno tends to mispronounce.</p>
+            </li>
+            <li>
+              <p className="step mono">03</p>
+              <h3>Fix, master, release</h3>
+              <p>Get edit instructions for Suno v6, master in your browser with a clear verdict, and work through a release checklist.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section className="wrap privacy" aria-label="Privacy">
+          <div className="card">
+            <h2 className="display">Your music stays yours.</h2>
+            <p>
+              <strong>Audio never leaves your browser.</strong>
+              Songs and stems are measured and mastered on your device, then gone when you close the tab.
+            </p>
+            <p>
+              <strong>We never save your AI key.</strong>
+              It stays in your browser. Free on your own Google or Anthropic key.
+            </p>
+          </div>
+        </section>
+
+        <section id="guides" className="wrap guides" aria-label="Guides">
+          <h2 className="display">Guides</h2>
+          <ul>
+            {GUIDES.slice(0, 4).map((g) => (
+              <li key={g.slug}>
+                <Link to="/guides/$slug" params={{ slug: g.slug }}>
+                  {g.title} <span aria-hidden="true">→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section id="faq" className="wrap faq" aria-label="Questions">
+          <h2 className="display">Questions</h2>
+          {FAQ.map(([q, a]) => (
+            <details key={q}>
+              <summary>{q}</summary>
+              <p>{a}</p>
+            </details>
+          ))}
+        </section>
+
+        <section className="wrap cta" aria-label="Get started">
+          <div>
+            <h2 className="display">Your next take could be the keeper.</h2>
+            <a href="#top">Build a prompt →</a>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <div className="wrap">
+          <span>{APP_NAME} · Not affiliated with Suno.</span>
+          <nav aria-label="Footer">
+            <a href="/studio">Studio</a>
+            <Link to="/guides">Guides</Link>
+            <a href="#faq">FAQ</a>
+          </nav>
         </div>
-        </TooltipProvider>
-      </SettingsProvider>
-    </AuthProvider>
+      </footer>
+    </div>
   );
 }

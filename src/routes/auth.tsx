@@ -41,7 +41,7 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/" });
+      if (data.session) navigate({ to: "/studio" });
     });
   }, [navigate]);
 
@@ -52,7 +52,7 @@ function AuthPage() {
       if (mode === "in") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/" });
+        navigate({ to: "/studio" });
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -62,7 +62,7 @@ function AuthPage() {
         if (error) throw error;
         if (data.session) {
           toast.success("Account created. You're signed in.");
-          navigate({ to: "/" });
+          navigate({ to: "/studio" });
         } else {
           toast.success("Check your email to confirm your account before signing in.");
           setMode("in");
@@ -85,7 +85,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/" });
+    navigate({ to: "/studio" });
   };
 
   return (
@@ -151,7 +151,7 @@ function AuthPage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => navigate({ to: "/studio" })}
           className="mt-2 w-full text-center text-xs text-muted-foreground hover:text-foreground"
         >
           Keep working without an account

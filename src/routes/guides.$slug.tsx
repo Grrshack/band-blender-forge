@@ -64,7 +64,7 @@ function GuidePage() {
         <div className="panel-surface mt-10 flex flex-wrap items-center justify-between gap-3 p-5">
           <p className="text-sm text-foreground/90">Free, runs in your browser, no account needed to try.</p>
           <Button asChild className="gap-1.5">
-            <a href={`/?tab=${g.tool.tab}`}>
+            <a href={`/studio?tab=${g.tool.tab}`}>
               {g.tool.label} <ArrowRight className="size-4" />
             </a>
           </Button>
