@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
 type Mode = "describe" | "artists" | "song";
 
 const CHIPS = ["Dark cinematic trap", "90s grunge revival", "Lo-fi jazz hip-hop"];
-const MODELS: SunoVersion[] = ["mini", "v6", "wild"];
+const MODELS: SunoVersion[] = ["v6", "mini", "wild"];
 const EXAMPLE_STYLE =
   "alternative grunge, dreamy synthwave chorus, 96 bpm, fuzzed guitars, analog poly pads, breathy female vocal, tape saturation, bittersweet";
 
@@ -54,7 +54,7 @@ function Landing() {
   const [artists, setArtists] = useState(["", "", ""]);
   const [song, setSong] = useState("");
   const [sliders, setSliders] = useState({ energy: 70, complexity: 50, brightness: 55 });
-  const [model, setModel] = useState<SunoVersion>("mini");
+  const [model, setModel] = useState<SunoVersion>("v6");
   const [hint, setHint] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -249,7 +249,7 @@ function Landing() {
               {hint ? (
                 <p className="hint" role="alert">{hint}</p>
               ) : (
-                <p className="fineprint">v6-mini works on free Suno. v6 and v6-wild need Pro or Premier.</p>
+                <p className="fineprint">v6 and v6-wild need Suno Pro or Premier. On a free plan, pick v6-mini.</p>
               )}
             </form>
 
