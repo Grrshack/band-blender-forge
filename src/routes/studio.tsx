@@ -31,7 +31,8 @@ import type { BlendResult } from "@/components/forge/types";
 import { toast } from "sonner";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 import { track } from "@/lib/stats";
-import { mergeSymptoms } from "@/lib/symptoms";
+import { LYRIC_QUICK_SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
+import { TakeCheck } from "@/components/forge/TakeCheck";
 import { HANDOFF_KEYS, readHandoff, type ParsedHandoff } from "@/lib/handoff";
 
 export const Route = createFileRoute("/studio")({
@@ -188,6 +189,16 @@ function Index() {
     window.addEventListener("hashchange", read);
     return () => window.removeEventListener("hashchange", read);
   }, []);
+
+  // "Not quite" in a take check: open Fix a Track with the picked problems ticked.
+  const openFixWith = (symptoms: string[]) => {
+    setState((prev) => ({
+      ...prev,
+      fix: { ...prev.fix, symptoms: mergeSymptoms(prev.fix.symptoms, symptoms), result: null },
+    }));
+    setTab("fix");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const patch = <K extends keyof ForgeState>(key: K, value: ForgeState[K]) =>
     setState((prev) => ({ ...prev, [key]: value }));
@@ -353,14 +364,7 @@ function Index() {
                       flashKey={blendFlashKey}
                       takes={state.takes}
                       onTakes={(v) => patch("takes", v)}
-                      onFix={(symptoms) => {
-                        setState((prev) => ({
-                          ...prev,
-                          fix: { ...prev.fix, symptoms: mergeSymptoms(prev.fix.symptoms, symptoms), result: null },
-                        }));
-                        setTab("fix");
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
+                      onFix={openFixWith}
                     />
                   )}
                   {tab === "lyrics" && (
@@ -368,6 +372,20 @@ function Index() {
                       value={state.lyrics}
                       onChange={(v) => patch("lyrics", v)}
                       blend={state.blend.result}
+                      renderTakeCheck={({ highlight }) => (
+                        <TakeCheck
+                          key={state.lyrics.sections.map((x) => x.lines[0]?.text ?? x.tag).join("|")}
+                          blend={state.blend}
+                          onBlend={(v) => patch("blend", v)}
+                          takes={state.takes}
+                          onTakes={(v) => patch("takes", v)}
+                          onFix={openFixWith}
+                          source="Lyric Forge"
+                          quickSymptoms={LYRIC_QUICK_SYMPTOMS}
+                          next={{ label: "Open the Export Sheet", onClick: () => setTab("suno") }}
+                          highlight={highlight}
+                        />
+                      )}
                     />
                   )}
                   {tab === "suno" && (
