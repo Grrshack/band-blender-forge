@@ -25,16 +25,22 @@ export function TakeCheck({
   takes,
   onTakes,
   onFix,
-  onWriteLyrics,
+  next,
+  source,
+  quickSymptoms = QUICK_SYMPTOMS,
   highlight = false,
 }: {
+  /** The natural next step after a keeper (e.g. write lyrics, open the Export Sheet). */
+  next: { label: string; onClick: () => void };
+  /** Which tool this card sits in, for the take log note. */
+  source: string;
+  quickSymptoms?: readonly string[];
   blend: BlendSlice;
   onBlend: (next: BlendSlice) => void;
   takes: Take[];
   onTakes: (next: Take[]) => void;
   /** Opens Fix a Track with these problems ticked. */
   onFix: (symptoms: string[]) => void;
-  onWriteLyrics: () => void;
   /** True right after Copy for Suno, so the card draws the eye. */
   highlight?: boolean;
 }) {
@@ -114,15 +120,15 @@ export function TakeCheck({
               size="sm"
               disabled={logged}
               onClick={() => {
-                logTake(5, "Keeper from the Band Blender");
+                logTake(5, `Keeper from ${source}`);
                 toast.success("Logged as a keeper. Add its Suno link in Fix a Track's take log to share it as a recipe.");
               }}
               className="gap-1.5 text-xs"
             >
               <Check className="size-3.5" /> {logged ? "Logged as a keeper" : "Log as a keeper"}
             </Button>
-            <Button type="button" size="sm" onClick={onWriteLyrics} className="gap-1.5 text-xs">
-              <PenLine className="size-3.5" /> Write lyrics next
+            <Button type="button" size="sm" onClick={next.onClick} className="gap-1.5 text-xs">
+              <PenLine className="size-3.5" /> {next.label}
             </Button>
           </div>
         </div>
@@ -161,7 +167,7 @@ export function TakeCheck({
           <div>
             <p className="mb-2 text-sm font-medium">Something specific wrong? Pick what you heard</p>
             <div className="flex flex-wrap gap-1.5">
-              {QUICK_SYMPTOMS.map((s) => {
+              {quickSymptoms.map((s) => {
                 const on = picked.includes(s);
                 return (
                   <button
@@ -185,7 +191,7 @@ export function TakeCheck({
               type="button"
               size="sm"
               onClick={() => {
-                logTake(2, picked.length ? picked.join("; ") : "Not quite (from the Band Blender)");
+                logTake(2, picked.length ? picked.join("; ") : `Not quite (from ${source})`);
                 onFix(picked);
               }}
               className="mt-3 gap-1.5 text-xs"

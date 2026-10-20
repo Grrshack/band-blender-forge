@@ -659,29 +659,6 @@ export function BandBlender({
               ) : null}
             </Panel>
 
-            {onTakes && onFix ? (
-              <TakeCheck
-                key={result.styleTag ?? ""}
-                blend={value}
-                onBlend={onChange}
-                takes={takes ?? []}
-                onTakes={onTakes}
-                onFix={onFix}
-                onWriteLyrics={() => onSendToForge(result)}
-                highlight={justCopied}
-              />
-            ) : null}
-
-            <Panel
-              title="Blend Reconciliation Logic"
-              subtitle="How the conflicting styles are fused."
-              action={<CopyButton value={result.reconciliation ?? ""} />}
-            >
-              <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
-                {result.reconciliation ?? "—"}
-              </p>
-            </Panel>
-
             {/* AudioChat — natural-language style tag refiner */}
             <Panel
               title="Style Chat"
@@ -728,9 +705,34 @@ export function BandBlender({
                 </Button>
               </div>
               <p className="mt-2 text-[10px] text-muted-foreground">
-                The style tag above updates in place — copy it again after refining.
+                The style prompt above updates in place. Copy it again after refining.
               </p>
             </Panel>
+
+            {onTakes && onFix ? (
+              <TakeCheck
+                key={result.styleTag ?? ""}
+                blend={value}
+                onBlend={onChange}
+                takes={takes ?? []}
+                onTakes={onTakes}
+                onFix={onFix}
+                source="Band Blender"
+                next={{ label: "Write lyrics next", onClick: () => onSendToForge(result) }}
+                highlight={justCopied}
+              />
+            ) : null}
+
+            <Panel
+              title="Blend Reconciliation Logic"
+              subtitle="How the conflicting styles are fused."
+              action={<CopyButton value={result.reconciliation ?? ""} />}
+            >
+              <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
+                {result.reconciliation ?? "—"}
+              </p>
+            </Panel>
+
           </>
         ) : (
           <>

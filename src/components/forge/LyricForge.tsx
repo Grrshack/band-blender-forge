@@ -9,7 +9,7 @@ import {
   Undo2,
   Wand2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
@@ -122,7 +122,10 @@ export function LyricForge({
   value,
   onChange,
   blend,
+  renderTakeCheck,
 }: {
+  /** The "how did it come out?" card, shown once there are lyrics. */
+  renderTakeCheck?: ((opts: { highlight: boolean }) => ReactNode) | undefined;
   value: LyricSlice;
   onChange: (next: LyricSlice) => void;
   blend: BlendResult | null;
@@ -132,6 +135,7 @@ export function LyricForge({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [justCopied, setJustCopied] = useState(false);
 
   const {
     theme,
@@ -346,6 +350,7 @@ export function LyricForge({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-5">
       <Panel title="Lyric Brief" subtitle="Hook-first writing. No AI clichés.">
         {error ? <ErrorNote message={error} onRetry={() => void generate()} /> : null}
         <div className="space-y-4">
@@ -470,13 +475,16 @@ export function LyricForge({
           </Button>
         </div>
       </Panel>
+      </div>
 
+      <div className="min-w-0 space-y-5">
+      {sections.length && renderTakeCheck ? renderTakeCheck({ highlight: justCopied }) : null}
       <Panel
         title="Lyric Sheet"
         subtitle={title || "Section tags, per-line lock, rewrite and undo."}
         action={
           sections.length ? (
-            <CopyButton value={composeSunoLyrics(sections)} label="Copy for Suno" />
+            <CopyButton value={composeSunoLyrics(sections)} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
           ) : undefined
         }
       >
@@ -632,6 +640,7 @@ export function LyricForge({
           </div>
         )}
       </Panel>
+      </div>
     </div>
   );
 }
