@@ -30,9 +30,10 @@ export const STYLE_TARGET_FOR_VERSION: Record<SunoVersion, number> = {
 };
 
 /** Human-readable labels for the version selector. */
+/** Key order is the display order: the flagship first, then the free and experimental models. */
 export const SUNO_VERSION_LABELS: Record<SunoVersion, string> = {
-  mini: "v6-mini",
   v6: "v6",
+  mini: "v6-mini",
   wild: "v6-wild",
 };
 
