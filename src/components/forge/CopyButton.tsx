@@ -9,7 +9,10 @@ export function CopyButton({
   label = "Copy",
   className,
   size = "sm",
+  onCopied,
 }: {
+  /** Called after a successful copy. */
+  onCopied?: () => void;
   value: string;
   label?: ReactNode;
   className?: string;
@@ -29,6 +32,7 @@ export function CopyButton({
       ta.remove();
     }
     setCopied(true);
+    onCopied?.();
     setTimeout(() => setCopied(false), 1400);
   };
 

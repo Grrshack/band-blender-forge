@@ -14,6 +14,8 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ALL_GENRES, ERA_OPTIONS, SUNO_VERSION_LABELS, type SunoVersion, vocalString } from "@/lib/suno";
 import { PromptCard } from "./PromptCard";
+import { TakeCheck } from "./TakeCheck";
+import type { Take } from "@/lib/takes";
 import { shareBlend } from "@/lib/forge.functions";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -112,7 +114,15 @@ export function BandBlender({
   autoRun,
   onAutoRunDone,
   flashKey,
+  takes,
+  onTakes,
+  onFix,
 }: {
+  /** The take log, so a rated take feeds Fix a Track's diagnosis. */
+  takes?: Take[] | undefined;
+  onTakes?: ((next: Take[]) => void) | undefined;
+  /** Opens Fix a Track with these problems ticked. */
+  onFix?: ((symptoms: string[]) => void) | undefined;
   value: BlendSlice;
   onChange: (next: BlendSlice) => void;
   onSendToForge: (blend: BlendResult) => void;
@@ -137,6 +147,7 @@ export function BandBlender({
     targetEra = "",
   } = value;
   const [showCard, setShowCard] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
   const [shareSlug, setShareSlug] = useState<string | undefined>();
   const [sharing, setSharing] = useState(false);
   const [flashing, setFlashing] = useState(false);
@@ -536,6 +547,7 @@ export function BandBlender({
                   </Button>
                   <CopyButton
                     value={formatForSuno(result)}
+                    onCopied={() => setJustCopied(true)}
                     label={
                       <span className="flex items-center gap-1">
                         <Clipboard className="size-3" /> Copy for Suno
@@ -646,6 +658,19 @@ export function BandBlender({
                 </div>
               ) : null}
             </Panel>
+
+            {onTakes && onFix ? (
+              <TakeCheck
+                key={result.styleTag ?? ""}
+                blend={value}
+                onBlend={onChange}
+                takes={takes ?? []}
+                onTakes={onTakes}
+                onFix={onFix}
+                onWriteLyrics={() => onSendToForge(result)}
+                highlight={justCopied}
+              />
+            ) : null}
 
             <Panel
               title="Blend Reconciliation Logic"

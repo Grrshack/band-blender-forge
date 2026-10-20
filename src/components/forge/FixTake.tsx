@@ -18,24 +18,7 @@ import { measureTake, type TakeMeasurements } from "@/lib/audio/take-diagnosis";
 import { submitPublicPrompt } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/stats";
-
-const SYMPTOMS = [
-  "Vocals sound robotic or over-polished",
-  "Vocals buried or unclear",
-  "Wrong vocal style or gender",
-  "Bass is buried",
-  "Bass is boomy or muddy",
-  "Too fast",
-  "Too slow",
-  "Wrong genre",
-  "Generic, sounds like AI",
-  "Mix is too busy",
-  "Sounds thin or weak",
-  "Harsh, piercing highs",
-  "Too repetitive",
-  "Ending is abrupt",
-  "Ignored my lyrics",
-];
+import { SYMPTOMS } from "@/lib/symptoms";
 
 export function FixTake({
   blend,
