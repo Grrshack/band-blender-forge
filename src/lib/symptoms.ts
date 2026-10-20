@@ -15,6 +15,7 @@ export const SYMPTOMS = [
   "Too repetitive",
   "Ending is abrupt",
   "Ignored my lyrics",
+  "Words sung wrong",
 ] as const;
 
 /** The handful shown as quick picks right after a disappointing first take. */
@@ -25,6 +26,16 @@ export const QUICK_SYMPTOMS: readonly string[] = [
   "Bass is boomy or muddy",
   "Generic, sounds like AI",
   "Mix is too busy",
+];
+
+/** Quick picks after a take made with Lyric Forge's lyrics. */
+export const LYRIC_QUICK_SYMPTOMS: readonly string[] = [
+  "Ignored my lyrics",
+  "Words sung wrong",
+  "Too repetitive",
+  "Ending is abrupt",
+  "Vocals buried or unclear",
+  "Wrong vocal style or gender",
 ];
 
 /** Adds new picks to existing ones without duplicates, keeping the original order. */
