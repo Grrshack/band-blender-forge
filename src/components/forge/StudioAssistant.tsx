@@ -70,7 +70,12 @@ export function StudioAssistant({
   onGoTab,
   onFixSong,
   onAddToStyle,
+  initialMessage,
+  onInitialMessageSent,
 }: {
+  /** Text typed on the landing page. Sent once if a key is ready, otherwise left in the box. */
+  initialMessage?: string | null | undefined;
+  onInitialMessageSent?: (() => void) | undefined;
   onGoTab: (tab: string) => void;
   onFixSong: (notes: string) => void;
   onAddToStyle?: (line: string) => void;
@@ -80,7 +85,7 @@ export function StudioAssistant({
   onToggleAutoRun: (v: boolean) => void;
 }) {
   const forge = useForge();
-  const { apiKey, routing } = useSettings();
+  const { apiKey, routing, aiReady, loaded, openKeyDialog } = useSettings();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -101,6 +106,24 @@ export function StudioAssistant({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
+
+  // Landing-page handoff: run it straight away when AI is ready; otherwise keep the
+  // text in the box and ask for a key, so nothing the visitor typed is lost.
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (!initialMessage || startedRef.current || !loaded) return;
+    startedRef.current = true;
+    onInitialMessageSent?.();
+    // The chat sits below the "What do you want to do?" cards, so bring it into view.
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+    if (aiReady) {
+      void send(initialMessage);
+    } else {
+      setInput(initialMessage);
+      openKeyDialog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessage, loaded, aiReady]);
 
   const send = async (text: string) => {
     const trimmed = text.trim();

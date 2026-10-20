@@ -25,6 +25,8 @@ type Settings = {
   builtIn: boolean;
   /** True when AI tools can run right now (own key set, or a built-in model exists). */
   aiReady: boolean;
+  /** True once the saved key (if any) has been read from this browser. */
+  loaded: boolean;
   keyDialogOpen: boolean;
   /** True once Google has said this key can't use Gemini Pro (free tier); later calls use Flash. */
   geminiNoPro: boolean;
@@ -112,13 +114,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setRemember,
       builtIn,
       aiReady,
+      loaded,
       keyDialogOpen,
       geminiNoPro,
       setGeminiNoPro,
       openKeyDialog,
       setKeyDialogOpen,
     }),
-    [apiKey, routing, remember, builtIn, aiReady, keyDialogOpen, geminiNoPro, openKeyDialog],
+    [apiKey, routing, remember, builtIn, aiReady, loaded, keyDialogOpen, geminiNoPro, openKeyDialog],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
