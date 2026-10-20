@@ -1,4 +1,4 @@
-# Band Blender Forge
+# Band Blender
 
 Build a web application called "Band Lookup & Lyric Forge". It is a highly optimized pre-production planning tool for AI music generation. Give the application a sleek, dark, cyberpunk studio aesthetic using dark grays, deep obsidian, neon violet, and electric teal as visual accents. 
 
