@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import landingCss from "../styles/landing.css?url";
 import { APP_NAME } from "@/lib/brand";
 import { GUIDES } from "@/lib/guides";
+import { FREE_TOOLS } from "@/components/tools/ToolLayout";
 import { buildStudioHref, legacyStudioRedirect, type HandoffInput } from "@/lib/handoff";
 import { SUNO_VERSION_LABELS, type SunoVersion } from "@/lib/suno";
 
@@ -36,7 +37,7 @@ const JUMPS = [
   { tab: "fix", title: "Fix a song Suno made", body: "Get the exact edit to paste into Suno. No download needed." },
   { tab: "lyrics", title: "Write lyrics", body: "Hook-first, with pronunciation and line-length checks." },
   { tab: "master", title: "Master a song or stem", body: "A verdict on what mastering can fix. Runs in your browser." },
-  { tab: "assistant", title: "Start from a beat", body: "Make one free, find its tempo, bring it into Suno." },
+  { tab: "analyze", title: "Sound like a song you love", body: "Drop it in for tempo, key and sections, then a prompt in its style." },
 ];
 
 const FAQ = [
@@ -110,6 +111,7 @@ function Landing() {
         </Link>
         <nav aria-label="Main">
           <a className="hide-sm" href="#how">How it works</a>
+          <Link className="hide-sm" to="/tools">Free tools</Link>
           <Link className="hide-sm" to="/guides">Guides</Link>
           <a href="#faq">FAQ</a>
           <a className="open" href="/studio">Open the studio</a>
@@ -330,6 +332,19 @@ function Landing() {
           </div>
         </section>
 
+        <section id="free-tools" className="wrap guides" aria-label="Free tools">
+          <h2 className="display">Free tools, no key needed</h2>
+          <ul>
+            {FREE_TOOLS.map((t) => (
+              <li key={t.to}>
+                <a href={t.to}>
+                  {t.title}: {t.body.split(".")[0]}. <span aria-hidden="true">→</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         <section id="guides" className="wrap guides" aria-label="Guides">
           <h2 className="display">Guides</h2>
           <ul>
@@ -366,6 +381,7 @@ function Landing() {
           <span>{APP_NAME} · Not affiliated with Suno.</span>
           <nav aria-label="Footer">
             <a href="/studio">Studio</a>
+            <Link to="/tools">Free tools</Link>
             <Link to="/guides">Guides</Link>
             <a href="#faq">FAQ</a>
           </nav>

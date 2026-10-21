@@ -33,6 +33,7 @@ import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 import { track } from "@/lib/stats";
 import { LYRIC_QUICK_SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
 import { TakeCheck } from "@/components/forge/TakeCheck";
+import { SongAnalyzer } from "@/components/forge/SongAnalyzer";
 import { HANDOFF_KEYS, readHandoff, type ParsedHandoff } from "@/lib/handoff";
 
 export const Route = createFileRoute("/studio")({
@@ -441,6 +442,16 @@ function Index() {
                   )}
                   {tab === "master" && <MasteringLab onOpenFix={() => setTab("fix")} />}
                   {tab === "library" && <PromptLibrary onApply={applyPreset} />}
+                  {tab === "analyze" && (
+                    <SongAnalyzer
+                      blend={state.blend}
+                      onBlend={(v) => patch("blend", v)}
+                      lyrics={state.lyrics}
+                      onLyrics={(v) => patch("lyrics", v)}
+                      onOpenBlender={() => setTab("blend")}
+                      onOpenLyrics={() => setTab("lyrics")}
+                    />
+                  )}
                   {tab === "genres" && (
                     <GenreGuide
                       onApplyToBlend={(genre) => {
