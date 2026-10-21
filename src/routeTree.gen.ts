@@ -15,6 +15,11 @@ import { Route as StudioRouteImport } from './routes/studio'
 import { Route as BlendSlugRouteImport } from './routes/blend.$slug'
 import { Route as GuidesIndexRouteImport } from './routes/guides.index'
 import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
+import { Route as ToolsIndexRouteImport } from './routes/tools.index'
+import { Route as ToolsBpmKeyFinderRouteImport } from './routes/tools.bpm-key-finder'
+import { Route as ToolsLyricCheckerRouteImport } from './routes/tools.lyric-checker'
+import { Route as ToolsReleaseChecklistRouteImport } from './routes/tools.release-checklist'
+import { Route as ToolsSunoMetatagsRouteImport } from './routes/tools.suno-metatags'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +51,31 @@ const GuidesSlugRoute = GuidesSlugRouteImport.update({
   path: '/guides/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsBpmKeyFinderRoute = ToolsBpmKeyFinderRouteImport.update({
+  id: '/tools/bpm-key-finder',
+  path: '/tools/bpm-key-finder',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsLyricCheckerRoute = ToolsLyricCheckerRouteImport.update({
+  id: '/tools/lyric-checker',
+  path: '/tools/lyric-checker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsReleaseChecklistRoute = ToolsReleaseChecklistRouteImport.update({
+  id: '/tools/release-checklist',
+  path: '/tools/release-checklist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsSunoMetatagsRoute = ToolsSunoMetatagsRouteImport.update({
+  id: '/tools/suno-metatags',
+  path: '/tools/suno-metatags',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,7 +83,12 @@ export interface FileRoutesByFullPath {
   '/studio': typeof StudioRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
+  '/tools/bpm-key-finder': typeof ToolsBpmKeyFinderRoute
+  '/tools/lyric-checker': typeof ToolsLyricCheckerRoute
+  '/tools/release-checklist': typeof ToolsReleaseChecklistRoute
+  '/tools/suno-metatags': typeof ToolsSunoMetatagsRoute
   '/guides/': typeof GuidesIndexRoute
+  '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +96,12 @@ export interface FileRoutesByTo {
   '/studio': typeof StudioRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
+  '/tools/bpm-key-finder': typeof ToolsBpmKeyFinderRoute
+  '/tools/lyric-checker': typeof ToolsLyricCheckerRoute
+  '/tools/release-checklist': typeof ToolsReleaseChecklistRoute
+  '/tools/suno-metatags': typeof ToolsSunoMetatagsRoute
   '/guides': typeof GuidesIndexRoute
+  '/tools': typeof ToolsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,14 +110,40 @@ export interface FileRoutesById {
   '/studio': typeof StudioRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
+  '/tools/bpm-key-finder': typeof ToolsBpmKeyFinderRoute
+  '/tools/lyric-checker': typeof ToolsLyricCheckerRoute
+  '/tools/release-checklist': typeof ToolsReleaseChecklistRoute
+  '/tools/suno-metatags': typeof ToolsSunoMetatagsRoute
   '/guides/': typeof GuidesIndexRoute
+  '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/studio' | '/blend/$slug' | '/guides/$slug' | '/guides/'
+    | '/'
+    | '/auth'
+    | '/studio'
+    | '/blend/$slug'
+    | '/guides/$slug'
+    | '/tools/bpm-key-finder'
+    | '/tools/lyric-checker'
+    | '/tools/release-checklist'
+    | '/tools/suno-metatags'
+    | '/guides/'
+    | '/tools/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/studio' | '/blend/$slug' | '/guides/$slug' | '/guides'
+  to:
+    | '/'
+    | '/auth'
+    | '/studio'
+    | '/blend/$slug'
+    | '/guides/$slug'
+    | '/tools/bpm-key-finder'
+    | '/tools/lyric-checker'
+    | '/tools/release-checklist'
+    | '/tools/suno-metatags'
+    | '/guides'
+    | '/tools'
   id:
     | '__root__'
     | '/'
@@ -85,7 +151,12 @@ export interface FileRouteTypes {
     | '/studio'
     | '/blend/$slug'
     | '/guides/$slug'
+    | '/tools/bpm-key-finder'
+    | '/tools/lyric-checker'
+    | '/tools/release-checklist'
+    | '/tools/suno-metatags'
     | '/guides/'
+    | '/tools/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,7 +165,12 @@ export interface RootRouteChildren {
   StudioRoute: typeof StudioRoute
   BlendSlugRoute: typeof BlendSlugRoute
   GuidesSlugRoute: typeof GuidesSlugRoute
+  ToolsBpmKeyFinderRoute: typeof ToolsBpmKeyFinderRoute
+  ToolsLyricCheckerRoute: typeof ToolsLyricCheckerRoute
+  ToolsReleaseChecklistRoute: typeof ToolsReleaseChecklistRoute
+  ToolsSunoMetatagsRoute: typeof ToolsSunoMetatagsRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +217,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuidesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/bpm-key-finder': {
+      id: '/tools/bpm-key-finder'
+      path: '/tools/bpm-key-finder'
+      fullPath: '/tools/bpm-key-finder'
+      preLoaderRoute: typeof ToolsBpmKeyFinderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/lyric-checker': {
+      id: '/tools/lyric-checker'
+      path: '/tools/lyric-checker'
+      fullPath: '/tools/lyric-checker'
+      preLoaderRoute: typeof ToolsLyricCheckerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/release-checklist': {
+      id: '/tools/release-checklist'
+      path: '/tools/release-checklist'
+      fullPath: '/tools/release-checklist'
+      preLoaderRoute: typeof ToolsReleaseChecklistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/suno-metatags': {
+      id: '/tools/suno-metatags'
+      path: '/tools/suno-metatags'
+      fullPath: '/tools/suno-metatags'
+      preLoaderRoute: typeof ToolsSunoMetatagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,7 +261,12 @@ const rootRouteChildren: RootRouteChildren = {
   StudioRoute: StudioRoute,
   BlendSlugRoute: BlendSlugRoute,
   GuidesSlugRoute: GuidesSlugRoute,
+  ToolsBpmKeyFinderRoute: ToolsBpmKeyFinderRoute,
+  ToolsLyricCheckerRoute: ToolsLyricCheckerRoute,
+  ToolsReleaseChecklistRoute: ToolsReleaseChecklistRoute,
+  ToolsSunoMetatagsRoute: ToolsSunoMetatagsRoute,
   GuidesIndexRoute: GuidesIndexRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
