@@ -6,6 +6,7 @@ import {
   Bot,
   Gauge,
   Map,
+  Radar,
   Rocket,
   Search,
   Send,
@@ -38,6 +39,12 @@ export const TAB_GROUPS: Group[] = [
         label: "Band Blender",
         icon: Sliders,
         hint: "Blend up to 3 artists into one produceable style for Suno",
+      },
+      {
+        value: "analyze",
+        label: "Analyze a Song",
+        icon: Radar,
+        hint: "Measure a song you love (tempo, key, sections) and get a Suno prompt in its style",
       },
       {
         value: "lyrics",

@@ -1,4 +1,4 @@
-import { AudioWaveform, Drum, Loader2, MessageSquare, PenLine, Send, Sparkles, Stethoscope, Zap } from "lucide-react";
+import { AudioWaveform, Drum, Loader2, MessageSquare, PenLine, Send, Sparkles, Stethoscope, Zap, Radar } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { ERA_OPTIONS } from "@/lib/suno";
@@ -320,6 +320,13 @@ const PATHS = [
     title: "Start from a beat",
     body: "Make a beat with a free tool, then bring it into Suno.",
     tab: "blend",
+  },
+  {
+    id: "analyze",
+    icon: Radar,
+    title: "Sound like a song you love",
+    body: "Drop the song in. Get its tempo, key and sections, then a Suno prompt in that style.",
+    tab: "analyze",
   },
   {
     id: "master",

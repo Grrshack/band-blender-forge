@@ -20,6 +20,7 @@ import { shareBlend } from "@/lib/forge.functions";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/stats";
 
 export type { BlendResult } from "./types";
 
@@ -106,6 +107,20 @@ function ConfidenceLamp({ level, note }: { level: string; note: string }) {
   );
 }
 
+/** Genres offered for "Reimagine". Plain genre words only, no artist names. */
+const REIMAGINE_GENRES = [
+  "Acoustic",
+  "Synthwave",
+  "Lo-fi hip-hop",
+  "Orchestral",
+  "Punk rock",
+  "Jazz",
+  "Country",
+  "Reggaeton",
+  "Drum and bass",
+  "Gospel",
+];
+
 export function BandBlender({
   value,
   onChange,
@@ -156,6 +171,7 @@ export function BandBlender({
   const [refineInput, setRefineInput] = useState("");
   const [refining, setRefining] = useState(false);
   const [refineError, setRefineError] = useState<string | null>(null);
+  const [undoStyle, setUndoStyle] = useState<{ styleTag: string; excludeStyles: string; genre: string } | null>(null);
   // refineChanges lives in result.refineChanges so it survives tab switches.
   const refineChanges = result?.refineChanges ?? [];
 
@@ -238,8 +254,9 @@ export function BandBlender({
 
 
   /** Refine the style tag via natural-language instruction. */
-  const refine = async () => {
-    if (!result?.styleTag || !refineInput.trim()) return;
+  /** Style Chat, or (with a genre) Reimagine: same song, new genre. Keeps one step of undo. */
+  const refine = async (reimagine?: string) => {
+    if (!result?.styleTag || (!reimagine && !refineInput.trim())) return;
     setRefining(true);
     setRefineError(null);
     try {
@@ -248,17 +265,39 @@ export function BandBlender({
           task: "refine",
           routing,
           apiKey,
-          payload: { styleTag: result.styleTag, instruction: refineInput.trim(), sunoVersion },
+          payload: reimagine
+            ? {
+                styleTag: result.styleTag,
+                excludeStyles: result.excludeStyles ?? "",
+                vocal: vocalString(result.vocalPrompt),
+                instruction: `Reimagine as ${reimagine}`,
+                reimagine,
+                sunoVersion,
+              }
+            : { styleTag: result.styleTag, instruction: refineInput.trim(), sunoVersion },
         },
       });
-      const refined = JSON.parse(res.json) as { styleTag?: string; changes?: string[] };
+      const refined = JSON.parse(res.json) as {
+        styleTag?: string;
+        excludeStyles?: string;
+        genre?: string;
+        changes?: string[];
+      };
       if (refined.styleTag) {
+        setUndoStyle({ styleTag: result.styleTag, excludeStyles: result.excludeStyles ?? "", genre: result.genre ?? "" });
         // Persist refineChanges inside the result so they survive tab switches.
         onChange({
           ...value,
-          result: { ...result, styleTag: refined.styleTag, refineChanges: refined.changes ?? [] },
+          result: {
+            ...result,
+            styleTag: refined.styleTag,
+            ...(reimagine && refined.excludeStyles ? { excludeStyles: refined.excludeStyles } : {}),
+            ...(reimagine && refined.genre ? { genre: refined.genre } : {}),
+            refineChanges: refined.changes ?? [],
+          },
         });
-        setRefineInput("");
+        if (!reimagine) setRefineInput("");
+        if (reimagine) track("start_choice", "reimagine", { once: true });
       }
     } catch (e) {
       setRefineError(e instanceof Error ? e.message : "Refinement failed.");
@@ -707,6 +746,48 @@ export function BandBlender({
               <p className="mt-2 text-[10px] text-muted-foreground">
                 The style prompt above updates in place. Copy it again after refining.
               </p>
+
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="text-sm font-medium">Reimagine it: same song, different genre</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Like a cover version. Keeps the mood and the vocal; your lyrics stay as they are.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {REIMAGINE_GENRES.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      disabled={refining}
+                      onClick={() => void refine(g)}
+                      className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground disabled:opacity-50"
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {undoStyle ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({
+                      ...value,
+                      result: {
+                        ...result,
+                        styleTag: undoStyle.styleTag,
+                        excludeStyles: undoStyle.excludeStyles,
+                        ...(undoStyle.genre ? { genre: undoStyle.genre } : {}),
+                        refineChanges: [],
+                      },
+                    });
+                    setUndoStyle(null);
+                  }}
+                  className="mt-3 text-xs text-primary underline"
+                >
+                  Undo the last change
+                </button>
+              ) : null}
             </Panel>
 
             {onTakes && onFix ? (
