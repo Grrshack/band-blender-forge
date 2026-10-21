@@ -1,4 +1,5 @@
 import { AlertTriangle, RotateCw } from "lucide-react";
+import { openFeedback } from "@/lib/feedback";
 import type { ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -15,6 +16,13 @@ export function ErrorNote({ message, onRetry }: { message: string; onRetry?: () 
           <RotateCw className="size-3" /> Retry
         </Button>
       ) : null}
+      <button
+        type="button"
+        onClick={() => openFeedback({ kind: "bug", message: `I got this error: "${message}"\n\nWhat I was doing: ` })}
+        className="h-7 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+      >
+        Report this
+      </button>
     </div>
   );
 }
