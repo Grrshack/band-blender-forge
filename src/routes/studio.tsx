@@ -65,6 +65,8 @@ function Index() {
   // Every tool switch goes through here so usage counts match what people open.
   const setTab = useCallback((t: string) => {
     setTabState(t);
+    // Lets the feedback form say which tool the person was in.
+    if (typeof document !== "undefined") document.body.dataset["tab"] = t;
     track("tab_open", t, { once: true });
   }, []);
   const [state, setState] = useState<ForgeState>(emptyState);
