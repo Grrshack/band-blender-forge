@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as BlendSlugRouteImport } from './routes/blend.$slug'
 import { Route as GuidesIndexRouteImport } from './routes/guides.index'
 import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
@@ -34,6 +35,11 @@ const AuthRoute = AuthRouteImport.update({
 const StudioRoute = StudioRouteImport.update({
   id: '/studio',
   path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/admin/feedback',
+  path: '/admin/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlendSlugRoute = BlendSlugRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/studio': typeof StudioRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/tools/bpm-key-finder': typeof ToolsBpmKeyFinderRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/studio': typeof StudioRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/tools/bpm-key-finder': typeof ToolsBpmKeyFinderRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/studio': typeof StudioRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/blend/$slug': typeof BlendSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/tools/bpm-key-finder': typeof ToolsBpmKeyFinderRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/studio'
+    | '/admin/feedback'
     | '/blend/$slug'
     | '/guides/$slug'
     | '/tools/bpm-key-finder'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/studio'
+    | '/admin/feedback'
     | '/blend/$slug'
     | '/guides/$slug'
     | '/tools/bpm-key-finder'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/studio'
+    | '/admin/feedback'
     | '/blend/$slug'
     | '/guides/$slug'
     | '/tools/bpm-key-finder'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   StudioRoute: typeof StudioRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
   BlendSlugRoute: typeof BlendSlugRoute
   GuidesSlugRoute: typeof GuidesSlugRoute
   ToolsBpmKeyFinderRoute: typeof ToolsBpmKeyFinderRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/studio'
       fullPath: '/studio'
       preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/admin/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blend/$slug': {
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   StudioRoute: StudioRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
   BlendSlugRoute: BlendSlugRoute,
   GuidesSlugRoute: GuidesSlugRoute,
   ToolsBpmKeyFinderRoute: ToolsBpmKeyFinderRoute,
