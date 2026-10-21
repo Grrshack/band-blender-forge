@@ -64,7 +64,8 @@ GRANT UPDATE (status, admin_note) ON public.feedback TO authenticated;
 
 DROP POLICY IF EXISTS "Anyone can send feedback" ON public.feedback;
 CREATE POLICY "Anyone can send feedback" ON public.feedback
-  FOR INSERT TO anon, authenticated WITH CHECK (true);
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (char_length(message) BETWEEN 3 AND 2000 AND kind IN ('bug','confusing','idea','praise'));
 
 DROP POLICY IF EXISTS "Admins read feedback" ON public.feedback;
 CREATE POLICY "Admins read feedback" ON public.feedback

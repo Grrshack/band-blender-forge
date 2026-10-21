@@ -30,7 +30,7 @@ GRANT INSERT (session_id, event, detail) ON public.app_events TO anon, authentic
 DROP POLICY IF EXISTS "Anyone can log an anonymous event" ON public.app_events;
 CREATE POLICY "Anyone can log an anonymous event"
   ON public.app_events FOR INSERT TO anon, authenticated
-  WITH CHECK (true);
+  WITH CHECK (char_length(session_id) BETWEEN 8 AND 40 AND char_length(detail) <= 40);
 
 -- Keep the table small: delete events older than a year. Run it by hand now and then:
 --   SELECT public.purge_app_events();
