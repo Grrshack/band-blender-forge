@@ -202,6 +202,21 @@ Return JSON exactly:
     case "refine": {
       const version: SunoVersion = normalizeSunoVersion(payload["sunoVersion"]);
       const vTarget = STYLE_TARGET_FOR_VERSION[version];
+      const reimagine = typeof payload["reimagine"] === "string" ? payload["reimagine"].trim() : "";
+      if (reimagine) {
+        return `Reimagine this song's Suno style as ${reimagine}, like a cover version in a new genre.
+Input: ${p}
+Fields: "styleTag" is the current style, "excludeStyles" the current exclusions, "vocal" the current vocal character.
+Rules:
+- ${reimagine} becomes the main genre: put it first, and change the instrumentation, rhythm and production to what that genre uses.
+- Keep what makes the song recognisable where it fits the new genre: the mood, the vocal character and gender, and roughly the energy. Adjust the tempo only if the genre needs it.
+- One comma-separated style tag line, genre and mood first, max ${vTarget} characters.
+- Rewrite excludeStyles for the new genre: 3-8 comma-separated traits to keep out (drop any that the new genre needs).
+- Never use real artist, band, producer, label or song names.
+Return JSON exactly:
+{"genre":"short genre label","styleTag":"string","excludeStyles":"string","changes":["one sentence on what changed and what was kept"]}
+Return 1-3 changes.`;
+      }
       return `Refine this Suno style tag according to the user's instruction. Keep everything not explicitly asked to change; make targeted edits only.
 Input: ${p}
 Fields: "styleTag" is the current tag. "instruction" is what the user wants changed.
@@ -291,10 +306,20 @@ Return JSON exactly:
 {"preset":"one of the preset names above","adjustments":{},"reasoning":"2-3 sentences: the track's main characteristics and why this treatment suits it","warnings":[]}
 "warnings" is an array of short strings for genuine concerns (e.g. "Bass is very heavy — check on headphones after export"). Empty array [] if none.`;
     }
-    case "song":
+    case "song": {
+      const measured = payload["measured"] ? `
+The input also has "measured": tempo, key, length, a section timeline and tone, measured from the actual audio file in the user's browser.
+- Treat the measured BPM as ground truth for the tempo (the true feel may be half or double; pick whichever suits the genre and say which in "tempo"). Put the BPM in the styleTag.
+- If the key's confidence is high or medium, include it in the styleTag (e.g. "A minor"); if low, leave it out.
+- Use the tone (bass weight, brightness, loudness) to choose production words, and the section energies to judge dynamics and arrangement.
+- In "reconciliation", briefly say which details came from the measurements and which from your knowledge or the listener's description.` : "";
+      const described = typeof payload["description"] === "string" && payload["description"].trim() ? `
+The input has "description": the listener's own words about genre, instruments and vocals. Measurements can't hear those, so rely on the description for them.` : "";
+      const noTitle = !(typeof payload["title"] === "string" && payload["title"].trim()) ? `
+There is no song title: you don't know this recording. Build the style only from "description" and "measured", and set confidence to "medium" at most (say in the note that it comes from the measurements and description).` : "";
       return `Analyse the production style of ONE specific song for AI music generation (Suno-style).
 Input: ${p}
-The input has "title" (song name) and "artist" (performer), plus optional "reference" data from MusicBrainz if the recording was found.
+The input has "title" (song name) and "artist" (performer), plus optional "reference" data from MusicBrainz if the recording was found.${measured}${described}${noTitle}
 Focus on THIS SPECIFIC RECORDING's production style, not the artist's whole catalog — songs within a catalog often sound very different.
 If MusicBrainz status is "not_found" or "unavailable", lower your confidence and note that the style is inferred from training data.
 Assess your own real familiarity with this specific recording honestly.
@@ -309,6 +334,7 @@ Return JSON exactly:
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this recording"}
 HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names. Translate each influence into sonic description.`;
+    }
     default:
       throw new Error("Unknown task");
   }
