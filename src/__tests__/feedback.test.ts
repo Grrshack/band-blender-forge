@@ -45,3 +45,19 @@ describe("usage summary", () => {
     expect(s.actions).toContainEqual({ label: "AI errors", count: 1 });
   });
 });
+
+import { nameUsageTotals } from "@/lib/usage-summary";
+
+describe("database usage totals", () => {
+  it("names tools and actions for people", () => {
+    const n = nameUsageTotals({
+      sessions: 300,
+      tools: [{ key: "blend", count: 50 }, { key: "analyze", count: 7 }],
+      starts: [{ key: "landing_describe", count: 9 }],
+      actions: [{ key: "ai_error", count: 3 }],
+    });
+    expect(n.sessions).toBe(300);
+    expect(n.tools).toEqual([{ label: "Band Blender", count: 50 }, { label: "Analyze a Song", count: 7 }]);
+    expect(n.actions).toEqual([{ label: "AI errors", count: 3 }]);
+  });
+});
