@@ -1,7 +1,7 @@
 /**
  * Public how-to guides. Each answers one problem Suno users search for and ends at the tool
  * that solves it. Facts that come from other sites carry their source; review these when
- * Suno changes models or plans. Last checked: Oct 18, 2026.
+ * Suno changes models or plans. Last checked: Oct 24, 2026.
  */
 export type GuideSection = { heading: string; body: string[] };
 export type Guide = {
@@ -166,9 +166,9 @@ export const GUIDES: Guide[] = [
         ],
       },
       {
-        heading: "Upload it (paid Suno plans)",
+        heading: "Upload it to Suno",
         body: [
-          "Suno's Upload Audio takes a 6–60 second clip (up to 120 seconds on Pro and Premier) that you can extend into a full song.",
+          "Suno's Upload Audio button sits next to Create. Free accounts can upload up to 60 seconds; Pro and Premier up to 8 minutes. Then use Extend to continue it into a song, or Cover to remake it in a new style.",
           "Only upload audio you made or own. Suno asks you to confirm that, and blocks copyrighted works.",
         ],
       },
@@ -181,8 +181,54 @@ export const GUIDES: Guide[] = [
     ],
     tool: { tab: "assistant", label: "Open Start here" },
     sources: [
+      { label: "Suno: How to use audio uploads", url: "https://help.suno.com/en/articles/6141569" },
       { label: "Suno: What does Upload Audio do?", url: "https://help.suno.com/en/articles/2477633" },
-      { label: "Suno: Audio inputs", url: "https://suno.com/blog/audio-inputs" },
+    ],
+  },
+  {
+    slug: "sketch-in-gemini-finish-in-suno",
+    title: "Sketch a song in Gemini, finish it in Suno",
+    description:
+      "Use Google's free Lyria 3.5 in the Gemini app to try ideas, then upload the one you like to Suno to extend or cover it.",
+    sections: [
+      {
+        heading: "Why use both",
+        body: [
+          "Google's Lyria 3.5 music model is in the Gemini app for everyone, and in Google Flow Music. You describe a song and get about two minutes of music with vocals. It's a quick, free way to hear an idea.",
+          "Suno is where you finish: longer songs, editing parts of a take, covers and extends. Suno's downloads are limited by plan, so trying ideas elsewhere first saves them for keepers.",
+        ],
+      },
+      {
+        heading: "How they differ",
+        body: [
+          "Lyria 3.5 (Gemini, Flow Music): one plain-English request with lyrics inside it; songs of about two minutes; it can't edit a song after making it; every track carries Google's invisible SynthID watermark; prompts asking for an artist's voice or known lyrics are blocked.",
+          "Suno v6: separate Style and Lyrics boxes plus Exclude styles; longer songs; edit, extend, cover and replace sections; three models (v6-mini on the free plan, v6 and v6-wild on Pro and Premier).",
+          "They sound different. A sketch you like in Gemini tells you the idea works, not exactly how Suno will play it.",
+        ],
+      },
+      {
+        heading: "The workflow",
+        body: [
+          "1. Build the sound and lyrics in Band Blender, then open the Export Sheet and pick the Gemini / Flow tab. Copy that prompt into the Gemini app's music option or Flow Music.",
+          "2. Generate a few versions and download the one you like.",
+          "3. In Suno, press Upload Audio next to Create. Free plans take up to 60 seconds, so trim to the best part; Pro and Premier take up to 8 minutes.",
+          "4. Use Cover to remake it with your Suno style prompt, or Extend to continue it. Paste the Suno style and lyrics from the Export Sheet's Suno tab.",
+        ],
+      },
+      {
+        heading: "Before you release anything",
+        body: [
+          "Check the rights on both sides. Google's commercial-use terms differ by plan, and a free Gemini account may not include them. Suno asks you to confirm you have the right to use anything you upload.",
+          "If Suno won't accept an upload, describe the sketch in your style prompt instead: Analyze a Song can measure its tempo, key and sections for you.",
+        ],
+      },
+    ],
+    tool: { tab: "suno", label: "Open the Export Sheet" },
+    sources: [
+      { label: "Google: Lyria 3.5 in Flow Music", url: "https://blog.google/innovation-and-ai/models-and-research/google-labs/lyria-3-5/" },
+      { label: "Gemini API: music generation with Lyria 3.5", url: "https://ai.google.dev/gemini-api/docs/music-generation" },
+      { label: "Digital Trends: Lyria 3.5 in the Gemini app", url: "https://www.digitaltrends.com/computing/google-brings-its-best-ai-music-model-lyria-3-5-to-the-gemini-app/" },
+      { label: "Suno: How to use audio uploads", url: "https://help.suno.com/en/articles/6141569" },
     ],
   },
 ];

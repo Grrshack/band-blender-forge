@@ -5,6 +5,7 @@
  */
 import { countSyllables, countWatchWordOccurrences, findCliches, isSyllableOutlier } from "./cliches";
 import { findPronunciationRisks, type PronunciationRisk } from "./pronunciation";
+import { analyzeSection, type LineRhyme } from "./rhyme";
 
 export type LineCheck = {
   text: string;
@@ -15,6 +16,10 @@ export type LineCheck = {
   pronunciation: PronunciationRisk[];
   /** Far longer or shorter than the other lines in its section. */
   lengthOutlier: boolean;
+  /** Rhyme letter within its section, and how it rhymes. */
+  rhyme?: LineRhyme | undefined;
+  /** Set on the first line of a section: its scheme and whether it's in the rhyme trap. */
+  sectionScheme?: { scheme: string; trap: boolean } | undefined;
 };
 
 export type LyricReport = {
@@ -23,6 +28,8 @@ export type LyricReport = {
   clicheCount: number;
   pronunciationCount: number;
   outlierCount: number;
+  /** Sections where almost every line ends on a clean one-syllable perfect rhyme. */
+  rhymeTraps: number;
   overused: Array<{ word: string; count: number }>;
 };
 
@@ -45,9 +52,16 @@ export function checkLyrics(text: string): LyricReport {
 
   // Sections are split by [tags] and blank lines; each line is compared with its own section.
   let group: number[] = [];
+  let traps = 0;
   const flush = () => {
     const counts = group.map((i) => lines[i]!.syllables);
     group.forEach((i, k) => (lines[i]!.lengthOutlier = isSyllableOutlier(counts, k)));
+    if (group.length) {
+      const r = analyzeSection(group.map((i) => lines[i]!.text));
+      group.forEach((i, k) => (lines[i]!.rhyme = r.lines[k]));
+      lines[group[0]!]!.sectionScheme = { scheme: r.scheme, trap: r.trap };
+      if (r.trap) traps++;
+    }
     group = [];
   };
   lines.forEach((l, i) => {
@@ -64,6 +78,7 @@ export function checkLyrics(text: string): LyricReport {
     clicheCount: sung.reduce((n, l) => n + l.cliches.length, 0),
     pronunciationCount: sung.reduce((n, l) => n + l.pronunciation.length, 0),
     outlierCount: sung.filter((l) => l.lengthOutlier).length,
+    rhymeTraps: traps,
     overused: Object.entries(counts)
       .filter(([, n]) => n >= 2)
       .map(([word, count]) => ({ word, count }))

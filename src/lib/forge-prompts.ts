@@ -1,3 +1,4 @@
+import { lyricStyleRules } from "./rhyme";
 import { bannedWordsInstruction } from "@/lib/banned-words";
 import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
 import {
@@ -96,7 +97,7 @@ avoid banned crutch phrases; vary line lengths; the chorus hook must land in its
 Hook-craft rules (apply to every chorus):
 - Favour open vowel sounds (ah, oh, ay, ee) on the syllable that lands on the strongest beat — these project further and read as catchier.
 - The chorus hook phrase must repeat at least twice within the chorus itself.
-- Apply the stranger test: would a stranger who heard this twice be able to sing back the hook? If not, simplify it.${avoidNote}${tagsNote}
+- Apply the stranger test: would a stranger who heard this twice be able to sing back the hook? If not, simplify it.${avoidNote}${tagsNote}${lyricStyleRules(payload["rhymeStyle"], payload["voice"])}
 If "structure" is present in the input it is a plan: produce EXACTLY those sections, in that order, with exactly that many lyric lines in each (instrumental sections get "lines":[]). Do not add or drop sections.
 Suno reads bracketed performance cues, so use them with purpose, not on every section:
 - "cue" is an optional 1-4 word delivery direction for that section, e.g. "Whispered, sparse" or "Belted, full band".
@@ -133,14 +134,17 @@ Return JSON exactly:
 "releaseTips":["3 concrete release-week actions"]}
 Return exactly 3 socialHooks.`;
     case "regenLine":
-      return `Rewrite ONE lyric line inside an existing song, keeping syllable count and rhythm close, keeping meaning coherent with neighbours, and avoiding clichés.
+      return `Rewrite ONE lyric line inside an existing song, keeping syllable count and rhythm close, keeping meaning coherent with neighbours, and avoiding clichés.${lyricStyleRules(payload["rhymeStyle"], payload["voice"])}
 Input: ${p}
 Return JSON exactly: {"line":"the new line"}`;
-    case "regenSection":
-      return `Rewrite ONE section of an existing song. Keep locked lines EXACTLY as given (they are marked locked).
+    case "regenSection": {
+      const loosen = payload["loosenRhymes"] === true ? `
+LOOSEN THE RHYMES: this section fell into the AABB/ABAB trap (almost every line ends on a clean one-syllable perfect rhyme). Keep the meaning, imagery and syllable counts close, but rewrite the line endings so at most one pair rhymes perfectly. Use slant rhymes, internal rhymes, or no rhyme; end some lines mid-thought; make it sound like someone talking, not a poem written to a meter.` : "";
+      return `Rewrite ONE section of an existing song. Keep locked lines EXACTLY as given (they are marked locked).${loosen}${lyricStyleRules(payload["rhymeStyle"], payload["voice"])}
 Input: ${p}
 Return JSON exactly: {"tag":"[Chorus]","lines":["line","line"]}
 Return the same number of lines, in order, with locked lines unchanged.`;
+    }
     case "compare":
       return `Reverse-lookup: given user lyrics and/or style tags, name real-world recording artists whose tone matches.
 Input: ${p}
