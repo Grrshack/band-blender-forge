@@ -22,6 +22,12 @@ export const Route = createFileRoute("/tools/lyric-checker")({
 });
 
 const SAMPLE = `[Verse 1]
+You left a bruise along my arm
+Said you never meant me harm
+Now I'm staring at the door
+Wondering what I'm waiting for
+
+[Verse 2]
 Neon lights in the city tonight
 I'm lost in the shadows, searching for the light
 Grey rain on the window at 3 AM
@@ -40,7 +46,7 @@ function LyricChecker() {
   return (
     <ToolLayout
       title="Suno Lyric Checker"
-      lede="Paste your lyrics. It flags worn-out AI phrases, words Suno tends to sing wrong, overused words, and lines much longer or shorter than the rest of their section. Checked in your browser; nothing is sent anywhere."
+      lede="Paste your lyrics. It shows each section's rhyme scheme and flags the rhyme trap, worn-out AI phrases, words Suno tends to sing wrong, overused words, and lines much longer or shorter than the rest of their section. Checked in your browser; nothing is sent anywhere."
       cta={{
         text: "Want the flagged lines rewritten, or lyrics written hook-first with these checks built in? Lyric Forge does that in the studio.",
         href: "/studio?tab=lyrics",
@@ -71,11 +77,12 @@ function LyricChecker() {
             </p>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                 {[
                   ["Clichés", report.clicheCount],
                   ["Pronunciation", report.pronunciationCount],
                   ["Odd lengths", report.outlierCount],
+                  ["Rhyme traps", report.rhymeTraps],
                 ].map(([label, n]) => (
                   <div key={label} className="rounded-lg border border-border p-3">
                     <p className={cn("text-2xl font-bold", n ? "text-amber-400" : "text-emerald-400")}>{n}</p>
@@ -101,9 +108,29 @@ function LyricChecker() {
                   const flagged = l.cliches.length || l.pronunciation.length || l.lengthOutlier;
                   return (
                     <li key={i} className={cn("rounded-md border px-3 py-2 text-sm", flagged ? "border-amber-500/40 bg-amber-500/5" : "border-border")}>
+                      {l.sectionScheme ? (
+                        <p className="mb-1 font-mono text-[11px] text-muted-foreground">
+                          Rhyme scheme {l.sectionScheme.scheme}
+                          {l.sectionScheme.trap ? (
+                            <span className="ml-2 font-sans text-amber-300">
+                              Rhyme trap: nearly every line ends on a clean one-syllable rhyme, so it reads like poetry written to a meter. Let some lines not rhyme, or use near rhymes.
+                            </span>
+                          ) : null}
+                        </p>
+                      ) : null}
                       <div className="flex justify-between gap-3">
                         <span>{l.text}</span>
-                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{l.syllables} syl</span>
+                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                          {l.rhyme?.letter ? (
+                            <span
+                              title={l.rhyme.kind === "perfect" ? "Rhymes perfectly with a line above" : l.rhyme.kind === "near" ? "Loosely rhymes with a line above" : "New rhyme sound"}
+                              className={cn("mr-2 font-semibold text-primary", l.rhyme.kind === "perfect" && l.rhyme.oneSyllable && "underline")}
+                            >
+                              {l.rhyme.letter}
+                            </span>
+                          ) : null}
+                          {l.syllables} syl
+                        </span>
                       </div>
                       {l.cliches.length ? (
                         <p className="mt-1 text-xs text-amber-300">Cliché: {l.cliches.map((c) => `"${c}"`).join(", ")}</p>
