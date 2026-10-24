@@ -1,62 +1,71 @@
 # Band Blender
 
-Build a web application called "Band Lookup & Lyric Forge". It is a highly optimized pre-production planning tool for AI music generation. Give the application a sleek, dark, cyberpunk studio aesthetic using dark grays, deep obsidian, neon violet, and electric teal as visual accents. 
+A free web app that helps people get better songs out of Suno. It writes and checks style
+prompts and lyrics before you generate, then helps fix, master and release what Suno made.
 
-Create a split-screen or multi-tab responsive interface with the following 4 core modules:
+Live at [suno-blender.lovable.app](https://suno-blender.lovable.app). Not affiliated with Suno.
 
-1. BAND LOOKUP & BLENDER:
+## What it does
 
-- Include an input layout allowing users to type in 1, 2, or 3 musical artists or bands to blend.
+- **Band Blender**: blend up to three artists, or one song, into a Suno v6 style prompt and
+  Exclude styles. Includes Style Chat, Reimagine (same song, new genre), style variants and a
+  "How did it come out?" take check.
+- **Analyze a Song**: measures tempo, key, sections and tone in the browser, then builds a prompt
+  in that style.
+- **Lyric Forge**: hook-first lyrics in Suno section tags, with rhyme and voice controls, rhyme
+  scheme view, "Loosen rhymes", a length planner, and cliché, banned-word and pronunciation checks.
+- **Export Sheet**: everything ready to paste into Suno, plus Gemini / Flow Music and ElevenLabs.
+- **Fix a Track**: says whether to edit in Suno, regenerate or just master, with edit
+  instructions and timestamps.
+- **Mastering**: browser mastering for songs and stems, with a can/can't-fix verdict, reference
+  matching and WAV or MP3 export.
+- **Release Kit**: cover-art prompt, metadata, social copy and a release checklist.
+- **Free tools at `/tools`** (no AI key): BPM & key finder, lyric checker, metatag reference,
+  release checklist.
 
-- Underneath, show a "Confidence Check" status indicator (e.g., Green = "High artist familiarity", Yellow = "Model confidence low, proceeding with caution").
+## How it works
 
-- Generate an output section that displays a coherent style breakdown: Genre, Tempo (BPM), Instrumentation, Vocals, Mood, and a perfectly ordered, ready-to-copy "Suno Style Tag Prompt".
+- **AI runs on the user's own key** (a free Google Gemini key or an Anthropic key). The key stays
+  in the browser and passes through the server only to make each request.
+- **Audio never leaves the browser.** Analysis, mastering and tempo detection run on the device.
+- **No account needed.** Songs and saved sounds are kept in the browser; signing in adds cloud
+  sync and community sharing.
+- **Feedback and anonymous usage stats** go to Supabase tables that only listed admins can read
+  (see `/admin/feedback`).
 
-- Add an explicit text box labeled "Blend Reconciliation Logic" that explains exactly how the conflicting styles of the chosen artists are being fused (e.g., blending a clean vocal artist with a metal scream artist).
+## Stack
 
-- Include slider bars for genre-appropriate recommendations (e.g., Energy, Complexity, Brightness).
+TanStack Start (React, Vite, file routes and server functions), Tailwind CSS, shadcn/ui, and
+Supabase through Lovable Cloud. Built and published with [Lovable](https://lovable.dev).
 
-2. LYRIC FORGE:
+## Project layout
 
-- A lyric generation workspace that explicitly avoids generic AI clichés and focuses heavily on hook catchiness and rhythm over simple rhyming.
+| Folder | What's in it |
+| --- | --- |
+| `src/routes` | Pages: landing (`index.tsx`), `studio.tsx`, `/tools/*`, `/guides/*`, `/admin/feedback`, auth |
+| `src/components/forge` | Studio screens and their parts |
+| `src/components/tools` | Shared layout for the free tool pages |
+| `src/lib` | Logic: AI tasks and prompts (`forge.*`), rhyme and lyric checks, saving, guides, stats |
+| `src/lib/audio` | In-browser audio: analysis, tempo, mastering chain, WAV and MP3 export |
+| `supabase/migrations` | Database SQL, run by hand in Lovable's SQL panel, in date order |
+| `src/__tests__` | Unit tests (Vitest) |
 
-- Output text boxes divided clearly into standard section tags: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], etc.
+The app name lives only in `src/lib/brand.ts`. `src/routeTree.gen.ts` is generated; don't edit it.
 
-- Critical Feature: Next to EACH individual lyric line, include small inline utility buttons: a "Lock" toggle icon and a "Regenerate Line" circular arrow icon. Next to each major section header, add a "Regenerate Section" button to allow granular editing instead of all-or-nothing generation.
+## Running it locally
 
-3. FIND COMPARABLE ARTISTS:
-
-- A reverse-lookup tool where users can paste their own lyrics or a string of style tags.
-
-- The output should display a clean list of 3-4 real-world artists that match the tone, along with a bulleted "Reasoning" breakdown explaining why the AI sees the artistic connection.
-
-4. SYSTEM ARCHITECTURE & CREDENTIALS PANEL:
-
-- A small, collapsible settings panel at the bottom or corner of the screen.
-
-- Include a text field for "Anthropic API Key" (stored locally in the browser/session state) and a toggle switch for "Model Routing Type" (Option A: "Fast & Economic Lookup" using Haiku, Option B: "Creative Writing Craft" using Sonnet).
-
-- State clearly that the application holds zero persistent state, operates purely on client-side or serverless function runtime, and saves no user data to a database.
-
-Ensure all text boxes have a prominent, functional "Copy to Clipboard" button. Make all UI tabs snappy, modern, and highly responsive.
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/bec9cf82-40c7-471c-afdc-82075b1ef942).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+```bash
+npm install
+npm run dev      # development server
+npm test         # unit tests
+npm run build    # production build
 ```
+
+Supabase settings come from Lovable Cloud. Leave `ALLOW_BUILT_IN_AI` unset to keep own-key mode;
+only the exact value `true` lets the app use the owner's AI keys.
+
+## Making changes
+
+Changes are usually applied in Lovable and published from there. Database changes are SQL files
+in `supabase/migrations`, run in Lovable's SQL panel. If you also edit the code elsewhere (GitHub,
+Bolt), export the latest version first so tools don't overwrite each other.
