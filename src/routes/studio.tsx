@@ -17,7 +17,7 @@ import { GenreGuide } from "@/components/forge/GenreGuide";
 import { UsageDashboard } from "@/components/forge/UsageDashboard";
 import { SettingsProvider } from "@/components/forge/settings";
 import { SharedView } from "@/components/forge/SharedView";
-import { StudioAssistant, type IntentResponse } from "@/components/forge/StudioAssistant";
+import { StudioAssistant } from "@/components/forge/StudioAssistant";
 import { SunoSheet } from "@/components/forge/SunoSheet";
 import { AiStatusButton } from "@/components/forge/SystemPanel";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
@@ -34,6 +34,7 @@ import { track } from "@/lib/stats";
 import { LYRIC_QUICK_SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
 import { TakeCheck } from "@/components/forge/TakeCheck";
 import { SongAnalyzer } from "@/components/forge/SongAnalyzer";
+import { TesterWelcome } from "@/components/forge/TesterWelcome";
 import { HANDOFF_KEYS, readHandoff, type ParsedHandoff } from "@/lib/handoff";
 
 export const Route = createFileRoute("/studio")({
@@ -284,23 +285,24 @@ function Index() {
       <SettingsProvider>
         <TooltipProvider delayDuration={400}>
         <div className="min-h-screen pb-12">
-          <header className="mx-auto max-w-7xl px-4 pt-8 pb-5 sm:px-6">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="glow-primary flex size-11 items-center justify-center rounded-xl border border-primary/40 bg-primary/10">
-                  <AudioLines className="size-5 text-primary" />
+          {/* Phones get one slim row so the tool starts near the top of the screen. */}
+          <header className="mx-auto max-w-7xl px-4 pt-3 pb-3 sm:px-6 sm:pt-8 sm:pb-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:items-end sm:gap-4">
+              <a href="/" className="flex items-center gap-2.5 sm:gap-3" aria-label={`${APP_NAME} home`}>
+                <span className="glow-primary flex size-9 items-center justify-center rounded-xl border border-primary/40 bg-primary/10 sm:size-11">
+                  <AudioLines className="size-4 text-primary sm:size-5" />
                 </span>
                 <div>
-                  <h1 className="neon-text font-display text-2xl font-bold tracking-tight sm:text-3xl">
+                  <h1 className="neon-text font-display text-xl font-bold tracking-tight sm:text-3xl">
                     {APP_NAME}
                   </h1>
-                  <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+                  <p className="hidden font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase sm:block">
                     {APP_TAGLINE}
                   </p>
                 </div>
-              </div>
+              </a>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:flex-wrap sm:gap-2">
               <AiStatusButton />
               {/* ── Guided / Rack mode toggle ── */}
               <div
@@ -310,10 +312,10 @@ function Index() {
               >
                 {(
                   [
-                    ["guided", "Guided"],
-                    ["rack",   "Full rack"],
+                    ["guided", "Guided", "Guided"],
+                    ["rack", "Full rack", "Rack"],
                   ] as const
-                ).map(([m, label]) => (
+                ).map(([m, label, short]) => (
                   <button
                     key={m}
                     type="button"
@@ -321,13 +323,14 @@ function Index() {
                     aria-checked={mode === m}
                     onClick={() => changeMode(m)}
                     className={
-                      "rounded-md px-3 py-1.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors " +
+                      "rounded-md px-2 py-1.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors sm:px-3 " +
                       (mode === m
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground")
                     }
                   >
-                    {label}
+                    <span className="sm:hidden">{short}</span>
+                    <span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
               </div>
@@ -514,6 +517,7 @@ function Index() {
           </main>
 
           <KeySetupDialog />
+          <TesterWelcome onGoTab={setTab} />
           <Toaster />
         </div>
         </TooltipProvider>

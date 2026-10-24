@@ -1,4 +1,4 @@
-import { APP_NAME } from "@/lib/brand";
+import { APP_DOMAIN, APP_NAME } from "@/lib/brand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -83,15 +83,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: APP_NAME },
       {
         name: "description",
-        content: "Pre-production planning console for AI music generation.",
+        content: "Free help for Suno: better prompts and lyrics, fixes for bad takes, and mastering in your browser.",
       },
       { property: "og:title", content: APP_NAME },
       {
         property: "og:description",
-        content: "Pre-production planning console for AI music generation.",
+        content: "Free help for Suno: better prompts and lyrics, fixes for bad takes, and mastering in your browser.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: APP_NAME },
+      // Share image for Reddit, Discord, iMessage, X and Facebook previews (absolute URL required).
+      { property: "og:image", content: `https://${APP_DOMAIN}/og-image.png` },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: `${APP_NAME}: better Suno songs, fewer wasted downloads` },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: `https://${APP_DOMAIN}/og-image.png` },
+      // Installable app on phones (see public/manifest.webmanifest).
+      { name: "theme-color", content: "#0F1024" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
+      { name: "apple-mobile-web-app-title", content: APP_NAME },
     ],
     links: [
       {
@@ -99,6 +112,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

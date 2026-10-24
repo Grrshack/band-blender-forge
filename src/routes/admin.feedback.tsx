@@ -12,7 +12,7 @@ import {
   type FeedbackRow,
   type FeedbackStatus,
 } from "@/lib/feedback";
-import { summarizeUsage, type UsageEvent } from "@/lib/usage-summary";
+import { nameUsageTotals, type UsageTotals } from "@/lib/usage-summary";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/feedback")({
@@ -39,7 +39,7 @@ function FeedbackAdmin() {
   const [access, setAccess] = useState<Access>("checking");
   const [email, setEmail] = useState("");
   const [rows, setRows] = useState<FeedbackRow[]>([]);
-  const [events, setEvents] = useState<UsageEvent[]>([]);
+  const [totals, setTotals] = useState<UsageTotals | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<"open" | "all" | FeedbackStatus>("open");
@@ -62,14 +62,16 @@ function FeedbackAdmin() {
         return;
       }
       setAccess("ok");
-      const since = new Date(Date.now() - 7 * 864e5).toISOString();
-      const [fb, ev] = await Promise.all([
+      // Usage is counted in the database (admin_usage_summary): fetching raw rows would stop at
+      // Supabase's 1,000-row limit and undercount.
+      const [fb, us] = await Promise.all([
         db.from("feedback").select("*").order("created_at", { ascending: false }).limit(500),
-        db.from("app_events").select("created_at, session_id, event, detail").gte("created_at", since).limit(20000),
+        db.rpc("admin_usage_summary", { days: 7 }),
       ]);
       if (fb.error) throw new Error(fb.error.message);
       setRows(fb.data ?? []);
-      setEvents(ev.error ? [] : (ev.data ?? []));
+      setTotals(us.error ? null : (us.data as UsageTotals));
+      if (us.error) setError("Usage totals need the Oct 24 SQL. Run it in Lovable's SQL panel.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the log.");
     } finally {
@@ -97,7 +99,10 @@ function FeedbackAdmin() {
     [rows, status, kind],
   );
 
-  const usage = useMemo(() => summarizeUsage(events), [events]);
+  const usage = useMemo(
+    () => (totals ? nameUsageTotals(totals) : { sessions: 0, tools: [], starts: [], actions: [] }),
+    [totals],
+  );
   const ratings = rows.filter((r) => r.rating).map((r) => r.rating!);
   const avg = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : "—";
 
