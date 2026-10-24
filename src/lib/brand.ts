@@ -8,3 +8,9 @@ export const APP_DESCRIPTION =
   "Blend artists into one style, forge hook-first lyrics with per-line control, fix bad takes, master in the browser and save every session.";
 /** Printed in the footer of exported cards. Update when the site moves to its own domain. */
 export const APP_DOMAIN = "suno-blender.lovable.app";
+
+/**
+ * While true, first-time visitors to the studio see the tester welcome note
+ * (src/components/forge/TesterWelcome.tsx). Set to false when testing ends.
+ */
+export const TESTING_PHASE = true;

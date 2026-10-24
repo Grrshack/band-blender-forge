@@ -59,3 +59,22 @@ export function summarizeUsage(events: UsageEvent[]) {
     actions: top(actions),
   };
 }
+
+/** Totals as counted by the database (admin_usage_summary), named for people. */
+export type UsageTotals = {
+  sessions: number;
+  tools: Array<{ key: string; count: number }>;
+  starts: Array<{ key: string; count: number }>;
+  actions: Array<{ key: string; count: number }>;
+};
+
+export function nameUsageTotals(t: UsageTotals) {
+  const named = (rows: Array<{ key: string; count: number }>, names: Record<string, string>): Count[] =>
+    rows.map((r) => ({ label: names[r.key] ?? (r.key || "(none)"), count: Number(r.count) })).slice(0, 12);
+  return {
+    sessions: Number(t.sessions) || 0,
+    tools: named(t.tools ?? [], TOOL_NAMES),
+    starts: named(t.starts ?? [], {}),
+    actions: named(t.actions ?? [], ACTION_NAMES),
+  };
+}

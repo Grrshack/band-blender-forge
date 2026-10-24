@@ -2,7 +2,6 @@
  * Tester feedback. Saved straight to the `feedback` table from the browser; the database
  * adds who sent it from their sign-in and only admins can read it (see the Oct 21 migration).
  */
-import { supabase } from "@/integrations/supabase/client";
 
 export type FeedbackKind = "bug" | "confusing" | "idea" | "praise";
 
@@ -85,6 +84,8 @@ export async function sendFeedback(input: FeedbackInput): Promise<void> {
     navigator.userAgent,
     document.body.dataset["tab"] ?? "",
   );
+  // Loaded here, not at the top, so pages don't download the database library until needed.
+  const { supabase } = await import("@/integrations/supabase/client");
   // The table isn't in the generated types until Lovable regenerates them.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any;
@@ -96,7 +97,13 @@ export async function sendFeedback(input: FeedbackInput): Promise<void> {
     tester_name: (input.testerName ?? "").trim().slice(0, 80),
     ...ctx,
   });
-  if (dbError) throw new Error("Couldn't send it right now. Try again in a minute.");
+  if (dbError) {
+    throw new Error(
+      /Too much feedback/i.test(dbError.message ?? "")
+        ? "Lots of feedback is coming in right now. Try again in a minute."
+        : "Couldn't send it right now. Try again in a minute.",
+    );
+  }
 }
 
 /** Spreadsheet-friendly export of the log. */
