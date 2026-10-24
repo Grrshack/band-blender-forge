@@ -294,3 +294,19 @@
     animation: none;
   }
 }
+
+/*
+ * Readability floor (Oct 24 2026): the tiniest label sizes are raised everywhere, and a bit
+ * more on phones. Unlayered on purpose, so it wins over Tailwind's utility layer.
+ */
+.text-\[9px\],
+.text-\[10px\] {
+  font-size: 11px;
+}
+@media (max-width: 640px) {
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\] {
+    font-size: 12px;
+  }
+}
