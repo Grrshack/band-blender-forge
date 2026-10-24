@@ -1,5 +1,6 @@
 import { composeSunoLyrics, normalizeSunoVersion, type SunoVersion, vocalString } from "@/lib/suno";
 import type { Take } from "@/lib/takes";
+import type { LyricVoice, RhymeStyle } from "@/lib/rhyme";
 
 /** What MusicBrainz said about an artist. "unavailable" means the lookup failed — NOT that the artist doesn't exist. */
 export type MbInfo = {
@@ -127,6 +128,12 @@ export type LyricSlice = {
   recentWords: Record<string, number>;
   /** User blacklist, comma-separated ("alone, voice"). Hard-banned from generated lyrics. */
   bannedWords?: string | undefined;
+  /** How much the lyrics rhyme. Missing = "classic". */
+  rhymeStyle?: RhymeStyle | undefined;
+  /** How polished or raw the writing sounds. Missing = "polished". */
+  voice?: LyricVoice | undefined;
+  /** Show the A/B/C rhyme letters beside each line. */
+  showRhymes?: boolean | undefined;
 };
 
 export type DossierResult = {

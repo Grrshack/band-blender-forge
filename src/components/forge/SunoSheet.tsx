@@ -43,14 +43,15 @@ function SunoBox({
 }: {
   label: string;
   value: string;
-  max: number;
+  /** Character limit; leave out when the platform publishes none. */
+  max?: number | undefined;
   onChange?: (v: string) => void;
   rows?: number;
   mono?: boolean;
   hint?: string;
   extra?: ReactNode;
 }) {
-  const over = value.length > max;
+  const over = max !== undefined && value.length > max;
   const common = cn(
     "border-border bg-card/60 text-sm focus-visible:ring-primary",
     mono && "font-mono text-accent",
@@ -63,7 +64,7 @@ function SunoBox({
           {label}
         </span>
         <div className="flex items-center gap-2">
-          <Counter n={value.length} max={max} />
+          {max !== undefined ? <Counter n={value.length} max={max} /> : null}
           <CopyButton value={value} size="icon" />
         </div>
       </div>
@@ -86,8 +87,8 @@ function SunoBox({
       {over ? (
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-destructive">
           <AlertTriangle className="size-3.5" />
-          {(value.length - max).toLocaleString()} characters over — Suno cuts off or rejects
-          anything past {max.toLocaleString()}.
+          {(value.length - (max ?? 0)).toLocaleString()} characters over — Suno cuts off or rejects
+          anything past {(max ?? 0).toLocaleString()}.
         </p>
       ) : null}
       {hint ? <p className="mt-2 text-[11px] text-muted-foreground">{hint}</p> : null}
@@ -185,7 +186,7 @@ export function SunoSheet({
         <div
           role="radiogroup"
           aria-label="Target engine"
-          className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background/40 p-1"
+          className="grid grid-cols-1 gap-1 rounded-lg border border-border bg-background/40 p-1 sm:grid-cols-3"
         >
           {(Object.keys(ENGINE_LABELS) as Engine[]).map((e) => (
             <button
@@ -229,7 +230,7 @@ export function SunoSheet({
                 key={f.label}
                 label={f.label}
                 value={f.value}
-                max={f.max ?? 200}
+                max={f.max ?? (f.label === "Title" ? 200 : undefined)}
                 rows={f.label === "Title" ? 0 : f.value.length > 400 ? 14 : 4}
                 mono={f.label === "Prompt"}
                 {...(f.hint ? { hint: f.hint } : {})}

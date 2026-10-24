@@ -5,17 +5,19 @@ import {
   LockOpen,
   Plus,
   RefreshCw,
+  Rows3,
   Trash2,
   Undo2,
   Wand2,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
 import { LengthPlanner } from "./LengthPlanner";
 import { useSettings } from "./settings";
 import { useForge } from "./use-forge";
+import { LYRIC_VOICES, RHYME_STYLES, analyzeSection, type LineRhyme } from "@/lib/rhyme";
 import type { BlendResult, LyricSlice, Section } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,7 +149,16 @@ export function LyricForge({
     manualStyle = "",
     recentWords = {},
     bannedWords = "",
+    rhymeStyle = "classic",
+    voice = "polished",
+    showRhymes = false,
   } = value;
+  const rhymeInfo = useMemo(() => sections.map((s) => analyzeSection(s.lines.map((l) => l.text))), [sections]);
+  const trapCount = rhymeInfo.filter((r) => r.trap).length;
+  const styleOpts = {
+    ...(rhymeStyle !== "classic" ? { rhymeStyle } : {}),
+    ...(voice !== "polished" ? { voice } : {}),
+  };
   const banned = parseBannedWords(bannedWords);
   const bannedHits = sections.reduce(
     (n, s) => n + s.lines.filter((l) => findBannedWords(l.text, banned).length).length,
@@ -180,6 +191,7 @@ export function LyricForge({
             notes,
             style: styleContext,
             bannedWords: banned,
+            ...styleOpts,
             ...(value.structure ? { structure: value.structure } : {}),
             ...(tagsOnly ? { tagsOnly: true } : {}),
             // Words used >= 2 times in previous generations get soft-avoided
@@ -286,6 +298,7 @@ export function LyricForge({
             sectionTag: section.tag,
             lineToRewrite: line.text,
             bannedWords: banned,
+            ...styleOpts,
             sectionLines: section.lines.map((l) => l.text),
           },
         },
@@ -299,7 +312,7 @@ export function LyricForge({
     }
   };
 
-  const regenSection = async (si: number) => {
+  const regenSection = async (si: number, opts: { loosenRhymes?: boolean } = {}) => {
     const section = sections[si];
     if (!section) return;
     setBusy(`s-${si}`);
@@ -317,6 +330,8 @@ export function LyricForge({
             sectionTag: section.tag,
             cue: section.cue ?? "",
             bannedWords: banned,
+            ...styleOpts,
+            ...(opts.loosenRhymes ? { loosenRhymes: true } : {}),
             lines: section.lines.map((l) => ({ text: l.text, locked: l.locked })),
             otherSections: sections
               .filter((_, i) => i !== si)
@@ -392,6 +407,19 @@ export function LyricForge({
               className="resize-y border-border bg-card/60 text-sm focus-visible:ring-primary"
             />
           </div>
+
+          <ChoiceGroup
+            label="Rhyme"
+            options={RHYME_STYLES}
+            value={rhymeStyle}
+            onChange={(v) => set({ rhymeStyle: v })}
+          />
+          <ChoiceGroup
+            label="Voice"
+            options={LYRIC_VOICES}
+            value={voice}
+            onChange={(v) => set({ voice: v })}
+          />
 
           <div>
             <span className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -484,19 +512,66 @@ export function LyricForge({
         subtitle={title || "Section tags, per-line lock, rewrite and undo."}
         action={
           sections.length ? (
-            <CopyButton value={composeSunoLyrics(sections)} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
+            <div className="flex flex-wrap justify-end gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-pressed={showRhymes}
+                onClick={() => set({ showRhymes: !showRhymes })}
+                className={cn("gap-1.5 text-xs", showRhymes && "border-primary/60 text-primary")}
+              >
+                <Rows3 className="size-3.5" /> {showRhymes ? "Hide rhyme scheme" : "Rhyme scheme"}
+              </Button>
+              <CopyButton value={composeSunoLyrics(sections)} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
+            </div>
           ) : undefined
         }
       >
         {sections.length ? (
           <div className="space-y-4">
+            {trapCount ? (
+              <div className="flex flex-wrap items-start gap-2 rounded-lg border border-signal-mid/50 bg-signal-mid/10 px-3 py-2 text-xs">
+                <p className="min-w-0 flex-1 leading-relaxed">
+                  <span className="font-medium">Rhyme trap in {trapCount} section{trapCount > 1 ? "s" : ""}:</span> almost
+                  every line ends on a clean one-syllable rhyme, which sounds like poetry written to a meter.
+                  Use &quot;Loosen rhymes&quot; on that section, or set Rhyme to &quot;Loose&quot; or &quot;Barely rhymes&quot; and regenerate.
+                </p>
+                {!showRhymes ? (
+                  <button type="button" onClick={() => set({ showRhymes: true })} className="text-primary underline">
+                    Show rhyme scheme
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             {sections.map((s, si) => (
               <div key={si} className="rounded-lg border border-border bg-card/60">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-                  <span className="font-mono text-xs tracking-[0.16em] text-accent uppercase">
-                    {s.tag}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs tracking-[0.16em] text-accent uppercase">{s.tag}</span>
+                    {showRhymes && rhymeInfo[si]?.scheme.length ? (
+                      <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground" title="Rhyme scheme: lines with the same letter rhyme">
+                        {rhymeInfo[si]!.scheme}
+                      </span>
+                    ) : null}
+                    {rhymeInfo[si]?.trap ? (
+                      <span className="rounded border border-signal-mid/60 px-1.5 py-0.5 text-[10px] text-signal-mid">Rhyme trap</span>
+                    ) : null}
                   </span>
                   <div className="flex items-center gap-1.5">
+                    {rhymeInfo[si]?.trap ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy === `s-${si}`}
+                        onClick={() => void regenSection(si, { loosenRhymes: true })}
+                        className="h-7 px-2 text-[11px]"
+                        title="Rewrite the line endings so they don't all rhyme perfectly. Locked lines stay."
+                      >
+                        Loosen rhymes
+                      </Button>
+                    ) : null}
                     {s.lines.length ? (
                       <Button
                         type="button"
@@ -558,6 +633,9 @@ export function LyricForge({
                         )}
                       />
                       <div className="ml-auto flex items-center">
+                        {showRhymes && rhymeInfo[si]?.lines[li]?.letter ? (
+                          <RhymeBadge info={rhymeInfo[si]!.lines[li]!} />
+                        ) : null}
                         <LineMarkers
                           text={l.text}
                           locked={l.locked}
@@ -641,6 +719,70 @@ export function LyricForge({
         )}
       </Panel>
       </div>
+    </div>
+  );
+}
+
+const LETTER_COLORS = ["text-sky-300", "text-amber-300", "text-emerald-300", "text-fuchsia-300", "text-orange-300", "text-teal-300"];
+
+/** The line's rhyme letter; perfect one-syllable rhymes are underlined, the trap's raw material. */
+function RhymeBadge({ info }: { info: LineRhyme }) {
+  const color = LETTER_COLORS[(info.letter.charCodeAt(0) - 65) % LETTER_COLORS.length];
+  const what =
+    info.kind === "perfect"
+      ? `perfect rhyme${info.oneSyllable ? ", one syllable" : ""}`
+      : info.kind === "near"
+        ? "loose rhyme"
+        : info.kind === "repeat"
+          ? "same word repeated"
+          : "no rhyme above";
+  return (
+    <span
+      title={`"${info.word}": ${what}`}
+      className={cn(
+        "mr-1 w-5 text-center font-mono text-[11px] font-semibold",
+        color,
+        info.kind === "perfect" && info.oneSyllable && "underline decoration-2 underline-offset-2",
+      )}
+    >
+      {info.letter}
+    </span>
+  );
+}
+
+function ChoiceGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: Array<{ value: T; label: string; hint: string }>;
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  const current = options.find((o) => o.value === value);
+  return (
+    <div>
+      <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{label}</span>
+      <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "rounded-md border px-2 py-1.5 text-xs transition-colors",
+              value === o.value ? "border-primary bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {current ? <p className="mt-1.5 text-[11px] text-muted-foreground">{current.hint}</p> : null}
     </div>
   );
 }

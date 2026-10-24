@@ -93,23 +93,39 @@ export function BeatStart({ onAddToStyle }: { onAddToStyle?: ((line: string) => 
           These sites don't spell out the rights to exported beats. Build from their basic drum
           sounds rather than someone else's samples if you plan to release the song.
         </p>
+        <div className="mt-3 rounded-lg border border-border bg-card/50 p-3">
+          <p className="text-sm font-medium">Or sketch a whole song in Gemini</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Google&apos;s{" "}
+            <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+              Gemini app
+            </a>{" "}
+            (Lyria 3.5 model) makes a free ~2-minute song with vocals from a description. Get a ready prompt from the
+            Export Sheet&apos;s &quot;Gemini / Flow&quot; tab. If you like it, download it and upload it to Suno below. Gemini
+            is good for quick ideas; Suno gives you editing, covers and longer songs to finish it.{" "}
+            <a href="/guides/sketch-in-gemini-finish-in-suno" className="text-primary underline underline-offset-2">
+              How it works
+            </a>
+          </p>
+        </div>
       </div>
 
       <div>
         <p className="text-sm font-semibold">2. Get it into Suno</p>
         <ul className="mt-1.5 space-y-1.5 text-xs leading-relaxed text-foreground/90">
           <li>
-            <span className="font-medium">Paid Suno plans:</span> use{" "}
+            <span className="font-medium">Upload it:</span> on Suno&apos;s Create page, use{" "}
             <a
-              href="https://help.suno.com/en/articles/2477633"
+              href="https://help.suno.com/en/articles/6141569"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline underline-offset-2"
             >
               Upload Audio
             </a>{" "}
-            with a 6–60 second clip (up to 120 s on Pro and Premier), then extend it into a song.
-            Only upload audio you made or own; Suno blocks copyrighted works.
+            (up to 60 seconds on the free plan, up to 8 minutes on Pro and Premier), then use Extend to
+            continue it or Cover to remake it in a new style. Only upload audio you made or own; Suno
+            blocks copyrighted works.
           </li>
           <li>
             <span className="font-medium">Free plan, or to steer any generation:</span> describe the
