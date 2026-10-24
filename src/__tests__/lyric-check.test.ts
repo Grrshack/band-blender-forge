@@ -43,3 +43,20 @@ describe("reference data", () => {
       for (const [, href] of item.links ?? []) expect(href).toMatch(/^https:\/\/help\.suno\.com\//);
   });
 });
+
+describe("lyric checker rhyme schemes", () => {
+  it("labels each section and counts rhyme traps", () => {
+    const r = checkLyrics(`[Verse 1]
+You left a bruise along my arm
+Said you never meant me harm
+Now I'm staring at the door
+Wondering what I'm waiting for
+
+[Chorus]
+I texted you at three and you left me on read
+so I drove around until the gas light came on`);
+    expect(r.rhymeTraps).toBe(1);
+    const firsts = r.lines.filter((l) => l.sectionScheme).map((l) => l.sectionScheme);
+    expect(firsts).toEqual([{ scheme: "AABB", trap: true }, { scheme: "AB", trap: false }]);
+  });
+});
