@@ -1,4 +1,5 @@
 import { Drum, ExternalLink, FileAudio, Loader2 } from "lucide-react";
+import { confirmLargeAudio } from "@/lib/audio/large-file";
 import { useRef, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -54,6 +55,7 @@ export function BeatStart({ onAddToStyle }: { onAddToStyle?: ((line: string) => 
     setBusy(true);
     setError(null);
     try {
+      if (!confirmLargeAudio(file)) return;
       const buffer = await decodeAudioFile(file);
       const channels = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
       const est = estimateBpm(mixToMono(channels), buffer.sampleRate);

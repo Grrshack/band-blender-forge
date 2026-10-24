@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  ClipboardPaste,
   KeyRound,
   Loader2,
   ShieldCheck,
@@ -74,15 +75,15 @@ export function KeySetupDialog() {
 
   const trimmed = draft.trim();
 
-  const runTest = async () => {
-    if (!trimmed) return;
+  const runTest = async (value = trimmed) => {
+    if (!value) return;
     setCheck({ state: "testing" });
     try {
-      const r = await test({ data: { apiKey: trimmed } });
+      const r = await test({ data: { apiKey: value } });
       track("key_test", r.ok ? "ok" : "fail");
       if (r.ok) {
-        setCheck({ state: "ok", label: providerLabel(trimmed) });
-        setApiKey(trimmed);
+        setCheck({ state: "ok", label: providerLabel(value) });
+        setApiKey(value);
       } else {
         setCheck({ state: "fail", message: r.message });
       }
@@ -92,6 +93,23 @@ export function KeySetupDialog() {
         message: e instanceof Error ? e.message : "The key check failed.",
       });
     }
+  };
+
+  // Paste and check in one go: the slowest part on a phone is switching apps and pasting.
+  const pasteAndTest = async (text?: string) => {
+    let value = text;
+    if (value === undefined) {
+      try {
+        value = await navigator.clipboard.readText();
+      } catch {
+        setCheck({ state: "fail", message: "Your browser blocked pasting. Long-press the box below and choose Paste." });
+        return;
+      }
+    }
+    value = value.trim();
+    if (!value) return;
+    setDraft(value);
+    void runTest(value);
   };
 
   const save = () => {
@@ -105,57 +123,76 @@ export function KeySetupDialog() {
       <DialogContent className="max-h-[92vh] max-w-xl overflow-y-auto border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl">
-            <KeyRound className="size-5 text-primary" /> Add your AI key
+            <KeyRound className="size-5 text-primary" /> Turn on the AI tools
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed">
             {builtIn
               ? "A key is optional here, but with your own key there's no hourly limit."
-              : "The AI tools run on your own key, so your work goes straight to your AI provider and there's no limit from us. Browsing, guides, the export sheet and mastering presets work without one."}
+              : "Free with a Google key, and it takes about 2 minutes. Your work goes straight to Google, with no limits from us."}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Option 1: Google (free) */}
-        <section className="rounded-xl border border-primary/40 bg-primary/5 p-4">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">Free: Google Gemini key</h3>
-            <span className="rounded-full border border-signal-high/40 px-2 py-0.5 text-[11px] text-signal-high">
-              Recommended
-            </span>
-          </div>
-          <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-foreground/90">
-            <li>
-              Open{" "}
-              <a
-                href={GOOGLE_KEY_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary underline underline-offset-2"
-              >
-                Google AI Studio <ExternalLink className="size-3" />
-              </a>{" "}
-              and sign in with any Google account.
-            </li>
-            <li>
-              Click <span className="font-medium">Create API key</span>. If it asks for a project,
-              let it create one for you.
-            </li>
-            <li>Copy the key and paste it below.</li>
-          </ol>
-        </section>
+        {check.state === "ok" ? (
+          <section className="flex flex-col items-center gap-3 rounded-xl border border-signal-high/50 bg-signal-high/10 p-5 text-center">
+            <CheckCircle2 className="size-9 text-signal-high" />
+            <p className="font-medium">{check.label} key works. You&apos;re ready.</p>
+            <Button className="glow-primary" onClick={save}>
+              Start using it
+            </Button>
+          </section>
+        ) : (
+          <section className="rounded-xl border border-primary/40 bg-primary/5 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">Get a free Google key</h3>
+              <span className="rounded-full border border-signal-high/40 px-2 py-0.5 text-xs text-signal-high">
+                Free · 2 minutes
+              </span>
+            </div>
+            <ol className="space-y-3 text-sm leading-relaxed text-foreground/90">
+              <li className="flex gap-3">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">1</span>
+                <span className="flex-1">
+                  <a
+                    href={GOOGLE_KEY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                  >
+                    Open Google AI Studio <ExternalLink className="size-3.5" />
+                  </a>
+                  <span className="mt-1 block text-xs text-muted-foreground">Sign in with any Google account. It opens in a new tab.</span>
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">2</span>
+                <span className="flex-1">
+                  Press <span className="font-medium">Create API key</span>. If it asks about a project, let it make one.
+                  Then press <span className="font-medium">Copy</span>.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">3</span>
+                <span className="flex-1">
+                  Come back here and press{" "}
+                  <Button size="sm" variant="outline" onClick={() => void pasteAndTest()} className="mx-1 h-8 gap-1.5">
+                    <ClipboardPaste className="size-3.5" /> Paste &amp; check
+                  </Button>
+                  <span className="mt-1 block text-xs text-muted-foreground">Or paste it into the box below.</span>
+                </span>
+              </li>
+            </ol>
+          </section>
+        )}
 
-        {/* Option 2: Anthropic (paid) */}
-        <p className="text-sm text-muted-foreground">
-          Already pay for Claude? An{" "}
-          <a
-            href={ANTHROPIC_KEY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline underline-offset-2"
-          >
-            Anthropic API key
-          </a>{" "}
-          works too (billed by Anthropic per use).
-        </p>
+        {!builtIn && check.state !== "ok" ? (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            <span className="font-medium text-foreground/90">Not ready for a key?</span> These work without one:{" "}
+            <a href="/studio?tab=master" className="text-primary underline underline-offset-2">Mastering</a>,{" "}
+            <a href="/tools/bpm-key-finder" className="text-primary underline underline-offset-2">BPM &amp; key finder</a>,{" "}
+            <a href="/tools/lyric-checker" className="text-primary underline underline-offset-2">lyric checker</a>,{" "}
+            <a href="/tools/suno-metatags" className="text-primary underline underline-offset-2">metatags</a>, the Export Sheet and the guides.
+          </p>
+        ) : null}
 
         {/* Key input */}
         <div className="space-y-2">
@@ -172,6 +209,13 @@ export function KeySetupDialog() {
               onChange={(e) => {
                 setDraft(e.target.value);
                 setCheck({ state: "idle" });
+              }}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text");
+                if (text.trim()) {
+                  e.preventDefault();
+                  void pasteAndTest(text);
+                }
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && trimmed) void runTest();
@@ -197,11 +241,7 @@ export function KeySetupDialog() {
                 <Loader2 className="size-4 animate-spin" /> Checking the key…
               </span>
             )}
-            {check.state === "ok" && (
-              <span className="flex items-center gap-1.5 text-signal-high">
-                <CheckCircle2 className="size-4" /> {check.label} key works. You're ready.
-              </span>
-            )}
+
             {check.state === "fail" && (
               <span className="flex items-start gap-1.5 text-destructive">
                 <XCircle className="mt-0.5 size-4 shrink-0" /> {check.message}
@@ -221,6 +261,12 @@ export function KeySetupDialog() {
           </label>
         </div>
 
+        <details className="group rounded-lg border border-border">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium">
+            More options and privacy <span className="text-muted-foreground group-open:hidden">▸</span>
+            <span className="hidden text-muted-foreground group-open:inline">▾</span>
+          </summary>
+          <div className="space-y-3 px-3 pb-3">
         {/* Speed vs quality */}
         <div className="flex items-start gap-3 rounded-lg border border-border p-3">
           <Switch
@@ -256,6 +302,22 @@ export function KeySetupDialog() {
           </div>
         </div>
 
+        {/* Option 2: Anthropic (paid) */}
+        <p className="text-sm text-muted-foreground">
+          Already pay for Claude? An{" "}
+          <a
+            href={ANTHROPIC_KEY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-2"
+          >
+            Anthropic API key
+          </a>{" "}
+          works too (billed by Anthropic per use).
+        </p>
+          </div>
+        </details>
+
         <div className="flex flex-wrap justify-end gap-2">
           {apiKey && (
             <Button
@@ -273,7 +335,7 @@ export function KeySetupDialog() {
           <Button
             variant="outline"
             onClick={() => void runTest()}
-            disabled={!trimmed || check.state === "testing"}
+            disabled={!trimmed || check.state === "testing" || check.state === "ok"}
           >
             Test key
           </Button>

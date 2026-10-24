@@ -1,4 +1,5 @@
 import { FileAudio, Loader2 } from "lucide-react";
+import { confirmLargeAudio } from "@/lib/audio/large-file";
 import { useRef, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -16,6 +17,7 @@ export function useSongAnalysis() {
   const [error, setError] = useState<string | null>(null);
 
   const analyze = async (file: File) => {
+    if (!confirmLargeAudio(file)) return;
     setBusy(true);
     setError(null);
     setAnalysis(null);

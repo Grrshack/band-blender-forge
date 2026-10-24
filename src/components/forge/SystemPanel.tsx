@@ -19,7 +19,7 @@ export function AiStatusButton({ className }: { className?: string | undefined }
       type="button"
       onClick={openKeyDialog}
       className={cn(
-        "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition-colors sm:px-3",
         hasKey || builtIn
           ? "border-border bg-panel/70 text-foreground/90 hover:border-primary/50"
           : "border-primary/60 bg-primary/15 text-primary hover:bg-primary/25",
@@ -34,7 +34,8 @@ export function AiStatusButton({ className }: { className?: string | undefined }
         )}
       />
       <KeyRound className="size-3.5" />
-      {label}
+      <span className="sm:hidden">{hasKey ? "Key" : builtIn ? "AI" : "Add key"}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

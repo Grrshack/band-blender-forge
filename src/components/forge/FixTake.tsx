@@ -1,4 +1,5 @@
 import { AudioWaveform, FileAudio, Loader2, Scissors, Stethoscope, Undo2, X } from "lucide-react";
+import { confirmLargeAudio } from "@/lib/audio/large-file";
 import { useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -77,6 +78,7 @@ export function FixTake({
     setMeasuring(true);
     setAudioName(file.name);
     try {
+      if (!confirmLargeAudio(file)) return;
       setAudio(await measureTake(file));
     } catch (e) {
       setAudio(null);

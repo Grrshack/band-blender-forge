@@ -52,18 +52,6 @@ export const TAB_GROUPS: Group[] = [
         icon: Wand2,
         hint: "Hook-first lyrics with per-line control and section tags",
       },
-      {
-        value: "genres",
-        label: "Genre Guides",
-        icon: Map,
-        hint: "Genre presets with ready-to-use style tags and BPM ranges",
-      },
-      {
-        value: "compare",
-        label: "Comparables",
-        icon: Search,
-        hint: "Find real artists that match your lyrics or style",
-      },
     ],
   },
   {
@@ -117,6 +105,24 @@ export const TAB_GROUPS: Group[] = [
       },
     ],
   },
+  {
+    // Less-used tools, folded away so the main path (Create → Generate → Fix → Release) stands out.
+    stage: "More",
+    tabs: [
+      {
+        value: "genres",
+        label: "Genre Guides",
+        icon: Map,
+        hint: "Genre presets with ready-to-use style tags and BPM ranges",
+      },
+      {
+        value: "compare",
+        label: "Comparables",
+        icon: Search,
+        hint: "Find real artists that match your lyrics or style",
+      },
+    ],
+  },
 ];
 
 /** Only meaningful when the site offers a built-in model, since that's what it counts. */
@@ -135,9 +141,7 @@ export const ALL_TAB_VALUES = [
 function useGroups(): Group[] {
   const { builtIn } = useSettings();
   if (!builtIn) return TAB_GROUPS;
-  return TAB_GROUPS.map((g) =>
-    g.stage === "Release" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g,
-  );
+  return TAB_GROUPS.map((g) => (g.stage === "More" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g));
 }
 
 /** Desktop: grouped sidebar. */
@@ -148,11 +152,10 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
       aria-label="Tools"
       className="sticky top-4 hidden w-52 shrink-0 flex-col gap-3 self-start rounded-xl border border-border bg-panel/70 p-2 lg:flex"
     >
-      {groups.map((g) => (
-        <div key={g.stage}>
-          <p className="px-3 pt-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">
-            {g.stage}
-          </p>
+      {groups.map((g) => {
+        const more = g.stage === "More";
+        const holdsCurrent = g.tabs.some((t) => t.value === tab);
+        const list = (
           <div className="flex flex-col gap-0.5">
             {g.tabs.map((t) => (
               <Tooltip key={t.value}>
@@ -178,8 +181,24 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
               </Tooltip>
             ))}
           </div>
-        </div>
-      ))}
+        );
+        return more ? (
+          <details key={g.stage} open={holdsCurrent || undefined} className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 pt-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase hover:text-foreground">
+              More tools
+              <span aria-hidden className="transition-transform group-open:rotate-90">▸</span>
+            </summary>
+            {list}
+          </details>
+        ) : (
+          <div key={g.stage}>
+            <p className="px-3 pt-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase">
+              {g.stage}
+            </p>
+            {list}
+          </div>
+        );
+      })}
       <a
         href="/guides"
         className="mt-1 flex items-center gap-2.5 rounded-lg border-t border-border px-3 pt-3 pb-1 text-sm text-foreground/75 hover:text-foreground"
@@ -209,7 +228,7 @@ export function RackMobileNav({ tab, onTab }: { tab: string; onTab: (t: string) 
           className="w-full appearance-none rounded-xl bg-transparent py-3 pr-10 pl-10 text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {groups.map((g) => (
-            <optgroup key={g.stage} label={g.stage}>
+            <optgroup key={g.stage} label={g.stage === "More" ? "More tools" : g.stage}>
               {g.tabs.map((t) => (
                 <option key={t.value} value={t.value}>
                   {t.label}

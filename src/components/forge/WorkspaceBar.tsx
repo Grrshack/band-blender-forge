@@ -367,7 +367,9 @@ export function WorkspaceBar({
             {status === "saving" ? <Loader2 className="ml-1 inline size-3 animate-spin" /> : null}
           </span>
 
-          <SongProgress state={state} />
+          <span className="hidden sm:contents">
+            <SongProgress state={state} />
+          </span>
           <div className="ml-auto flex items-center gap-1.5">
             <Button
               variant="outline"
@@ -378,10 +380,10 @@ export function WorkspaceBar({
               }}
               className="h-8 gap-1.5 border-accent/40 bg-accent/10 text-xs text-accent hover:bg-accent/20"
             >
-              <Copy className="size-3.5" /> Copy brief
+              <Copy className="size-3.5" /> <span className="sr-only sm:not-sr-only">Copy brief</span>
             </Button>
             <Button variant="outline" size="sm" onClick={download} className="h-8 gap-1.5 text-xs">
-              <Download className="size-3.5" /> Export
+              <Download className="size-3.5" /> <span className="sr-only sm:not-sr-only">Export</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -492,7 +494,9 @@ export function WorkspaceBar({
             {status === "saving" ? <Loader2 className="ml-1 inline size-3 animate-spin" /> : null}
           </span>
 
-          <SongProgress state={state} />
+          <span className="hidden sm:contents">
+            <SongProgress state={state} />
+          </span>
           <div className="ml-auto flex items-center gap-1.5">
             <Button
               variant="outline"
@@ -503,13 +507,16 @@ export function WorkspaceBar({
               }}
               className="h-8 gap-1.5 border-accent/40 bg-accent/10 text-xs text-accent hover:bg-accent/20"
             >
-              <Copy className="size-3.5" /> Copy brief
+              <Copy className="size-3.5" /> <span className="sr-only sm:not-sr-only">Copy brief</span>
             </Button>
             <Button variant="outline" size="sm" onClick={download} className="h-8 gap-1.5 text-xs">
-              <Download className="size-3.5" /> Export
+              <Download className="size-3.5" /> <span className="sr-only sm:not-sr-only">Export</span>
             </Button>
             <Button asChild size="sm" className="glow-primary h-8 text-xs">
-              <Link to="/auth">Sign in to sync</Link>
+              <Link to="/auth">
+                <span className="sm:hidden">Sign in</span>
+                <span className="hidden sm:inline">Sign in to sync</span>
+              </Link>
             </Button>
           </div>
         </>
