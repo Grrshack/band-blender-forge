@@ -6,7 +6,7 @@ import { compareSongs, dynamicRange, stereoWidth, tempoGap, type CompareMeasure 
 
 const flat = () => BAND_CENTERS.map(() => -30);
 
-function song(over: Partial<CompareMeasure> & { analysis?: Partial<SongAnalysis> } = {}): CompareMeasure {
+function song(over: Omit<Partial<CompareMeasure>, "analysis"> & { analysis?: Partial<SongAnalysis> } = {}): CompareMeasure {
   const analysis: SongAnalysis = {
     durationSec: 180,
     bpm: 120,
