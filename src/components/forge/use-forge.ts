@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useSettings } from "./settings";
 import { runForge } from "@/lib/forge.functions";
 import { NO_KEY_MESSAGE, isGeminiKey } from "@/lib/provider";
+import { TIMEOUT_MESSAGE, isTimeoutLike } from "@/lib/provider-errors";
 import { toast } from "sonner";
 import { track } from "@/lib/stats";
 
@@ -31,8 +32,29 @@ export function useForge(): ForgeCall {
         gemini && geminiNoPro && args?.data
           ? ({ ...args, data: { ...args.data, preferFast: true } } as typeof args)
           : args;
+      // A timeout (the host's "error code: 524") or dropped connection is retried once
+      // automatically, asking for the faster model, before the person sees an error.
+      const attempt = async () => {
+        try {
+          return await forge(withHint);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (!isTimeoutLike(msg)) throw e;
+          toast.info("That took too long. Trying again with the faster model…", { duration: 5000 });
+          const fast = withHint?.data
+            ? ({ ...withHint, data: { ...withHint.data, preferFast: true, routing: "fast" } } as typeof withHint)
+            : withHint;
+          try {
+            return await forge(fast);
+          } catch (e2) {
+            const msg2 = e2 instanceof Error ? e2.message : String(e2);
+            // Never show a raw "error code: 524" page.
+            throw isTimeoutLike(msg2) ? new Error(TIMEOUT_MESSAGE) : e2;
+          }
+        }
+      };
       try {
-        const res = await forge(withHint);
+        const res = await attempt();
         if (res.downgraded && !geminiNoPro) {
           setGeminiNoPro(true);
           toast.info(

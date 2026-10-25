@@ -10,6 +10,7 @@ import {
   Gauge,
   Map,
   Radar,
+  Scale,
   Rocket,
   Search,
   Send,
@@ -26,7 +27,7 @@ import { openFeedback } from "@/lib/feedback";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-export type TabDef = { value: string; label: string; icon: LucideIcon; hint: string };
+export type TabDef = { value: string; label: string; icon: LucideIcon; hint: string; badge?: string };
 type Group = { stage: string; tabs: TabDef[] };
 
 /** Tabs grouped by where the person is in making a song. */
@@ -85,6 +86,13 @@ export const TAB_GROUPS: Group[] = [
         label: "Honest Feedback",
         icon: Gauge,
         hint: "A blunt critique of your lyrics",
+      },
+      {
+        value: "songcompare",
+        label: "Compare Songs",
+        icon: Scale,
+        hint: "Put your song next to one you love: see what's different and what to change",
+        badge: "v1",
       },
       {
         value: "master",
@@ -203,7 +211,12 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
                     )}
                   >
                     <t.icon className="size-4 shrink-0" />
-                    {t.label}
+                    <span className="flex-1">{t.label}</span>
+                    {t.badge ? (
+                      <span className="rounded border border-primary/40 px-1 font-mono text-[11px] leading-4 text-primary">
+                        {t.badge}
+                      </span>
+                    ) : null}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-[240px] text-left">
@@ -282,7 +295,7 @@ export function RackMobileNav({ tab, onTab }: { tab: string; onTab: (t: string) 
             <optgroup key={g.stage} label={g.stage === "More" ? "More tools" : g.stage}>
               {g.tabs.map((t) => (
                 <option key={t.value} value={t.value}>
-                  {t.label}
+                  {t.badge ? `${t.label} (${t.badge})` : t.label}
                 </option>
               ))}
             </optgroup>
