@@ -117,3 +117,23 @@ export function feedbackCsv(rows: FeedbackRow[]): string {
   };
   return [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\n");
 }
+
+/**
+ * For the feedback window: is the signed-in person an admin, and how many items are new?
+ * Only decides whether to show a link; the data is protected by row-level security anyway.
+ */
+export async function checkFeedbackAdmin(): Promise<{ admin: boolean; newCount: number }> {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any;
+    const { data: s } = await supabase.auth.getSession();
+    if (!s.session) return { admin: false, newCount: 0 };
+    const { data: admin, error } = await db.rpc("is_feedback_admin");
+    if (error || admin !== true) return { admin: false, newCount: 0 };
+    const { count } = await db.from("feedback").select("id", { count: "exact", head: true }).eq("status", "new");
+    return { admin: true, newCount: count ?? 0 };
+  } catch {
+    return { admin: false, newCount: 0 };
+  }
+}
