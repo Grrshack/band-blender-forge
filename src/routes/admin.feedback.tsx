@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/feedback")({
   head: () => ({
-    meta: [{ title: `Feedback log | ${APP_NAME}` }, { name: "robots", content: "noindex, nofollow" }],
+    meta: [{ title: `Admin dashboard | ${APP_NAME}` }, { name: "robots", content: "noindex, nofollow" }],
   }),
   component: FeedbackAdmin,
 });
@@ -120,10 +120,10 @@ function FeedbackAdmin() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              {APP_NAME}
+            <Link to="/studio" className="text-sm text-muted-foreground hover:text-foreground">
+              ← Back to {APP_NAME}
             </Link>
-            <h1 className="font-display text-3xl font-bold">Feedback log</h1>
+            <h1 className="font-display text-3xl font-bold">Admin dashboard</h1>
             {email ? <p className="text-xs text-muted-foreground">Signed in as {email}</p> : null}
           </div>
           {access === "ok" ? (
