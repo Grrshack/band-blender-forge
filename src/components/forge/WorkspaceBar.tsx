@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  ShieldCheck,
   Check,
   ChevronDown,
   Copy,
@@ -56,7 +57,7 @@ export function WorkspaceBar({
   state: ForgeState;
   onLoadState: (s: ForgeState) => void;
 }) {
-  const { session, email, signOut, ready } = useAuth();
+  const { session, email, signOut, ready, isAdmin, newFeedback } = useAuth();
   const list = useServerFn(listWorkspaces);
   const get = useServerFn(getWorkspace);
   const create = useServerFn(createWorkspace);
@@ -392,6 +393,14 @@ export function WorkspaceBar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    <a href="/admin">
+                      <ShieldCheck className="size-3.5" /> Admin dashboard
+                      {newFeedback ? ` (${newFeedback} new)` : ""}
+                    </a>
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onSelect={() => void signOut()}>
                   <LogOut className="size-3.5" /> Sign out
                 </DropdownMenuItem>

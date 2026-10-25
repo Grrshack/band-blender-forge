@@ -3,6 +3,9 @@ import {
   BarChart2,
   BookMarked,
   BookOpen,
+  ChevronDown,
+  MessageSquarePlus,
+  MoreHorizontal,
   Bot,
   Gauge,
   Map,
@@ -10,13 +13,16 @@ import {
   Rocket,
   Search,
   Send,
+  ShieldCheck,
   Sliders,
   Stethoscope,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
 
+import { useAdminStatus } from "./auth";
 import { useSettings } from "./settings";
+import { openFeedback } from "@/lib/feedback";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -144,6 +150,31 @@ function useGroups(): Group[] {
   return TAB_GROUPS.map((g) => (g.stage === "More" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g));
 }
 
+/** Shown only to admins: a link to the dashboard with the count of new feedback. */
+function AdminLink({ compact = false }: { compact?: boolean }) {
+  const { isAdmin, newFeedback } = useAdminStatus();
+  if (!isAdmin) return null;
+  const badge = newFeedback ? (
+    <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+      {newFeedback} new
+    </span>
+  ) : null;
+  return compact ? (
+    <a href="/admin" className="flex items-center gap-1 text-xs text-primary underline underline-offset-2">
+      <ShieldCheck className="size-3.5" /> Admin {badge}
+    </a>
+  ) : (
+    <a
+      href="/admin"
+      className="flex items-center gap-2.5 rounded-lg border border-primary/40 px-3 py-2 text-sm text-primary hover:bg-primary/10"
+    >
+      <ShieldCheck className="size-4 shrink-0" />
+      <span className="flex-1">Admin</span>
+      {badge}
+    </a>
+  );
+}
+
 /** Desktop: grouped sidebar. */
 export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) => void }) {
   const groups = useGroups();
@@ -184,11 +215,14 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
         );
         return more ? (
           <details key={g.stage} open={holdsCurrent || undefined} className="group">
-            <summary className="flex cursor-pointer list-none items-center justify-between px-3 pt-1 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/80 uppercase hover:text-foreground">
-              More tools
-              <span aria-hidden className="transition-transform group-open:rotate-90">▸</span>
+            {/* Looks like a menu item, not a small label, so it isn't missed. */}
+            <summary className="flex w-full cursor-pointer list-none items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-sm text-foreground/80 transition-colors hover:border-primary/50 hover:text-foreground [&::-webkit-details-marker]:hidden">
+              <MoreHorizontal className="size-4 shrink-0" />
+              <span className="flex-1">More tools</span>
+              <span className="rounded-full bg-card px-1.5 text-xs text-muted-foreground">{g.tabs.length}</span>
+              <ChevronDown aria-hidden className="size-4 shrink-0 transition-transform group-open:rotate-180" />
             </summary>
-            {list}
+            <div className="mt-1">{list}</div>
           </details>
         ) : (
           <div key={g.stage}>
@@ -199,12 +233,22 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
           </div>
         );
       })}
-      <a
-        href="/guides"
-        className="mt-1 flex items-center gap-2.5 rounded-lg border-t border-border px-3 pt-3 pb-1 text-sm text-foreground/75 hover:text-foreground"
-      >
-        <BookOpen className="size-4 shrink-0" /> Guides
-      </a>
+      <div className="mt-1 flex flex-col gap-0.5 border-t border-border pt-2">
+        <a
+          href="/guides"
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground/75 hover:bg-card/60 hover:text-foreground"
+        >
+          <BookOpen className="size-4 shrink-0" /> Guides
+        </a>
+        <button
+          type="button"
+          onClick={() => openFeedback()}
+          className="flex items-center gap-2.5 rounded-lg bg-primary/10 px-3 py-2 text-left text-sm text-primary hover:bg-primary/20"
+        >
+          <MessageSquarePlus className="size-4 shrink-0" /> Send feedback
+        </button>
+        <AdminLink />
+      </div>
     </nav>
   );
 }
@@ -243,9 +287,19 @@ export function RackMobileNav({ tab, onTab }: { tab: string; onTab: (t: string) 
       </div>
       <div className="mt-1.5 flex items-start justify-between gap-3 px-1">
         {current ? <p className="text-xs text-muted-foreground">{current.hint}</p> : <span />}
-        <a href="/guides" className="shrink-0 text-xs text-primary underline underline-offset-2">
-          Guides
-        </a>
+        <span className="flex shrink-0 items-center gap-3">
+          <a href="/guides" className="text-xs text-primary underline underline-offset-2">
+            Guides
+          </a>
+          <button
+            type="button"
+            onClick={() => openFeedback()}
+            className="flex items-center gap-1 text-xs text-primary underline underline-offset-2"
+          >
+            <MessageSquarePlus className="size-3.5" /> Feedback
+          </button>
+          <AdminLink compact />
+        </span>
       </div>
     </div>
   );
