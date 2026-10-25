@@ -1,11 +1,11 @@
-import { CheckCircle2, Loader2, Star } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FEEDBACK_KINDS, sendFeedback, type FeedbackKind, type FeedbackPrefill } from "@/lib/feedback";
+import { FEEDBACK_KINDS, checkFeedbackAdmin, sendFeedback, type FeedbackKind, type FeedbackPrefill } from "@/lib/feedback";
 import { cn } from "@/lib/utils";
 
 const NAME_KEY = "bb.tester-name";
@@ -32,6 +32,19 @@ export default function FeedbackDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [admin, setAdmin] = useState<{ admin: boolean; newCount: number }>({ admin: false, newCount: 0 });
+
+  // Admins get a shortcut to the log right here, since this is where they look for feedback.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void checkFeedbackAdmin().then((r) => {
+      if (!cancelled) setAdmin(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     try {
@@ -84,6 +97,22 @@ export default function FeedbackDialog({
               lyrics, songs and AI key are not.
             </DialogDescription>
           </DialogHeader>
+
+          {admin.admin ? (
+            <a
+              href="/admin"
+              className="flex items-center gap-2.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2.5 text-sm text-primary hover:bg-primary/20"
+            >
+              <ShieldCheck className="size-4 shrink-0" />
+              <span className="flex-1 font-medium">You&apos;re an admin: view all feedback and usage</span>
+              {admin.newCount ? (
+                <span className="rounded-full bg-primary px-2 text-xs font-semibold text-primary-foreground">
+                  {admin.newCount} new
+                </span>
+              ) : null}
+              <span aria-hidden>→</span>
+            </a>
+          ) : null}
 
           {sent ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
