@@ -12,6 +12,7 @@ const TOOL_NAMES: Record<string, string> = {
   suno: "Export Sheet",
   fix: "Fix a Track",
   feedback: "Honest Feedback",
+  songcompare: "Compare Songs",
   master: "Mastering",
   dossier: "Release Kit",
   library: "Prompt Library",

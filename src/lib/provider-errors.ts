@@ -118,3 +118,72 @@ export async function withModelBackups<T>(
   }
   throw opts.exhausted ? opts.exhausted(lastError) : lastError;
 }
+
+/**
+ * The host (Cloudflare, in front of Lovable) cuts a request off after about 100 seconds with
+ * "error code: 524". Each AI request gets a time budget below that, so a slow model is abandoned
+ * in time to fall back to a faster one and the person gets a clear message instead of a 524.
+ */
+export const REQUEST_BUDGET_MS = 85_000;
+/** Gemini Pro gets at most this long, leaving time for the Flash fallback. */
+export const PRO_CAP_MS = 40_000;
+/** One model call never waits longer than this. */
+export const CALL_CAP_MS = 55_000;
+
+export const TIMEOUT_MESSAGE =
+  "The AI took too long to answer (the provider is slow right now, not your key). Try again; it usually works on the second go.";
+
+/** A model call ran out of its time budget. */
+export class AiTimeoutError extends Error {
+  constructor() {
+    super(TIMEOUT_MESSAGE);
+    this.name = "AiTimeoutError";
+  }
+}
+
+export type Deadline = {
+  /** Milliseconds left in this request's budget. */
+  remaining: () => number;
+  /** Throws AiTimeoutError once there's too little time left to start another call. */
+  check: (minMs?: number) => void;
+  /** How long the next call may take: the cap, or whatever budget is left if less. */
+  capFor: (capMs: number) => number;
+};
+
+export function makeDeadline(totalMs: number, now: () => number = Date.now): Deadline {
+  const end = now() + totalMs;
+  const remaining = () => end - now();
+  return {
+    remaining,
+    check: (minMs = 5_000) => {
+      if (remaining() < minMs) throw new AiTimeoutError();
+    },
+    capFor: (capMs) => Math.max(1, Math.min(capMs, remaining())),
+  };
+}
+
+/** A fetch that gives up after `ms`, reporting it as AiTimeoutError. */
+export async function fetchWithTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await run(controller.signal);
+  } catch (e) {
+    if (controller.signal.aborted || (e instanceof Error && /abort|timeout/i.test(e.name))) {
+      throw new AiTimeoutError();
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * What the browser sees when the host cut the request off (524), the gateway failed (502/504),
+ * or the connection dropped. Retrying once usually works.
+ */
+export function isTimeoutLike(message: string): boolean {
+  return /\b(52[0-4]|504|502)\b|took too long|timed? ?out|timeout|failed to fetch|networkerror|load failed|network connection was lost/i.test(
+    message,
+  );
+}

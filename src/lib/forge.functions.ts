@@ -9,8 +9,15 @@ import { chooseProvider, isBuiltInAiAllowed, NO_KEY_MESSAGE } from "@/lib/provid
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
 import { SYSTEM } from "@/lib/forge-prompts";
 import {
+  AiTimeoutError,
+  CALL_CAP_MS,
+  PRO_CAP_MS,
+  REQUEST_BUDGET_MS,
+  fetchWithTimeout,
   isOverloaded,
+  makeDeadline,
   overloadMessage,
+  type Deadline,
   parseRateLimit,
   rateLimitMessage,
   withModelBackups,
@@ -167,8 +174,8 @@ export async function withProFallback<T>(
   } catch (e) {
     const badKey = e instanceof Error && /was rejected/i.test(e.message);
     if (!isGemini || routing !== "craft" || badKey) throw e;
-    // A busy Pro (503) says nothing about the key's access, so don't switch later calls to Flash.
-    return { value: await run("fast"), downgraded: !(e instanceof OverloadedError) };
+    // A busy (503) or slow Pro says nothing about the key's access, so don't switch later calls to Flash.
+    return { value: await run("fast"), downgraded: !(e instanceof OverloadedError || e instanceof AiTimeoutError) };
   }
 }
 
@@ -181,13 +188,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * (up to 20 s). Daily limits and models the key can't use are not retried: waiting a few
  * seconds won't help, and every retry spends the caller's free quota.
  */
-async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
+async function withRateLimitRetry<T>(fn: () => Promise<T>, deadline?: Deadline): Promise<T> {
   const fallbackDelays = [3000, 8000];
+  // Don't wait and retry if that would leave too little time to finish before the host's cut-off.
+  const canWait = (ms: number) => !deadline || deadline.remaining() - ms > 20_000;
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (e) {
-      if (e instanceof OverloadedError && attempt < fallbackDelays.length) {
+      if (e instanceof OverloadedError && attempt < fallbackDelays.length && canWait(fallbackDelays[attempt]!)) {
         await sleep(fallbackDelays[attempt]!);
         continue;
       }
@@ -195,13 +204,23 @@ async function withRateLimitRetry<T>(fn: () => Promise<T>): Promise<T> {
       const { kind, retryMs } = e.info;
       if (kind === "day" || kind === "unavailable") throw e;
       if (retryMs !== null && retryMs > 20000) throw e;
-      await sleep(retryMs ?? fallbackDelays[attempt]!);
+      const delay = retryMs ?? fallbackDelays[attempt]!;
+      if (!canWait(delay)) throw e;
+      await sleep(delay);
     }
   }
 }
 
-async function callAnthropic(apiKey: string, routing: Routing, user: string, maxTokens: number) {
+async function callAnthropic(
+  apiKey: string,
+  routing: Routing,
+  user: string,
+  maxTokens: number,
+  timeoutMs: number = CALL_CAP_MS,
+) {
+  return fetchWithTimeout(timeoutMs, async (signal) => {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
+    signal,
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -221,6 +240,7 @@ async function callAnthropic(apiKey: string, routing: Routing, user: string, max
   }
   const json = (await res.json()) as { content?: Array<{ text?: string }> };
   return json.content?.map((c) => c.text ?? "").join("") ?? "";
+  });
 }
 
 async function callGemini(
@@ -229,8 +249,11 @@ async function callGemini(
   user: string,
   maxTokens: number,
   model: string = GEMINI_MODELS[routing],
+  timeoutMs: number = CALL_CAP_MS,
 ) {
+  return fetchWithTimeout(timeoutMs, async (signal) => {
   const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    signal,
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -253,26 +276,41 @@ async function callGemini(
     choices?: Array<{ message?: { content?: string } }>;
   };
   return json.choices?.[0]?.message?.content ?? "";
+  });
 }
 
 /** Flash, and if Google says it's overloaded, a retry and then the backup models. */
-async function geminiFlashWithBackups(key: string, user: string, maxTokens: number) {
+async function geminiFlashWithBackups(key: string, user: string, maxTokens: number, deadline?: Deadline) {
   const r = await withModelBackups(
     [GEMINI_MODELS.fast, ...GEMINI_BACKUP_MODELS],
-    (model) => callGemini(key, "fast", user, maxTokens, model),
+    (model) => {
+      deadline?.check();
+      return callGemini(key, "fast", user, maxTokens, model, deadline ? deadline.capFor(CALL_CAP_MS) : CALL_CAP_MS);
+    },
     {
-      isBusy: (e) => e instanceof OverloadedError,
+      // A slow model counts as busy, so the next backup gets a turn while time remains.
+      isBusy: (e) => e instanceof OverloadedError || (e instanceof AiTimeoutError && (deadline?.remaining() ?? 0) > 15_000),
       // A rejected key fails every model the same way, so stop there.
-      isFatal: (e) => e instanceof Error && /was rejected/i.test(e.message),
+      isFatal: (e) =>
+        (e instanceof Error && /was rejected/i.test(e.message)) ||
+        (e instanceof AiTimeoutError && (deadline?.remaining() ?? 0) < 15_000),
       // A plain Error, so the outer retry doesn't run the whole chain again.
-      exhausted: () => new Error(overloadMessage("gemini")),
+      exhausted: (last) => (last instanceof AiTimeoutError ? last : new Error(overloadMessage("gemini"))),
     },
   );
   return r.value;
 }
 
-async function callGateway(key: string, routing: Routing, user: string, maxTokens: number) {
+async function callGateway(
+  key: string,
+  routing: Routing,
+  user: string,
+  maxTokens: number,
+  timeoutMs: number = CALL_CAP_MS,
+) {
+  return fetchWithTimeout(timeoutMs, async (signal) => {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    signal,
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -296,6 +334,7 @@ async function callGateway(key: string, routing: Routing, user: string, maxToken
     choices?: Array<{ message?: { content?: string } }>;
   };
   return json.choices?.[0]?.message?.content ?? "";
+  });
 }
 
 export const runForge = createServerFn({ method: "POST" })
@@ -331,25 +370,31 @@ export const runForge = createServerFn({ method: "POST" })
       }
     }
 
+    // Everything below has to finish before the host's ~100 s cut-off (error 524).
+    const deadline = makeDeadline(REQUEST_BUDGET_MS);
     let routing: Routing = CRAFT_TASKS.has(data.task) ? "craft" : data.routing;
     // A Google key that's known to lack Pro access goes straight to Flash.
     if (choice.via === "gemini" && data.preferFast) routing = "fast";
     let downgraded = false;
 
-    const send = (r: Routing, text: string, maxTokens: number) =>
-      choice.via === "anthropic"
-        ? callAnthropic(choice.key, r, text, maxTokens)
+    const send = (r: Routing, text: string, maxTokens: number) => {
+      deadline.check();
+      const cap = deadline.capFor(CALL_CAP_MS);
+      return choice.via === "anthropic"
+        ? callAnthropic(choice.key, r, text, maxTokens, cap)
         : choice.via === "gemini"
           ? r === "craft"
-            ? callGemini(choice.key, r, text, maxTokens) // a busy Pro falls back to Flash below
-            : geminiFlashWithBackups(choice.key, text, maxTokens)
-          : callGateway(choice.key, r, text, maxTokens);
+            ? // a busy or slow Pro falls back to Flash below, so Pro gets less time
+              callGemini(choice.key, r, text, maxTokens, GEMINI_MODELS.craft, deadline.capFor(PRO_CAP_MS))
+            : geminiFlashWithBackups(choice.key, text, maxTokens, deadline)
+          : callGateway(choice.key, r, text, maxTokens, cap);
+    };
     // Gemini Pro on a Google key fails fast (no waiting and retrying) so the Flash fallback
     // kicks in at once; everything else retries short rate limits.
     const once = (r: Routing, text: string, maxTokens: number) =>
       choice.via === "gemini" && r === "craft"
         ? send(r, text, maxTokens)
-        : withRateLimitRetry(() => send(r, text, maxTokens));
+        : withRateLimitRetry(() => send(r, text, maxTokens), deadline);
 
     const call = async (text: string, maxTokens: number) => {
       const r = await withProFallback(choice.via === "gemini", routing, (rt) => once(rt, text, maxTokens));
@@ -368,7 +413,8 @@ export const runForge = createServerFn({ method: "POST" })
         return extractJson(await call(text, initialTokens)) as Record<string, unknown>;
       } catch (e) {
         const truncated = e instanceof Error && e.message.includes("could not be parsed");
-        if (!truncated) throw e;
+        // Only retry a cut-off answer if there's time for a second, longer one.
+        if (!truncated || deadline.remaining() < 30_000) throw e;
         // The response was likely cut off — retry once with more room to finish.
         return extractJson(await call(text, 8000)) as Record<string, unknown>;
       }
