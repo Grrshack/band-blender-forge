@@ -218,9 +218,16 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
             {/* Looks like a menu item, not a small label, so it isn't missed. */}
             <summary className="flex w-full cursor-pointer list-none items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-sm text-foreground/80 transition-colors hover:border-primary/50 hover:text-foreground [&::-webkit-details-marker]:hidden">
               <MoreHorizontal className="size-4 shrink-0" />
-              <span className="flex-1">More tools</span>
-              <span className="rounded-full bg-card px-1.5 text-xs text-muted-foreground">{g.tabs.length}</span>
-              <ChevronDown aria-hidden className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+              <span className="flex-1">
+                More tools <span className="text-xs text-muted-foreground">({g.tabs.length})</span>
+              </span>
+              {/* A big, filled arrow button so it's obvious this opens. */}
+              <span
+                aria-hidden
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary transition-colors group-hover:bg-primary/30"
+              >
+                <ChevronDown className="size-5 transition-transform group-open:rotate-180" strokeWidth={2.5} />
+              </span>
             </summary>
             <div className="mt-1">{list}</div>
           </details>
