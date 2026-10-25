@@ -60,9 +60,9 @@ export const Route = createFileRoute("/studio")({
 
 
 function Index() {
-  // Always "blend" on the server and first paint; a ?tab= link is applied right after
+  // Always "Start here" on the server and first paint; a ?tab= link is applied right after
   // hydration (reading the URL during render made server and client disagree).
-  const [tab, setTabState] = useState("blend");
+  const [tab, setTabState] = useState("assistant");
   // Every tool switch goes through here so usage counts match what people open.
   const setTab = useCallback((t: string) => {
     setTabState(t);
@@ -85,7 +85,7 @@ function Index() {
     return handoffRef.current;
   };
 
-  // A ?tab= link opens that tool; otherwise first-time visitors land on "Start here".
+  // A ?tab= link opens that tool; otherwise everyone lands on "Start here".
   useEffect(() => {
     try {
       if (getHandoff()) {
@@ -93,11 +93,7 @@ function Index() {
         return; // the handoff effect below picks the tab
       }
       const asked = new URLSearchParams(window.location.search).get("tab");
-      const first = asked && ALL_TAB_VALUES.includes(asked)
-        ? asked
-        : !localStorage.getItem("blf.visited")
-          ? "assistant"
-          : "blend";
+      const first = asked && ALL_TAB_VALUES.includes(asked) ? asked : "assistant";
       setTab(first);
       localStorage.setItem("blf.visited", "1");
     } catch {
