@@ -34,6 +34,7 @@ import { track } from "@/lib/stats";
 import { LYRIC_QUICK_SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
 import { TakeCheck } from "@/components/forge/TakeCheck";
 import { SongAnalyzer } from "@/components/forge/SongAnalyzer";
+import { SongCompare } from "@/components/forge/SongCompare";
 import { TesterWelcome } from "@/components/forge/TesterWelcome";
 import { HANDOFF_KEYS, readHandoff, type ParsedHandoff } from "@/lib/handoff";
 
@@ -442,6 +443,7 @@ function Index() {
                     />
                   )}
                   {tab === "master" && <MasteringLab onOpenFix={() => setTab("fix")} />}
+                  {tab === "songcompare" && <SongCompare onGoTab={setTab} />}
                   {tab === "library" && <PromptLibrary onApply={applyPreset} />}
                   {tab === "analyze" && (
                     <SongAnalyzer
