@@ -6,7 +6,7 @@
 
 import { findBannedWords } from "@/lib/banned-words";
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
-import { clicheFixPrompt, prompt } from "@/lib/forge-prompts";
+import { clicheFixPrompt, polishPrompt, prompt } from "@/lib/forge-prompts";
 import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
 import {
   SUNO_LIMITS,
@@ -25,7 +25,22 @@ export type PipelineDeps = {
   lookup: (names: string[]) => Promise<ArtistLookup[]>;
   /** Best-effort recording lookup. May throw; the pipeline then proceeds ungrounded. */
   lookupRecording?: (title: string, artist: string) => Promise<RecordingLookup>;
+  /**
+   * Asked once a lyric draft exists: should it get an editor's second pass? The server says
+   * yes for lighter models (Gemini Flash) when there's time left before the host's cut-off.
+   */
+  shouldPolish?: () => boolean;
 };
+
+/** Accepts a polished song only if it kept the draft's exact shape (sections and line counts). */
+export function sameShape(draft: unknown[], polished: unknown[]): boolean {
+  if (draft.length !== polished.length) return false;
+  return draft.every((d, i) => {
+    const a = strings(obj(d)["lines"]);
+    const b = strings(obj(polished[i])["lines"]);
+    return a.length === b.length;
+  });
+}
 
 const strings = (x: unknown): string[] =>
   Array.isArray(x) ? x.filter((v): v is string => typeof v === "string" && v.trim() !== "") : [];
@@ -107,7 +122,26 @@ export async function runPipeline(task: string, payload: Json, deps: PipelineDep
     }
 
     case "lyrics": {
-      const result = await deps.ask(base);
+      let result = await deps.ask(base);
+      // Editor's second pass for lighter models. Kept only if it didn't change the structure.
+      if (payload["tagsOnly"] !== true && deps.shouldPolish?.()) {
+        try {
+          const draftSections = Array.isArray(result["sections"]) ? (result["sections"] as unknown[]) : [];
+          const polished = await deps.ask(polishPrompt(payload, result));
+          const next = Array.isArray(polished["sections"]) ? (polished["sections"] as unknown[]) : [];
+          if (draftSections.length && sameShape(draftSections, next)) {
+            // Tags and cues come from the draft, so the editor can only change words.
+            result = {
+              ...result,
+              ...(typeof polished["title"] === "string" && polished["title"].trim() ? { title: polished["title"] } : {}),
+              sections: draftSections.map((d, i) => ({ ...obj(d), lines: strings(obj(next[i])["lines"]) })),
+              polished: true,
+            };
+          }
+        } catch {
+          /* keep the draft */
+        }
+      }
       const sections = Array.isArray(result["sections"]) ? (result["sections"] as unknown[]) : [];
       const blocks = sections.map((s) => ({ lines: strings(obj(s)["lines"]) }));
       const fixed = await cleanBlocks(blocks, deps, payload);

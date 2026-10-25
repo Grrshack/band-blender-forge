@@ -356,3 +356,26 @@ Style: ${context.styleTag ?? ""}
 Lines to rewrite: ${JSON.stringify(hits.map((h) => ({ si: h.si, li: h.li, line: h.line, banned: h.phrase })))}
 Return JSON exactly: {"rewrites":[{"si":0,"li":1,"line":"new line"}]}`;
 }
+
+/**
+ * Second pass for lyrics written by a lighter model (Gemini Flash on free keys): an editor
+ * checks the draft against the brief and the craft rules, then returns the improved song in
+ * the same JSON shape. Write-then-revise lifts a fast model's output noticeably.
+ */
+export function polishPrompt(payload: Record<string, unknown>, draft: Record<string, unknown>): string {
+  const brief = JSON.stringify(payload).slice(0, 12_000);
+  const song = JSON.stringify({ title: draft["title"], sections: draft["sections"] }).slice(0, 12_000);
+  return `You are a demanding professional song editor. Improve this draft lyric so it is ready to record.
+Brief: ${brief}
+Draft: ${song}
+Check every line against this list, silently, then fix only what fails. Keep what already works.
+- The chorus hook lands in its first 5 words, repeats at least twice in the chorus, and a stranger could sing it back after two listens.
+- Concrete images and specific nouns; no worn-out phrases (no "fire in my soul", "shattered heart", "dancing in the rain", "neon lights" filler).
+- Lines that sit in the same position in matching sections have similar syllable counts, so they fit the same melody.
+- One consistent point of view and tense; every verse adds something new instead of repeating the first.
+- Stress falls naturally when sung; no tongue-twisters or padding words added just to rhyme.${lyricStyleRules(payload["rhymeStyle"], payload["voice"])}
+- Keep exactly the same sections, in the same order, with the same number of lines in each, the same tags and cues. Change words, not structure.
+- Never use banned words from the brief, and never name real artists.
+Return JSON exactly, the complete improved song:
+{"title":"string, max 60 characters","sections":[{"tag":"[Verse 1]","cue":"optional short direction","lines":["line","line"]}]}`;
+}

@@ -49,6 +49,8 @@ const InputSchema = z.object({
   apiKey: z.string().trim().max(300).optional(),
   /** Set by the browser once it learns this Google key can't use Gemini Pro. */
   preferFast: z.boolean().optional(),
+  /** Opt-in: write lyrics with Anthropic's top model (costs more per song). Anthropic keys only. */
+  bestLyrics: z.boolean().optional(),
   payload: z
     .record(z.any())
     .refine((p) => JSON.stringify(p).length <= MAX_PAYLOAD_CHARS, "That input is too large."),
@@ -60,6 +62,12 @@ const ANTHROPIC_MODELS: Record<Routing, string> = {
   fast: "claude-haiku-5-5",
   craft: "claude-sonnet-5-5",
 };
+
+/** Anthropic's top model, used for lyric writing only when the person opts in. */
+const ANTHROPIC_BEST_MODEL = "claude-opus-5-5";
+
+/** Tasks that write lyric lines, where "Best lyrics" applies. */
+const LYRIC_WRITING_TASKS = new Set(["lyrics", "regenLine", "regenSection"]);
 
 const GATEWAY_MODELS: Record<Routing, string> = {
   fast: "google/gemini-3.8-flash",
@@ -217,6 +225,7 @@ async function callAnthropic(
   user: string,
   maxTokens: number,
   timeoutMs: number = CALL_CAP_MS,
+  model: string = ANTHROPIC_MODELS[routing],
 ) {
   return fetchWithTimeout(timeoutMs, async (signal) => {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -228,7 +237,7 @@ async function callAnthropic(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: ANTHROPIC_MODELS[routing],
+      model,
       max_tokens: maxTokens,
       system: SYSTEM,
       messages: [{ role: "user", content: user }],
@@ -377,9 +386,21 @@ export const runForge = createServerFn({ method: "POST" })
     if (choice.via === "gemini" && data.preferFast) routing = "fast";
     let downgraded = false;
 
-    const send = (r: Routing, text: string, maxTokens: number) => {
+    // "Best lyrics" only applies to Anthropic keys and lyric-writing tasks.
+    const useBest = choice.via === "anthropic" && data.bestLyrics === true && LYRIC_WRITING_TASKS.has(data.task);
+    let bestFailed = false;
+    const send = async (r: Routing, text: string, maxTokens: number): Promise<string> => {
       deadline.check();
       const cap = deadline.capFor(CALL_CAP_MS);
+      if (useBest && r === "craft" && !bestFailed) {
+        try {
+          return await callAnthropic(choice.key, r, text, maxTokens, deadline.capFor(PRO_CAP_MS), ANTHROPIC_BEST_MODEL);
+        } catch (e) {
+          // A busy or slow top model falls back to the usual one for the rest of this request.
+          if (!(e instanceof OverloadedError || e instanceof AiTimeoutError || e instanceof RateLimitError)) throw e;
+          bestFailed = true;
+        }
+      }
       return choice.via === "anthropic"
         ? callAnthropic(choice.key, r, text, maxTokens, cap)
         : choice.via === "gemini"
@@ -397,6 +418,16 @@ export const runForge = createServerFn({ method: "POST" })
         : withRateLimitRetry(() => send(r, text, maxTokens), deadline);
 
     const call = async (text: string, maxTokens: number) => {
+      // Claude: if the stronger model is busy or too slow, use the faster one rather than fail.
+      if (choice.via === "anthropic" && routing === "craft") {
+        try {
+          return await once("craft", text, maxTokens);
+        } catch (e) {
+          if (!(e instanceof OverloadedError || e instanceof AiTimeoutError)) throw e;
+          deadline.check(10_000);
+          return once("fast", text, maxTokens);
+        }
+      }
       const r = await withProFallback(choice.via === "gemini", routing, (rt) => once(rt, text, maxTokens));
       if (r.downgraded) {
         routing = "fast";
@@ -429,6 +460,8 @@ export const runForge = createServerFn({ method: "POST" })
         ask,
         lookup: (names) => lookupArtists(names, mbOpts),
         lookupRecording: (title, artist) => lookupRecording(title, artist, mbOpts),
+        // Lyrics from Gemini Flash (free Google keys) get an editor's second pass, time permitting.
+        shouldPolish: () => choice.via === "gemini" && routing === "fast" && deadline.remaining() > 45_000,
       });
     } catch (e) {
       // Best-effort error log — never let this throw and mask the original error.
