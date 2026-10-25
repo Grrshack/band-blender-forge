@@ -1,4 +1,4 @@
-import { Timer } from "lucide-react";
+import { ChevronDown, Timer } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -49,13 +49,18 @@ export function LengthPlanner({
   const label = "font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase";
 
   return (
-    <div className="rounded-lg border border-border bg-card/50 p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <Timer className="size-3.5 text-primary" />
-        <span className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
-          Length planner
+    <details className="group rounded-lg border border-border bg-card/50">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+        <Timer className="size-3.5 shrink-0 text-primary" />
+        <span className="flex-1 text-sm">
+          <span className="font-medium">Length planner</span>
+          <span className="text-muted-foreground">
+            {structure ? " · plan active" : " · aim for a length and tempo (optional)"}
+          </span>
         </span>
-      </div>
+        <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-3 pb-3">
 
       <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
@@ -174,6 +179,7 @@ export function LengthPlanner({
         This steers the structure and line counts. Suno decides the actual length, so check the
         result and adjust.
       </p>
-    </div>
+      </div>
+    </details>
   );
 }

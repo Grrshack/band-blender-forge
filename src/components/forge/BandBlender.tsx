@@ -1,5 +1,5 @@
 import type { Json } from "@/integrations/supabase/types";
-import { Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
+import { ChevronDown, Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
@@ -287,7 +287,22 @@ export function BandBlender({
             </div>
           )}
 
-          <div className={cn("mt-5 space-y-4", lookupMode === "song" && "hidden")}>
+          {/* Sliders, genre and era fold away: most people blend first and fine-tune after. */}
+          {lookupMode === "band" ? (
+          <details className="group mt-5 rounded-lg border border-border bg-card/30">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">
+                <span className="block text-sm font-medium">Fine-tune (optional)</span>
+                <span className="block text-xs text-muted-foreground">
+                  Energy {sliders.energy} · Complexity {sliders.complexity} · Brightness {sliders.brightness}
+                  {targetGenre ? ` · ${targetGenre}` : ""}
+                  {targetEra ? ` · ${targetEra}` : ""}
+                </span>
+              </span>
+              <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="px-3 pb-3">
+          <div className="mt-2 space-y-4">
             {SLIDERS.map((s) => (
               <div key={s.key}>
                 <div className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -399,6 +414,10 @@ export function BandBlender({
             </div>
           )}
 
+            </div>
+          </details>
+          ) : null}
+
           {/* Suno version selector */}
           {lookupMode === "band" && (
             <div className="mt-5">
@@ -467,7 +486,7 @@ export function BandBlender({
                   ? "Re-analyse"
                   : "Analyse Song"
                 : result
-                  ? "Re-run With These Sliders"
+                  ? "Run Blend Again"
                   : "Run Blend"}
           </Button>
         </Panel>
@@ -477,8 +496,8 @@ export function BandBlender({
         {result ? (
           <>
             <Panel
-              title="Style Breakdown"
-              subtitle="Coherent, production-ready parameters."
+              title="Your Suno prompt"
+              subtitle="Paste these into Suno's Style and Exclude styles boxes."
               action={
                 <div className="flex flex-wrap justify-end gap-1.5">
                   <Button
@@ -518,14 +537,7 @@ export function BandBlender({
                 </div>
               }
             >
-              <ConfidenceLamp level={level} note={result.confidence?.note ?? ""} />
-              {result.grounding?.length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {result.grounding.map((g) => (
-                    <MbBadge key={g.name} info={g} showName />
-                  ))}
-                </div>
-              ) : null}
+
               {result.styleWarnings?.length ? (
                 <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-signal-mid/50 bg-signal-mid/10 px-3 py-2 text-xs">
                   <ShieldAlert className="mt-0.5 size-4 shrink-0 text-signal-mid" />
@@ -538,37 +550,9 @@ export function BandBlender({
                   </p>
                 </div>
               ) : null}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <ReadoutField label="Genre" value={result.genre ?? "—"} />
-                <ReadoutField label="Tempo" value={result.tempo ?? "—"} />
-                <ReadoutField label="Instrumentation" value={result.instrumentation ?? "—"} />
-                <ReadoutField label="Vocals" value={result.vocals ?? "—"} />
-                <ReadoutField label="Mood" value={result.mood ?? "—"} />
+              <div className="mt-1">
+                <ReadoutField label="Style prompt" value={result.styleTag ?? "—"} mono accent />
               </div>
-              <div className="mt-3">
-                <ReadoutField
-                  label="Suno Style Tag Prompt"
-                  value={result.styleTag ?? "—"}
-                  mono
-                  accent
-                />
-              </div>
-              {result.vocalPrompt ? (
-                <div className="mt-3 rounded-lg border border-border bg-card/40 p-3">
-                  <div className="mb-2.5 flex items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
-                      Vocal Prompt
-                    </span>
-                    <CopyButton value={vocalString(result.vocalPrompt)} label="Copy vocal line" />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <ReadoutField label="Voice" value={result.vocalPrompt.voice ?? "—"} />
-                    <ReadoutField label="Delivery" value={result.vocalPrompt.delivery ?? "—"} />
-                    <ReadoutField label="Harmonies" value={result.vocalPrompt.harmonies ?? "—"} />
-                    <ReadoutField label="Effects" value={result.vocalPrompt.effects ?? "—"} />
-                  </div>
-                </div>
-              ) : null}
               {result.excludeStyles ? (
                 <div className="mt-3">
                   <ReadoutField label="Exclude Styles" value={result.excludeStyles} mono />
@@ -601,6 +585,61 @@ export function BandBlender({
                   </p>
                 </div>
               ) : null}
+
+              <div className="mt-3">
+                <ConfidenceLamp level={level} note={result.confidence?.note ?? ""} />
+                {result.grounding?.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {result.grounding.map((g) => (
+                      <MbBadge key={g.name} info={g} showName />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* The breakdown and reasoning are there for anyone curious, folded by default. */}
+              <details className="group mt-3 rounded-lg border border-border">
+                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+                  <span className="flex-1 text-sm font-medium">
+                    Details: genre, tempo, instruments, vocals, mood and why it works
+                  </span>
+                  <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="space-y-3 px-3 pb-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ReadoutField label="Genre" value={result.genre ?? "—"} />
+                    <ReadoutField label="Tempo" value={result.tempo ?? "—"} />
+                    <ReadoutField label="Instrumentation" value={result.instrumentation ?? "—"} />
+                    <ReadoutField label="Vocals" value={result.vocals ?? "—"} />
+                    <ReadoutField label="Mood" value={result.mood ?? "—"} />
+                  </div>
+              {result.vocalPrompt ? (
+                <div className="rounded-lg border border-border bg-card/40 p-3">
+                  <div className="mb-2.5 flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+                      Vocal Prompt
+                    </span>
+                    <CopyButton value={vocalString(result.vocalPrompt)} label="Copy vocal line" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ReadoutField label="Voice" value={result.vocalPrompt.voice ?? "—"} />
+                    <ReadoutField label="Delivery" value={result.vocalPrompt.delivery ?? "—"} />
+                    <ReadoutField label="Harmonies" value={result.vocalPrompt.harmonies ?? "—"} />
+                    <ReadoutField label="Effects" value={result.vocalPrompt.effects ?? "—"} />
+                  </div>
+                </div>
+              ) : null}
+                  {result.reconciliation ? (
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">Why this blend works</span>
+                        <CopyButton value={result.reconciliation} size="icon" />
+                      </div>
+                      <p className="text-sm leading-relaxed text-foreground/90">{result.reconciliation}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </details>
             </Panel>
 
             {/* AudioChat — natural-language style tag refiner */}
@@ -709,72 +748,37 @@ export function BandBlender({
               />
             ) : null}
 
-            <Panel
-              title="Blend Reconciliation Logic"
-              subtitle="How the conflicting styles are fused."
-              action={<CopyButton value={result.reconciliation ?? ""} />}
-            >
-              <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
-                {result.reconciliation ?? "—"}
-              </p>
-            </Panel>
 
           </>
         ) : (
           <>
-            {/* Demo banner */}
-            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-xs text-muted-foreground">
-              <Wand className="size-3.5 shrink-0 text-primary" />
-              <span>
-                This is a demo blend —{" "}
-                <button
-                  type="button"
-                  className="text-primary underline underline-offset-2 hover:text-primary/80"
+            {/* A small, clearly labelled example instead of a full fake result. */}
+            <Panel
+              title="Example result"
+              subtitle={`What a blend gives you, from ${DEMO.join(" + ")}. Yours replaces it.`}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     onChange({ ...value, artists: DEMO });
                     void run(DEMO);
                   }}
+                  className="gap-1.5 text-xs"
                 >
-                  run {DEMO.join(" + ")}
-                </button>{" "}
-                or type your own artists above.
-              </span>
-            </div>
-            {/* Render demo result using same layout as a real result */}
-            <Panel
-              title="Style Breakdown"
-              subtitle="Demo result — run your own blend to replace this."
-              action={
-                <CopyButton
-                  value={formatForSuno(DEMO_BLEND)}
-                  label={
-                    <span className="flex items-center gap-1">
-                      <Clipboard className="size-3" /> Copy for Suno
-                    </span>
-                  }
-                  className="gap-1.5 border-border text-xs"
-                />
+                  <Wand className="size-3.5" /> Run this example
+                </Button>
               }
             >
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <ReadoutField label="Genre" value={DEMO_BLEND.genre ?? "—"} />
-                <ReadoutField label="Tempo" value={DEMO_BLEND.tempo ?? "—"} />
-                <ReadoutField label="Instrumentation" value={DEMO_BLEND.instrumentation ?? "—"} />
-                <ReadoutField label="Vocals" value={DEMO_BLEND.vocals ?? "—"} />
-                <ReadoutField label="Mood" value={DEMO_BLEND.mood ?? "—"} />
-              </div>
-              <div className="mt-3">
-                <ReadoutField label="Suno Style Tag Prompt" value={DEMO_BLEND.styleTag ?? "—"} mono accent />
-              </div>
-              {DEMO_BLEND.excludeStyles && (
-                <div className="mt-3">
+              <div className="space-y-3 opacity-80">
+                <ReadoutField label="Style prompt" value={DEMO_BLEND.styleTag ?? "—"} mono accent />
+                {DEMO_BLEND.excludeStyles ? (
                   <ReadoutField label="Exclude Styles" value={DEMO_BLEND.excludeStyles} mono />
-                </div>
-              )}
-            </Panel>
-            <Panel title="Blend Reconciliation Logic" subtitle="How the conflicting styles are fused.">
-              <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm leading-relaxed text-foreground/90">
-                {DEMO_BLEND.reconciliation}
+                ) : null}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Type up to three artists on the left and press Run Blend. You&apos;ll get a prompt like this, ready to
+                copy into Suno, plus tools to refine it.
               </p>
             </Panel>
           </>

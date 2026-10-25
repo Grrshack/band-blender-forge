@@ -1,4 +1,4 @@
-import {
+import { ChevronDown,
   AlertTriangle,
   Loader2,
   Lock,
@@ -421,71 +421,90 @@ export function LyricForge({
             onChange={(v) => set({ voice: v })}
           />
 
-          <div>
-            <span className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-              Banned words
-              {banned.length ? (
-                <span className="tracking-normal normal-case">
-                  {banned.length} blocked
-                  {bannedHits ? (
-                    <span className="text-destructive"> · {bannedHits} line(s) use them</span>
-                  ) : null}
+          {/* Extra controls fold away; the summary line says which ones are switched on. */}
+          <details className="group rounded-lg border border-border bg-card/30">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">
+                <span className="block text-sm font-medium">More options</span>
+                <span className="block text-xs text-muted-foreground">
+                  {[
+                    banned.length ? `${banned.length} banned word${banned.length === 1 ? "" : "s"}` : "Banned words",
+                    hasBlend ? "style linked" : manualStyle.trim() ? "style pasted" : "style",
+                    value.structure ? "length plan on" : "length plan",
+                    tagsOnly ? "structure only ON" : "structure only",
+                  ].join(" · ")}
                 </span>
-              ) : null}
-            </span>
-            <Input
-              value={bannedWords}
-              onChange={(e) => set({ bannedWords: e.target.value })}
-              placeholder="alone, voice, fire, neon…"
-              className="border-border bg-card/60 text-sm focus-visible:ring-primary"
-            />
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Comma-separated. The AI won't use these, and any line that does gets a BAN flag.
-            </p>
-          </div>
-
-          {hasBlend ? (
-            <div className="rounded-lg border border-border bg-card/50 p-3">
-              <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                Linked style
               </span>
-              <p className="mt-1 font-mono text-xs text-accent">{blend!.styleTag}</p>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border bg-card/30 p-3">
-              <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-                No blend linked
-              </span>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Run a Band Blend first to inherit a style automatically, or paste a Suno style
-                prompt below to use it directly.
-              </p>
-              <Textarea
-                className="mt-2 min-h-[64px] border-border bg-card/60 font-mono text-xs"
-                placeholder="Paste a Suno style prompt here, e.g. trip-hop, dark, 80bpm, orchestral samples…"
-                value={manualStyle}
-                onChange={(e) => set({ manualStyle: e.target.value })}
-              />
-            </div>
-          )}
-
-          <LengthPlanner
-            structure={value.structure ?? ""}
-            onStructure={(text) => set({ structure: text })}
-          />
-
-          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5">
+              <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="space-y-4 px-3 pb-3">
             <div>
-              <span className="block text-xs font-medium text-foreground/90">Structure only</span>
-              <span className="block text-[10px] text-muted-foreground">
-                Generate section tags and cues — I&apos;ll write the words myself.
+              <span className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                Banned words
+                {banned.length ? (
+                  <span className="tracking-normal normal-case">
+                    {banned.length} blocked
+                    {bannedHits ? (
+                      <span className="text-destructive"> · {bannedHits} line(s) use them</span>
+                    ) : null}
+                  </span>
+                ) : null}
               </span>
+              <Input
+                value={bannedWords}
+                onChange={(e) => set({ bannedWords: e.target.value })}
+                placeholder="alone, voice, fire, neon…"
+                className="border-border bg-card/60 text-sm focus-visible:ring-primary"
+              />
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Comma-separated. The AI won't use these, and any line that does gets a BAN flag.
+              </p>
             </div>
-            <Switch
-              checked={tagsOnly}
-              onCheckedChange={(v) => onChange({ ...value, tagsOnly: v })}
+
+            {hasBlend ? (
+              <div className="rounded-lg border border-border bg-card/50 p-3">
+                <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                  Linked style
+                </span>
+                <p className="mt-1 font-mono text-xs text-accent">{blend!.styleTag}</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-card/30 p-3">
+                <span className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+                  No blend linked
+                </span>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Run a Band Blend first to inherit a style automatically, or paste a Suno style
+                  prompt below to use it directly.
+                </p>
+                <Textarea
+                  className="mt-2 min-h-[64px] border-border bg-card/60 font-mono text-xs"
+                  placeholder="Paste a Suno style prompt here, e.g. trip-hop, dark, 80bpm, orchestral samples…"
+                  value={manualStyle}
+                  onChange={(e) => set({ manualStyle: e.target.value })}
+                />
+              </div>
+            )}
+
+            <LengthPlanner
+              structure={value.structure ?? ""}
+              onStructure={(text) => set({ structure: text })}
             />
-          </label>
+
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2.5">
+              <div>
+                <span className="block text-xs font-medium text-foreground/90">Structure only</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  Generate section tags and cues — I&apos;ll write the words myself.
+                </span>
+              </div>
+              <Switch
+                checked={tagsOnly}
+                onCheckedChange={(v) => onChange({ ...value, tagsOnly: v })}
+              />
+            </label>
+            </div>
+          </details>
 
           <Button
             onClick={() => void generate()}

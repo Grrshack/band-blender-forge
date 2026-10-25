@@ -731,34 +731,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
         action={<CopyButton value={settingsText} label="Copy settings" />}
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ["full", "Full-range EQ", "Whole file. Use this for a bass stem too."],
-                ["band", "Low band only", "Split at the crossover; only the lows are processed."],
-              ] as const
-            ).map(([mode, title, desc]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => patch({ mode })}
-                className={cn(
-                  "rounded-lg border p-3 text-left transition-all",
-                  params.mode === mode
-                    ? "glow-primary border-primary/60 bg-primary/10"
-                    : "border-border bg-card/50 hover:border-primary/40",
-                )}
-              >
-                <span className="block font-display text-xs font-semibold tracking-wide">
-                  {title}
-                </span>
-                <span className="mt-1 block text-[10px] leading-snug text-muted-foreground">
-                  {desc}
-                </span>
-              </button>
-            ))}
-          </div>
-
+          <StepLabel n={2} title="Pick a starting point" note="Say what you loaded, then tap a preset or let AI Suggest choose." />
           <div>
             <span className="mb-1.5 block text-xs font-medium text-foreground/90">
               What did you load?
@@ -891,6 +864,35 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
                 ) : null}
               </div>
             ) : null}
+          </div>
+
+          <StepLabel optional title="Fine-tune (optional)" note="Presets and AI Suggest already set everything below." />
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ["full", "Full-range EQ", "Whole file. Use this for a bass stem too."],
+                ["band", "Low band only", "Split at the crossover; only the lows are processed."],
+              ] as const
+            ).map(([mode, title, desc]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => patch({ mode })}
+                className={cn(
+                  "rounded-lg border p-3 text-left transition-all",
+                  params.mode === mode
+                    ? "glow-primary border-primary/60 bg-primary/10"
+                    : "border-border bg-card/50 hover:border-primary/40",
+                )}
+              >
+                <span className="block font-display text-xs font-semibold tracking-wide">
+                  {title}
+                </span>
+                <span className="mt-1 block text-[10px] leading-snug text-muted-foreground">
+                  {desc}
+                </span>
+              </button>
+            ))}
           </div>
 
           <div className="flex items-center justify-between gap-2 pt-1">
@@ -1203,13 +1205,15 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
 
       {/* ---------------- player / export ---------------- */}
       <Panel
-        title="Preview & Export"
+        title="Load, Preview & Export"
         subtitle={song ? song.name : "Drop a song or a single stem to start."}
         // On phones the upload/preview comes first, since loading a song is step one.
         className={cn("order-first lg:order-none", !song && "lg:self-start")}
       >
         <div className="space-y-4">
           {error ? <ErrorNote message={error} /> : null}
+
+          <StepLabel n={1} title={song ? "Song loaded" : "Load your song"} done={!!song} />
 
           <input
             ref={inputRef}
@@ -1361,6 +1365,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
                 the original.
               </p>
 
+              <StepLabel n={3} title="Compare, then download" note="Flip Original / Mastered above to hear the difference, then render your file." />
               <div className="grid gap-4 rounded-lg border border-border bg-card/50 p-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -1480,3 +1485,42 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
   );
 }
 
+/** A numbered step heading so the page reads as Load → Pick → Download. Labels only; no behaviour. */
+function StepLabel({
+  n,
+  title,
+  note,
+  done = false,
+  optional = false,
+}: {
+  n?: number;
+  title: string;
+  note?: string;
+  done?: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 border-t border-border pt-3 first:border-t-0 first:pt-0">
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+          optional
+            ? "border border-dashed border-border text-muted-foreground"
+            : done
+              ? "bg-signal-high/20 text-signal-high"
+              : "bg-primary/20 text-primary",
+        )}
+      >
+        {optional ? "+" : done ? "✓" : n}
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold">
+          {n ? <span className="sr-only">Step {n}: </span> : null}
+          {title}
+        </h3>
+        {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+      </div>
+    </div>
+  );
+}
