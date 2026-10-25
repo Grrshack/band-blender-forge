@@ -17,7 +17,7 @@ type ForgeCall = ReturnType<typeof useServerFn<typeof runForge>>;
  */
 export function useForge(): ForgeCall {
   const forge = useServerFn(runForge);
-  const { apiKey, builtIn, openKeyDialog, geminiNoPro, setGeminiNoPro } = useSettings();
+  const { apiKey, builtIn, openKeyDialog, geminiNoPro, setGeminiNoPro, bestLyrics } = useSettings();
 
   return useCallback(
     (async (args: Parameters<ForgeCall>[0]) => {
@@ -28,10 +28,17 @@ export function useForge(): ForgeCall {
       const task = (args as { data?: { task?: string } } | undefined)?.data?.task ?? "";
       track("ai_call", task);
       const gemini = Boolean(apiKey.trim()) && isGeminiKey(apiKey.trim());
-      const withHint =
-        gemini && geminiNoPro && args?.data
-          ? ({ ...args, data: { ...args.data, preferFast: true } } as typeof args)
-          : args;
+      const anthropic = Boolean(apiKey.trim()) && !gemini;
+      const withHint = args?.data
+        ? ({
+            ...args,
+            data: {
+              ...args.data,
+              ...(gemini && geminiNoPro ? { preferFast: true } : {}),
+              ...(anthropic && bestLyrics ? { bestLyrics: true } : {}),
+            },
+          } as typeof args)
+        : args;
       // A timeout (the host's "error code: 524") or dropped connection is retried once
       // automatically, asking for the faster model, before the person sees an error.
       const attempt = async () => {
@@ -69,6 +76,6 @@ export function useForge(): ForgeCall {
         throw e;
       }
     }) as ForgeCall,
-    [forge, apiKey, builtIn, openKeyDialog, geminiNoPro, setGeminiNoPro],
+    [forge, apiKey, builtIn, openKeyDialog, geminiNoPro, setGeminiNoPro, bestLyrics],
   );
 }

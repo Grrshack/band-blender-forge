@@ -31,6 +31,9 @@ type Settings = {
   /** True once Google has said this key can't use Gemini Pro (free tier); later calls use Flash. */
   geminiNoPro: boolean;
   setGeminiNoPro: (v: boolean) => void;
+  /** Opt-in: Anthropic keys write lyrics with Claude's top model (costs more per song). */
+  bestLyrics: boolean;
+  setBestLyrics: (v: boolean) => void;
   openKeyDialog: () => void;
   setKeyDialogOpen: (v: boolean) => void;
 };
@@ -40,6 +43,7 @@ const SettingsContext = createContext<Settings | null>(null);
 const KEY_STORE = "blf.anthropic.key";
 const ROUTE_STORE = "blf.routing";
 const REMEMBER_STORE = "blf.key.remember";
+const BEST_LYRICS_STORE = "blf.bestLyrics";
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [apiKey, setApiKey] = useState("");
@@ -48,6 +52,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [builtIn, setBuiltIn] = useState(false);
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const [geminiNoPro, setGeminiNoPro] = useState(false);
+  const [bestLyrics, setBestLyricsState] = useState(false);
+  const setBestLyrics = useCallback((v: boolean) => {
+    setBestLyricsState(v);
+    try {
+      localStorage.setItem(BEST_LYRICS_STORE, v ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
   // A different key may have different access, so forget what we learned about the last one.
   useEffect(() => setGeminiNoPro(false), [apiKey]);
   const [loaded, setLoaded] = useState(false);
@@ -61,6 +74,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (k) setApiKey(k);
       const r = sessionStorage.getItem(ROUTE_STORE);
       if (r === "fast" || r === "craft") setRouting(r);
+      setBestLyricsState(localStorage.getItem(BEST_LYRICS_STORE) === "1");
     } catch {
       /* storage unavailable */
     }
@@ -118,10 +132,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       keyDialogOpen,
       geminiNoPro,
       setGeminiNoPro,
+      bestLyrics,
+      setBestLyrics,
       openKeyDialog,
       setKeyDialogOpen,
     }),
-    [apiKey, routing, remember, builtIn, aiReady, loaded, keyDialogOpen, geminiNoPro, openKeyDialog],
+    [apiKey, routing, remember, builtIn, aiReady, loaded, keyDialogOpen, geminiNoPro, bestLyrics, setBestLyrics, openKeyDialog],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

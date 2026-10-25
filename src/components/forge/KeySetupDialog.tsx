@@ -36,6 +36,53 @@ type Check =
 
 const GOOGLE_KEY_URL = "https://aistudio.google.com/apikey";
 const ANTHROPIC_KEY_URL = "https://console.anthropic.com/settings/keys";
+const ANTHROPIC_BILLING_URL = "https://console.anthropic.com/settings/billing";
+
+type KeyKind = "free" | "paid" | "anthropic";
+
+/** The three ways to turn the AI on, shown as a picker so people can see their options. */
+const KEY_KINDS: Array<{ value: KeyKind; label: string; tag: string; blurb: string }> = [
+  {
+    value: "free",
+    label: "Free Google key",
+    tag: "Free · 2 min",
+    blurb: "Best place to start. Uses Gemini Flash; lyrics get an extra editing pass to make up for it.",
+  },
+  {
+    value: "paid",
+    label: "Google with billing",
+    tag: "Pay per use",
+    blurb: "Same key, with billing turned on. Unlocks Gemini Pro for stronger lyrics, and Google doesn't use your prompts to improve its products.",
+  },
+  {
+    value: "anthropic",
+    label: "Anthropic (Claude)",
+    tag: "Pay per use",
+    blurb: "Claude writes the lyrics. Prepaid credits from Anthropic; a Claude chat subscription doesn't include this.",
+  },
+];
+
+function Step({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">{n}</span>
+      <span className="flex-1">{children}</span>
+    </li>
+  );
+}
+
+function OpenLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+    >
+      {children} <ExternalLink className="size-3.5" />
+    </a>
+  );
+}
 
 /** Names the two models behind the speed switch for the key the person has. */
 function modelNames(key: string): string {
@@ -60,7 +107,10 @@ export function KeySetupDialog() {
     builtIn,
     routing,
     setRouting,
+    bestLyrics,
+    setBestLyrics,
   } = useSettings();
+  const [kind, setKind] = useState<KeyKind>("free");
   const test = useServerFn(testApiKey);
   const [draft, setDraft] = useState(apiKey);
   const [reveal, setReveal] = useState(false);
@@ -70,8 +120,11 @@ export function KeySetupDialog() {
     if (keyDialogOpen) {
       setDraft(apiKey);
       setCheck({ state: "idle" });
+      // Open on the kind of key they already have, if any.
+      if (apiKey.trim()) setKind(providerLabel(apiKey) === "Google Gemini" ? "free" : "anthropic");
     }
   }, [keyDialogOpen, apiKey]);
+  const isAnthropicKey = Boolean((draft.trim() || apiKey).trim()) && providerLabel(draft.trim() || apiKey) !== "Google Gemini";
 
   const trimmed = draft.trim();
 
@@ -141,46 +194,105 @@ export function KeySetupDialog() {
             </Button>
           </section>
         ) : (
-          <section className="rounded-xl border border-primary/40 bg-primary/5 p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">Get a free Google key</h3>
-              <span className="rounded-full border border-signal-high/40 px-2 py-0.5 text-xs text-signal-high">
-                Free · 2 minutes
-              </span>
-            </div>
-            <ol className="space-y-3 text-sm leading-relaxed text-foreground/90">
-              <li className="flex gap-3">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">1</span>
-                <span className="flex-1">
-                  <a
-                    href={GOOGLE_KEY_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+          <section className="space-y-3">
+            {/* Which key: free is the default, the paid options are one tap away with their own steps. */}
+            <div role="radiogroup" aria-label="Which kind of key" className="grid gap-2 sm:grid-cols-3">
+              {KEY_KINDS.map((k) => (
+                <button
+                  key={k.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={kind === k.value}
+                  onClick={() => setKind(k.value)}
+                  className={cn(
+                    "rounded-lg border p-2.5 text-left transition-colors",
+                    kind === k.value ? "border-primary/60 bg-primary/10" : "border-border hover:border-primary/40",
+                  )}
+                >
+                  <span className="block text-sm font-medium">{k.label}</span>
+                  <span
+                    className={cn(
+                      "mt-1 inline-block rounded-full border px-1.5 text-[11px]",
+                      k.value === "free" ? "border-signal-high/40 text-signal-high" : "border-border text-muted-foreground",
+                    )}
                   >
-                    Open Google AI Studio <ExternalLink className="size-3.5" />
-                  </a>
-                  <span className="mt-1 block text-xs text-muted-foreground">Sign in with any Google account. It opens in a new tab.</span>
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">2</span>
-                <span className="flex-1">
-                  Press <span className="font-medium">Create API key</span>. If it asks about a project, let it make one.
-                  Then press <span className="font-medium">Copy</span>.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold">3</span>
-                <span className="flex-1">
-                  Come back here and press{" "}
-                  <Button size="sm" variant="outline" onClick={() => void pasteAndTest()} className="mx-1 h-8 gap-1.5">
+                    {k.tag}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">{KEY_KINDS.find((k) => k.value === kind)!.blurb}</p>
+
+            <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">
+              {kind === "free" ? (
+                <ol className="space-y-3 text-sm leading-relaxed text-foreground/90">
+                  <Step n={1}>
+                    <OpenLink href={GOOGLE_KEY_URL}>Open Google AI Studio</OpenLink>
+                    <span className="mt-1 block text-xs text-muted-foreground">Sign in with any Google account. It opens in a new tab.</span>
+                  </Step>
+                  <Step n={2}>
+                    Press <span className="font-medium">Create API key</span>. If it asks about a project, let it make one.
+                    Then press <span className="font-medium">Copy</span>.
+                  </Step>
+                  <Step n={3}>
+                    Come back here and press{" "}
+                    <Button size="sm" variant="outline" onClick={() => void pasteAndTest()} className="mx-1 h-8 gap-1.5">
                     <ClipboardPaste className="size-3.5" /> Paste &amp; check
                   </Button>
-                  <span className="mt-1 block text-xs text-muted-foreground">Or paste it into the box below.</span>
-                </span>
-              </li>
-            </ol>
+                    <span className="mt-1 block text-xs text-muted-foreground">Or paste it into the box below.</span>
+                  </Step>
+                </ol>
+              ) : kind === "paid" ? (
+                <ol className="space-y-3 text-sm leading-relaxed text-foreground/90">
+                  <Step n={1}>
+                    Get a key exactly like the free one:{" "}
+                    <OpenLink href={GOOGLE_KEY_URL}>Open Google AI Studio</OpenLink>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Already pasted a free key here? Keep it: billing is turned on for the same key.
+                    </span>
+                  </Step>
+                  <Step n={2}>
+                    On the API keys page, find your key&apos;s project and press{" "}
+                    <span className="font-medium">Set up billing</span>. Add a card in Google Cloud. Google bills per use,
+                    usually a few cents for a set of lyrics.
+                  </Step>
+                  <Step n={3}>
+                    Paste the key here and press <Button size="sm" variant="outline" onClick={() => void pasteAndTest()} className="mx-1 h-8 gap-1.5">
+                    <ClipboardPaste className="size-3.5" /> Paste &amp; check
+                  </Button>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Gemini Pro switches on by itself. If billing isn&apos;t active yet, the app keeps using Flash and tells
+                      you.
+                    </span>
+                  </Step>
+                </ol>
+              ) : (
+                <ol className="space-y-3 text-sm leading-relaxed text-foreground/90">
+                  <Step n={1}>
+                    <OpenLink href={ANTHROPIC_BILLING_URL}>Open the Anthropic Console</OpenLink>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Sign up, then add credits under Billing. Credits are prepaid; you choose the amount.
+                    </span>
+                  </Step>
+                  <Step n={2}>
+                    Go to{" "}
+                    <a href={ANTHROPIC_KEY_URL} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+                      API keys
+                    </a>
+                    , press <span className="font-medium">Create key</span>, and copy it. It starts with{" "}
+                    <span className="font-mono text-xs">sk-ant-</span>.
+                  </Step>
+                  <Step n={3}>
+                    Paste it here and press <Button size="sm" variant="outline" onClick={() => void pasteAndTest()} className="mx-1 h-8 gap-1.5">
+                    <ClipboardPaste className="size-3.5" /> Paste &amp; check
+                  </Button>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      Lyrics use Claude Sonnet. Turn on &quot;Best lyrics&quot; under More options for Claude&apos;s top model.
+                    </span>
+                  </Step>
+                </ol>
+              )}
+            </div>
           </section>
         )}
 
@@ -285,6 +397,24 @@ export function KeySetupDialog() {
           </span>
         </div>
 
+        {/* Best lyrics: Anthropic keys only, opt-in because it costs more. */}
+        <div className={cn("flex items-start gap-3 rounded-lg border border-border p-3", !isAnthropicKey && "opacity-60")}>
+          <Switch
+            checked={bestLyrics && isAnthropicKey}
+            onCheckedChange={setBestLyrics}
+            disabled={!isAnthropicKey}
+            className="mt-0.5"
+          />
+          <span className="text-sm leading-snug">
+            Best lyrics (Claude Opus)
+            <span className="block text-xs text-muted-foreground">
+              {isAnthropicKey
+                ? "Writes and rewrites lyrics with Claude's top model instead of Sonnet. About twice the cost per song (still a few cents). If Opus is busy, it falls back to Sonnet."
+                : "Needs an Anthropic key. Google keys use Gemini Pro (with billing) or Flash plus an editing pass."}
+            </span>
+          </span>
+        </div>
+
         {/* Privacy */}
         <div className="flex gap-2.5 rounded-lg border border-border bg-card/50 p-3 text-xs leading-relaxed text-muted-foreground">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-signal-high" />
@@ -302,19 +432,6 @@ export function KeySetupDialog() {
           </div>
         </div>
 
-        {/* Option 2: Anthropic (paid) */}
-        <p className="text-sm text-muted-foreground">
-          Already pay for Claude? An{" "}
-          <a
-            href={ANTHROPIC_KEY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline underline-offset-2"
-          >
-            Anthropic API key
-          </a>{" "}
-          works too (billed by Anthropic per use).
-        </p>
           </div>
         </details>
 
