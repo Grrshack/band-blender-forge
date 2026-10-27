@@ -2,12 +2,15 @@ import { ArrowRight, CheckCircle2, FileAudio, Loader2, Scale, Trash2 } from "luc
 import { useMemo, useState } from "react";
 
 import { ErrorNote, Panel } from "./Field";
+import { SaveToTake } from "./SaveToTake";
 import { SongDrop } from "./SongMeasurements";
+import type { ForgeState } from "./types";
 import { Button } from "@/components/ui/button";
 import { confirmLargeAudio } from "@/lib/audio/large-file";
 import { formatTime } from "@/lib/audio/song-analysis";
 import { compareSongs, measureForCompare, type CompareMeasure, type CompareRow, type FixTool } from "@/lib/audio/song-compare";
 import { decodeAudioFile } from "@/lib/audio/take-diagnosis";
+import { attachCheck } from "@/lib/takes";
 import { cn } from "@/lib/utils";
 
 const tick = () => new Promise((r) => setTimeout(r, 30));
@@ -158,7 +161,15 @@ const STATUS: Record<CompareRow["status"], { label: string; cls: string }> = {
   info: { label: "Info", cls: "border-border text-muted-foreground" },
 };
 
-export function SongCompare({ onGoTab }: { onGoTab: (tab: string) => void }) {
+export function SongCompare({
+  onGoTab,
+  state,
+  patch,
+}: {
+  onGoTab: (tab: string) => void;
+  state?: ForgeState;
+  patch?: <K extends keyof ForgeState>(key: K, value: ForgeState[K]) => void;
+}) {
   const yours = useCompareSlot();
   const theirs = useCompareSlot();
   const result = useMemo(
@@ -274,6 +285,28 @@ export function SongCompare({ onGoTab }: { onGoTab: (tab: string) => void }) {
               Sections come from changes in loudness, so the &quot;first big lift&quot; is where the energy jumps, which is
               usually the chorus or drop but not always the hook itself.
             </p>
+
+            {state && patch ? (
+              <div className="mt-4">
+                <SaveToTake
+                  what="Compare Songs"
+                  takes={state.takes}
+                  style={state.blend.result?.styleTag ?? ""}
+                  exclude={state.blend.result?.excludeStyles ?? ""}
+                  onSave={(takes, id) =>
+                    patch(
+                      "takes",
+                      attachCheck(takes, id, "compare", {
+                        at: new Date().toISOString(),
+                        matchPct: result.matchPct,
+                        reference: theirs.name,
+                        differs: result.rows.filter((r) => r.status === "differs").map((r) => r.label),
+                      }),
+                    )
+                  }
+                />
+              </div>
+            ) : null}
           </Panel>
         </>
       ) : yours.busy || theirs.busy ? (

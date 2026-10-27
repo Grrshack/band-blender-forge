@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { Panel } from "./Field";
+import { SendToSuno } from "./SendToSuno";
 import { ShareExport } from "./ShareExport";
 import { SoundProfiles } from "./SoundProfiles";
 import { StyleVariants } from "./StyleVariants";
@@ -166,6 +167,9 @@ export function SunoSheet({
       action={
         <div className="flex flex-wrap justify-end gap-1.5">
           <CopyButton value={everything} label="Copy all" />
+          {engine === "suno" ? (
+            <SendToSuno payload={{ title: lyrics.title, style, exclude, lyrics: lyricText }} />
+          ) : null}
           <Button
             asChild
             variant="outline"

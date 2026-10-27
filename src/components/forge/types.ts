@@ -181,6 +181,25 @@ export type CritiqueSlice = {
   result: CritiqueResult | null;
 };
 
+/** How much AI was involved in one part of a release, for distributors' disclosure questions. */
+export type AiLevel = "none" | "assisted" | "mostly" | "all";
+
+/** Release prep for this song. Text only; the cover image itself stays on the device. */
+export type ReleaseSlice = {
+  /** Synced lyrics (LRC) from the latest lyric check. */
+  lrc?: string;
+  lrcAt?: string;
+  disclosure?: { lyrics?: AiLevel; music?: AiLevel; vocals?: AiLevel; artwork?: AiLevel };
+  /** Manual checklist ticks, by item id. */
+  ticks?: Record<string, boolean>;
+  /** Set when a cover was exported from the Cover Maker. */
+  cover?: { at: string; size: number; title: string; artist: string };
+  /** Set when a master was rendered and downloaded. */
+  masteredAt?: string;
+  /** Artist name used on the cover and release. */
+  artist?: string;
+};
+
 export type ForgeState = {
   blend: BlendSlice;
   lyrics: LyricSlice;
@@ -192,6 +211,8 @@ export type ForgeState = {
   takes: Take[];
   /** Release dossiers — most recent first, capped at 3. */
   dossiers: DossierResult[];
+  /** Release prep (checklist, disclosure, cover, synced lyrics). */
+  release?: ReleaseSlice;
 };
 
 export const emptyState = (): ForgeState => ({
@@ -265,6 +286,7 @@ export function mergeState(raw: unknown): ForgeState {
     fix: { ...base.fix, ...(s["fix"] && typeof s["fix"] === "object" ? s["fix"] : {}) },
     master: { ...base.master, ...master },
     takes: Array.isArray(s["takes"]) ? s["takes"] : base.takes,
+    ...(s["release"] && typeof s["release"] === "object" ? { release: s["release"] as ReleaseSlice } : {}),
     // Accept the new array shape or silently migrate a legacy single-dossier save.
     dossiers: Array.isArray(s["dossiers"])
       ? (s["dossiers"] as DossierResult[])

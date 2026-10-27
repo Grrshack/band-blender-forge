@@ -86,7 +86,14 @@ type Audio = {
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 30)); // let React paint between heavy steps
 
-export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
+export function MasteringLab({
+  onOpenFix,
+  onExported,
+}: {
+  onOpenFix?: () => void;
+  /** Lets the song page mark this song as mastered. Mastering itself is unchanged. */
+  onExported?: () => void;
+} = {}) {
   const [song, setSong] = useState<Song | null>(null);
   const [params, setParams] = useState<MasterParams>(DEFAULT_PARAMS);
   const [target, setTarget] = useState<string>("off");
@@ -579,6 +586,7 @@ export function MasteringLab({ onOpenFix }: { onOpenFix?: () => void } = {}) {
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
       setResult({ lufs: m.lufs, truePeakDb: linToDb(truePeak), makeupDb, bits: bitDepth, file });
+      onExported?.();
       if (autoClear) clearSong();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");

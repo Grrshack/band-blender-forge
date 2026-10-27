@@ -3,8 +3,14 @@ import {
   BarChart2,
   BookMarked,
   BookOpen,
+  ClipboardCheck,
+  Clapperboard,
+  Disc3,
+  Image,
+  LayoutDashboard,
   ChevronDown,
   MessageSquarePlus,
+  MicVocal,
   MoreHorizontal,
   Bot,
   Gauge,
@@ -32,6 +38,17 @@ type Group = { stage: string; tabs: TabDef[] };
 
 /** Tabs grouped by where the person is in making a song. */
 export const TAB_GROUPS: Group[] = [
+  {
+    stage: "Song",
+    tabs: [
+      {
+        value: "song",
+        label: "This Song",
+        icon: LayoutDashboard,
+        hint: "How far along this song is, its takes and checks, and the next step",
+      },
+    ],
+  },
   {
     stage: "Create",
     tabs: [
@@ -76,6 +93,13 @@ export const TAB_GROUPS: Group[] = [
     stage: "Fix",
     tabs: [
       {
+        value: "lyriccheck",
+        label: "Lyric Check",
+        icon: MicVocal,
+        hint: "Did Suno sing your lyrics? Finds skipped and changed lines, with times",
+        badge: "new",
+      },
+      {
         value: "fix",
         label: "Fix a Track",
         icon: Stethoscope,
@@ -106,16 +130,34 @@ export const TAB_GROUPS: Group[] = [
     stage: "Release",
     tabs: [
       {
+        value: "releasecheck",
+        label: "Release Check",
+        icon: ClipboardCheck,
+        hint: "Before you upload: AI disclosure answers, rules that get songs pulled, and what's left to do",
+      },
+      {
+        value: "cover",
+        label: "Cover Maker",
+        icon: Image,
+        hint: "A 3000×3000 cover with your title on it, and prompts for art that doesn't look like AI",
+      },
+      {
+        value: "album",
+        label: "Album Planner",
+        icon: Disc3,
+        hint: "Plan an EP or album: track order, one shared sound, running time",
+      },
+      {
+        value: "promo",
+        label: "Promo Clips",
+        icon: Clapperboard,
+        hint: "Find the best 15 or 30 seconds and make a vertical lyric clip",
+      },
+      {
         value: "dossier",
         label: "Release Kit",
         icon: Rocket,
-        hint: "Cover art prompt, metadata, social copy and a release checklist",
-      },
-      {
-        value: "library",
-        label: "Prompt Library",
-        icon: BookMarked,
-        hint: "Your saved prompts and the community's",
+        hint: "Title ideas, metadata, social copy and a playlist pitch",
       },
     ],
   },
@@ -128,6 +170,12 @@ export const TAB_GROUPS: Group[] = [
         label: "Genre Guides",
         icon: Map,
         hint: "Genre presets with ready-to-use style tags and BPM ranges",
+      },
+      {
+        value: "library",
+        label: "Prompt Library",
+        icon: BookMarked,
+        hint: "Your saved prompts and the community's",
       },
       {
         value: "compare",
