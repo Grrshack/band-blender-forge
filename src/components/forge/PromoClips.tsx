@@ -96,19 +96,45 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
     audioRef.current = null;
     setPlaying(false);
   };
-  const play = () => {
+  const playRange = (s: number, e: number) => {
     if (!song) return;
-    if (playing) return stop();
+    stop();
     const ctx = new AudioContext();
     const src = ctx.createBufferSource();
     src.buffer = song.buffer;
     src.connect(ctx.destination);
-    src.onended = () => setPlaying(false);
-    src.start(0, start, end - start);
+    // Only the clip that's still current may mark playback as finished.
+    src.onended = () => {
+      if (audioRef.current?.src !== src) return;
+      audioRef.current = null;
+      setPlaying(false);
+      void ctx.close();
+    };
+    src.start(0, s, e - s);
     audioRef.current = { ctx, src };
     setPlaying(true);
   };
+  const play = () => (playing ? stop() : playRange(start, end));
   useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Picking a moment plays it, and moving the clip while it plays restarts it at the new spot.
+  const autoPlay = useRef(false);
+  useEffect(() => {
+    if (autoPlay.current || audioRef.current) {
+      autoPlay.current = false;
+      playRange(start, end);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start, end]);
+  const choose = (i: number) => {
+    if (i === pick && nudge === 0) {
+      playRange(start, end);
+      return;
+    }
+    autoPlay.current = true;
+    setPick(i);
+    setNudge(0);
+  };
 
   const base = `${(title || song?.name.replace(/\.[^.]+$/, "") || "clip").replace(/[^\w\- ]+/g, "").trim()}-${length}s`;
 
@@ -181,7 +207,7 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
 
       {song && chosen ? (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
-          <Panel title="1. Pick the moment" subtitle="Clips start one bar before a big section, so the lift lands inside the clip.">
+          <Panel title="1. Pick the moment" subtitle="Tap a moment to hear it. Clips start one bar before a big section, so the lift lands inside the clip.">
             <div className="mb-3 flex gap-1.5">
               {([15, 30] as const).map((n) => (
                 <button key={n} type="button" onClick={() => { setLength(n); setPick(0); setNudge(0); }} className={cn("rounded-lg border px-3 py-1.5 text-sm", length === n ? "border-primary/60 bg-primary/10 text-primary" : "border-border")}>
@@ -194,7 +220,7 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
                 <li key={p.start}>
                   <button
                     type="button"
-                    onClick={() => { setPick(i); setNudge(0); }}
+                    onClick={() => choose(i)}
                     className={cn("w-full rounded-lg border p-3 text-left", i === pick ? "border-primary/60 bg-primary/10" : "border-border hover:border-primary/40")}
                   >
                     <span className="flex justify-between gap-2 text-sm">
