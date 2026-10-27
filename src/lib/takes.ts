@@ -15,7 +15,30 @@ export type Take = {
   sunoUrl?: string;
   /** True once the person spent one of their limited Suno downloads on this take. */
   downloaded?: boolean;
+  /** Results of checks run on this take (text and numbers only; audio is never stored). */
+  checks?: TakeChecks;
 };
+
+export type TakeChecks = {
+  /** "Did Suno sing my lyrics?" */
+  lyric?: {
+    at: string;
+    accuracyPct: number;
+    issues: Array<{ time: number | null; line: string; heard: string; status: "changed" | "missing" }>;
+  };
+  /** Compare Songs against a reference. */
+  compare?: { at: string; matchPct: number; reference: string; differs: string[] };
+};
+
+/** Adds or replaces one kind of check on one take, leaving the others alone. */
+export function attachCheck<K extends keyof TakeChecks>(
+  takes: Take[],
+  takeId: string,
+  kind: K,
+  value: TakeChecks[K],
+): Take[] {
+  return takes.map((t) => (t.id === takeId ? { ...t, checks: { ...t.checks, [kind]: value } } : t));
+}
 
 /** Only links to suno.com are accepted, so shared recipes can't point anywhere else. */
 export function isSunoUrl(raw: string): boolean {
