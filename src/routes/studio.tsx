@@ -35,6 +35,12 @@ import { LYRIC_QUICK_SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
 import { TakeCheck } from "@/components/forge/TakeCheck";
 import { SongAnalyzer } from "@/components/forge/SongAnalyzer";
 import { SongCompare } from "@/components/forge/SongCompare";
+import { LyricCheck } from "@/components/forge/LyricCheck";
+import { SongHub } from "@/components/forge/SongHub";
+import { ReleaseCheck } from "@/components/forge/ReleaseCheck";
+import { CoverMaker } from "@/components/forge/CoverMaker";
+import { AlbumPlanner } from "@/components/forge/AlbumPlanner";
+import { PromoClips } from "@/components/forge/PromoClips";
 import { TesterWelcome } from "@/components/forge/TesterWelcome";
 import { HANDOFF_KEYS, readHandoff, type ParsedHandoff } from "@/lib/handoff";
 
@@ -85,6 +91,16 @@ function Index() {
     if (handoffRef.current === undefined) handoffRef.current = readHandoff(window.location.search);
     return handoffRef.current;
   };
+
+  // Other parts of the studio (the progress strip) can ask to open a tool.
+  useEffect(() => {
+    const open = (e: Event) => {
+      const t = (e as CustomEvent<string>).detail;
+      if (ALL_TAB_VALUES.includes(t)) setTab(t);
+    };
+    window.addEventListener("bb:open-tab", open);
+    return () => window.removeEventListener("bb:open-tab", open);
+  }, [setTab]);
 
   // A ?tab= link opens that tool; otherwise everyone lands on "Start here".
   useEffect(() => {
@@ -442,8 +458,21 @@ function Index() {
                       lyrics={state.lyrics}
                     />
                   )}
-                  {tab === "master" && <MasteringLab onOpenFix={() => setTab("fix")} />}
-                  {tab === "songcompare" && <SongCompare onGoTab={setTab} />}
+                  {tab === "master" && (
+                    <MasteringLab
+                      onOpenFix={() => setTab("fix")}
+                      onExported={() =>
+                        setState((prev) => ({ ...prev, release: { ...prev.release, masteredAt: new Date().toISOString() } }))
+                      }
+                    />
+                  )}
+                  {tab === "songcompare" && <SongCompare onGoTab={setTab} state={state} patch={patch} />}
+                  {tab === "lyriccheck" && <LyricCheck state={state} patch={patch} onGoTab={setTab} />}
+                  {tab === "song" && <SongHub state={state} onGoTab={setTab} />}
+                  {tab === "releasecheck" && <ReleaseCheck state={state} patch={patch} onGoTab={setTab} />}
+                  {tab === "cover" && <CoverMaker state={state} patch={patch} />}
+                  {tab === "album" && <AlbumPlanner state={state} onGoTab={setTab} />}
+                  {tab === "promo" && <PromoClips state={state} onGoTab={setTab} />}
                   {tab === "library" && <PromptLibrary onApply={applyPreset} />}
                   {tab === "analyze" && (
                     <SongAnalyzer
