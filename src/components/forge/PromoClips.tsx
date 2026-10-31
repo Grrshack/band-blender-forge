@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ErrorNote, Panel } from "./Field";
 import { SongDrop } from "./SongMeasurements";
+import { SpotifyCanvasPanel } from "./SpotifyCanvasPanel";
 import type { ForgeState } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,7 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
   };
 
   const base = `${(title || song?.name.replace(/\.[^.]+$/, "") || "clip").replace(/[^\w\- ]+/g, "").trim()}-${length}s`;
+  const canvasBase = (title || song?.name.replace(/\.[^.]+$/, "") || "song").replace(/[^\w\- ]+/g, "").trim() || "song";
 
   const exportAudio = async (kind: "mp3" | "wav") => {
     if (!song) return;
@@ -203,6 +205,7 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
         )}
         <p className="mt-2 text-xs text-muted-foreground">Use your mastered keeper, so the clip sounds like the release.</p>
         {error ? <div className="mt-3"><ErrorNote message={error} /></div> : null}
+        <input ref={coverInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void loadImage(URL.createObjectURL(f)).then(setCover); e.target.value = ""; }} />
       </Panel>
 
       {song && chosen ? (
@@ -258,7 +261,6 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
               <Input value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist" aria-label="Artist" />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <input ref={coverInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void loadImage(URL.createObjectURL(f)).then(setCover); e.target.value = ""; }} />
               <Button size="sm" variant="outline" onClick={() => coverInput.current?.click()} className="gap-1.5 text-xs">
                 <ImagePlus className="size-3.5" /> {cover ? "Change cover" : "Add cover"}
               </Button>
@@ -293,6 +295,15 @@ export function PromoClips({ state, onGoTab }: { state: ForgeState; onGoTab: (ta
           </div>
         </div>
       ) : null}
+
+      <SpotifyCanvasPanel
+        cover={cover}
+        bpm={song?.analysis.bpm ?? null}
+        baseName={canvasBase}
+        onPickCover={() => coverInput.current?.click()}
+        onMakeCover={() => onGoTab("cover")}
+        onSave={save}
+      />
     </div>
   );
 }

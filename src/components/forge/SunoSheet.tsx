@@ -3,7 +3,8 @@ import { useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { Panel } from "./Field";
-import { SendToSuno } from "./SendToSuno";
+import { SendToChat } from "./SendToChat";
+import { SendToEngine, SendToSuno } from "./SendToSuno";
 import { ShareExport } from "./ShareExport";
 import { SoundProfiles } from "./SoundProfiles";
 import { StyleVariants } from "./StyleVariants";
@@ -175,6 +176,21 @@ export function SunoSheet({
     leaks.length > 0 && "artist names in the style fields",
   ].filter(Boolean) as string[];
 
+  const engineFields =
+    engine === "suno"
+      ? []
+      : buildEngineExport(engine, {
+          title: lyrics.title,
+          style,
+          exclude,
+          vocal,
+          genre: result?.genre,
+          tempo: result?.tempo,
+          mood: result?.mood,
+          instrumentation: result?.instrumentation,
+          lyrics: lyricText,
+        });
+
   const everything = [
     `TITLE\n${lyrics.title}`,
     `STYLE\n${style}`,
@@ -192,8 +208,13 @@ export function SunoSheet({
         <div className="flex flex-wrap justify-end gap-1.5">
           <CopyButton value={everything} label="Copy all" />
           {engine === "suno" ? (
-            <SendToSuno payload={{ title: lyrics.title, style, exclude, lyrics: lyricText }} />
-          ) : null}
+            <>
+              <SendToSuno payload={{ title: lyrics.title, style, exclude, lyrics: lyricText, artists: names }} />
+              <SendToChat song={{ title: lyrics.title, style, exclude, lyrics: lyricText }} disabled={!style.trim()} />
+            </>
+          ) : (
+            <SendToEngine engine={engine} fields={engineFields.map((f) => ({ label: f.label, value: f.value, main: f.label.startsWith("Prompt") }))} />
+          )}
           <Button
             asChild
             variant="outline"
@@ -249,17 +270,7 @@ export function SunoSheet({
                 Switch to Suno v6 and press "Remove them".
               </p>
             ) : null}
-            {buildEngineExport(engine, {
-              title: lyrics.title,
-              style,
-              exclude,
-              vocal,
-              genre: result?.genre,
-              tempo: result?.tempo,
-              mood: result?.mood,
-              instrumentation: result?.instrumentation,
-              lyrics: lyricText,
-            }).map((f) => (
+            {engineFields.map((f) => (
               <SunoBox
                 key={f.label}
                 label={f.label}

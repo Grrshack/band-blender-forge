@@ -613,6 +613,9 @@ export function MasteringLab({
       : "Sub scoop: off",
     `Low-mid cut @ 250 Hz: ${fmtDb(params.lowMidCutDb)}`,
     `Air shelf @ 10 kHz: ${fmtDb(params.airDb)}`,
+    `Body @ 800 Hz: ${fmtDb(params.midDb ?? 0)}`,
+    `Presence @ 3 kHz: ${fmtDb(params.presenceDb ?? 0)}`,
+    `Hiss tamer: ${(params.deHiss ?? 0) > 0 ? `${Math.round((params.deHiss ?? 0) * 100)}%` : "off"}`,
     `Glue compression: ${Math.round(params.glue * 100)}%`,
     `Limiter ceiling: ${params.ceilingDb.toFixed(1)} dBFS`,
   ]
@@ -708,9 +711,10 @@ export function MasteringLab({
       active: params.subCompAmount > 0 || params.subScoopDb < 0,
     },
     finish: {
-      summary: `Rumble cut ${params.subCutHz ? `${params.subCutHz} Hz` : "off"} · mud ${fmtDb(params.lowMidCutDb)} · air ${fmtDb(params.airDb)} · glue ${pct(params.glue)} · ceiling ${params.ceilingDb.toFixed(1)} dBFS`,
+      summary: `Rumble cut ${params.subCutHz ? `${params.subCutHz} Hz` : "off"} · mud ${fmtDb(params.lowMidCutDb)} · air ${fmtDb(params.airDb)}${(params.presenceDb ?? 0) !== 0 ? ` · presence ${fmtDb(params.presenceDb ?? 0)}` : ""}${(params.deHiss ?? 0) > 0 ? ` · hiss tamer ${pct(params.deHiss ?? 0)}` : ""} · glue ${pct(params.glue)} · ceiling ${params.ceilingDb.toFixed(1)} dBFS`,
       active:
-        params.subCutHz > 0 || params.lowMidCutDb < 0 || params.airDb > 0 || params.glue > 0,
+        params.subCutHz > 0 || params.lowMidCutDb < 0 || params.airDb > 0 || params.glue > 0 ||
+        (params.midDb ?? 0) !== 0 || (params.presenceDb ?? 0) !== 0 || (params.deHiss ?? 0) > 0,
     },
   };
   const groupProps = (id: GroupId) => ({
@@ -1188,6 +1192,38 @@ export function MasteringLab({
               disabled={noSong}
             />
             <ParamSlider
+              label="Body @ 800 Hz"
+              value={params.midDb ?? 0}
+              min={-4}
+              max={4}
+              step={0.5}
+              format={fmtDb}
+              onChange={(v) => patch({ midDb: v })}
+              disabled={noSong}
+            />
+            <ParamSlider
+              label="Presence @ 3 kHz"
+              value={params.presenceDb ?? 0}
+              min={-4}
+              max={4}
+              step={0.5}
+              format={fmtDb}
+              onChange={(v) => patch({ presenceDb: v })}
+              disabled={noSong}
+              hint="Where vocals cut through. A little goes a long way."
+            />
+            <ParamSlider
+              label="Hiss & shimmer tamer"
+              value={params.deHiss ?? 0}
+              min={0}
+              max={1}
+              step={0.05}
+              format={(v) => (v === 0 ? "Off" : `${Math.round(v * 100)}%`)}
+              onChange={(v) => patch({ deHiss: v })}
+              disabled={noSong}
+              hint="Holds down the noisy top end (above 7 kHz) only when it flares up. Start around 30–50%."
+            />
+            <ParamSlider
               label="Glue compression"
               value={params.glue}
               min={0}
@@ -1389,6 +1425,9 @@ export function MasteringLab({
                       <SelectItem value="-14">−14 LUFS (streaming standard)</SelectItem>
                       <SelectItem value="-11">−11 LUFS (loud)</SelectItem>
                       <SelectItem value="-9">−9 LUFS (very loud)</SelectItem>
+                      {!["off", "-16", "-14", "-11", "-9"].includes(target) ? (
+                        <SelectItem value={target}>{target.replace("-", "−")} LUFS (matches your reference)</SelectItem>
+                      ) : null}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1422,7 +1461,7 @@ export function MasteringLab({
                 </label>
               </div>
 
-              <ReferenceMatch song={song.buffer} params={params} onApply={patch} />
+              <ReferenceMatch song={song.buffer} params={params} onApply={patch} onTarget={setTarget} />
 
               <Button
                 onClick={() => void exportMaster()}

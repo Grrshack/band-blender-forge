@@ -3,12 +3,16 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { renderMaster, sliceBuffer, type MasterParams } from "@/lib/audio/mastering-chain";
+import { measureLoudness } from "@/lib/audio/mastering-dsp";
 import {
   BAND_CENTERS,
   adviseFromReference,
   bandSpectrumDb,
+  scaleAdvice,
+  targetFromReference,
   type ReferenceAdvice,
 } from "@/lib/audio/spectrum";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
@@ -16,24 +20,29 @@ const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x
 type State =
   | { status: "idle" }
   | { status: "working"; name: string }
-  | { status: "done"; name: string; advice: ReferenceAdvice }
+  | { status: "done"; name: string; advice: ReferenceAdvice; targetLufs: number | null }
   | { status: "error"; message: string };
 
 /**
  * Compares your song (as currently processed) with a reference track you like and suggests
- * bass-first moves on top of the current settings. Tone only — loudness drops out.
+ * moves across the range (bass, mud, body, presence, air or hiss) on top of the current
+ * settings, scaled by a match amount. Loudness is offered separately as an export target.
  */
 export function ReferenceMatch({
   song,
   params,
   onApply,
+  onTarget,
 }: {
   song: AudioBuffer;
   params: MasterParams;
   onApply: (patch: Partial<MasterParams>) => void;
+  /** Sets the export loudness target, e.g. "-10". */
+  onTarget?: (lufs: string) => void;
 }) {
   const input = useRef<HTMLInputElement | null>(null);
   const [state, setState] = useState<State>({ status: "idle" });
+  const [amount, setAmount] = useState(0.75);
 
   const analyze = async (file: File) => {
     setState({ status: "working", name: file.name });
@@ -46,12 +55,13 @@ export function ReferenceMatch({
         ref.getChannelData(ref.numberOfChannels > 1 ? 1 : 0),
       ];
       const refDb = bandSpectrumDb(refChannels, ref.sampleRate);
+      const targetLufs = targetFromReference(measureLoudness(refChannels, ref.sampleRate).lufs);
       await new Promise((r) => setTimeout(r, 30));
 
       const excerpt = sliceBuffer(song, 60);
       const processed = await renderMaster(excerpt, { ...params, makeupDb: 0 });
       const songDb = bandSpectrumDb(processed, excerpt.sampleRate);
-      setState({ status: "done", name: file.name, advice: adviseFromReference(songDb, refDb) });
+      setState({ status: "done", name: file.name, advice: adviseFromReference(songDb, refDb), targetLufs });
     } catch {
       setState({
         status: "error",
@@ -61,20 +71,30 @@ export function ReferenceMatch({
   };
 
   const apply = (a: ReferenceAdvice) => {
-    const d = a.delta;
+    const d = scaleAdvice(a.delta, amount);
     onApply({
       bassGainDb: clamp(params.bassGainDb + d.bassGainDb, -12, 12),
       lowMidCutDb: clamp(params.lowMidCutDb + d.lowMidCutDb, -6, 0),
       airDb: clamp(params.airDb + d.airDb, 0, 6),
+      midDb: clamp((params.midDb ?? 0) + d.midDb, -4, 4),
+      presenceDb: clamp((params.presenceDb ?? 0) + d.presenceDb, -4, 4),
+      deHiss: clamp(Math.max(params.deHiss ?? 0, d.deHiss), 0, 1),
       ...(d.subCutHz ? { subCutHz: d.subCutHz } : {}),
     });
   };
 
-  const nothing = (a: ReferenceAdvice) =>
-    a.delta.bassGainDb === 0 &&
-    a.delta.lowMidCutDb === 0 &&
-    a.delta.airDb === 0 &&
-    !a.delta.subCutHz;
+  const nothing = (a: ReferenceAdvice) => {
+    const d = scaleAdvice(a.delta, amount);
+    return (
+      d.bassGainDb === 0 &&
+      d.lowMidCutDb === 0 &&
+      d.airDb === 0 &&
+      d.midDb === 0 &&
+      d.presenceDb === 0 &&
+      d.deHiss === 0 &&
+      !d.subCutHz
+    );
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card/50 p-4">
@@ -110,8 +130,9 @@ export function ReferenceMatch({
         </Button>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Pick a finished song whose low end you like. You get suggested moves on top of your current
-        settings. It matches tone, not loudness, and the reference never leaves this tab.
+        Pick a finished song whose sound you like. You get suggested moves on top of your current
+        settings, from the low end to the top, plus its loudness as an export target. The reference
+        never leaves this tab.
       </p>
 
       {state.status === "error" ? (
@@ -165,15 +186,45 @@ export function ReferenceMatch({
               <li key={i}>• {l}</li>
             ))}
           </ul>
-          <Button
-            type="button"
-            size="sm"
-            disabled={nothing(state.advice)}
-            onClick={() => apply(state.advice)}
-            className="h-8 text-xs"
-          >
-            {nothing(state.advice) ? "Nothing to change" : "Apply suggestions"}
-          </Button>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-foreground/90">Match amount</span>
+              <span className="font-mono text-muted-foreground">{Math.round(amount * 100)}%</span>
+            </div>
+            <Slider
+              value={[amount]}
+              min={0.25}
+              max={1}
+              step={0.05}
+              onValueChange={(v) => setAmount(v[0] ?? 0.75)}
+              aria-label="Match amount"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              100% moves all the way toward the reference. 50–75% keeps more of your song&apos;s own character.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={nothing(state.advice)}
+              onClick={() => apply(state.advice)}
+              className="h-8 text-xs"
+            >
+              {nothing(state.advice) ? "Nothing to change" : "Apply tone suggestions"}
+            </Button>
+            {onTarget && state.targetLufs !== null ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onTarget(String(state.targetLufs))}
+                className="h-8 text-xs"
+              >
+                Match its loudness ({state.targetLufs} LUFS)
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

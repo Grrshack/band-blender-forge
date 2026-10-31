@@ -1,10 +1,22 @@
 import { ExternalLink, Share2, Star, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { bestTake, diffTags, isSunoUrl, newTake, tagPatterns, type Take } from "@/lib/takes";
 import { cn } from "@/lib/utils";
+import {
+  PLAN_LIMITS,
+  budget,
+  findDuplicate,
+  loadEvents,
+  loadSettings,
+  saveSettings,
+  setDownloaded,
+  type BudgetSettings,
+  type DownloadEvent,
+  type SunoPlan,
+} from "@/lib/download-budget";
 import { track } from "@/lib/stats";
 
 /** Log each generated take with a rating, see what changed between versions, and restore any prompt. */
@@ -31,6 +43,26 @@ export function TakeLog({
   const [link, setLink] = useState("");
   const linkBad = link.trim() !== "" && !isSunoUrl(link);
 
+  const [plan, setPlan] = useState<BudgetSettings>({ plan: "pro", resetDay: 1 });
+  const [events, setEvents] = useState<DownloadEvent[]>([]);
+  // Read browser storage after mount (not during server rendering).
+  useEffect(() => {
+    setPlan(loadSettings());
+    setEvents(loadEvents());
+  }, []);
+  const left = budget(events, plan);
+  const changePlan = (next: BudgetSettings) => {
+    setPlan(next);
+    saveSettings(next);
+  };
+  const dup = useMemo(() => (style.trim() ? findDuplicate(takes, style, exclude) : null), [takes, style, exclude]);
+
+  const toggleDownloaded = (t: Take, on: boolean) => {
+    onTakes(takes.map((x) => (x.id === t.id ? { ...x, downloaded: on } : x)));
+    setDownloaded(t, on, defaultTitle || "Untitled song");
+    setEvents(loadEvents());
+  };
+
   const best = useMemo(() => bestTake(takes), [takes]);
   const patterns = useMemo(() => tagPatterns(takes), [takes]);
 
@@ -51,10 +83,41 @@ export function TakeLog({
         <span className="mb-1 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
           Log the take you just generated
         </span>
-        <p className="mb-2 text-xs text-muted-foreground">
-          Rate takes by listening on Suno. Downloads are limited (free: 7 ever; Pro: 20 a month;
-          Premier: 60), so download only the keeper.
-        </p>
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-background/40 px-2.5 py-2 text-xs">
+          <span className={cn("font-medium", left.left === 0 ? "text-destructive" : left.left <= 3 ? "text-signal-mid" : "text-foreground")}>
+            Suno downloads: {left.used} of {left.limit} used{left.monthly ? " this cycle" : ""}
+          </span>
+          <select
+            value={plan.plan}
+            onChange={(e) => changePlan({ ...plan, plan: e.target.value as SunoPlan })}
+            aria-label="Your Suno plan"
+            className="rounded border border-border bg-card px-1.5 py-0.5 text-xs"
+          >
+            {(Object.keys(PLAN_LIMITS) as SunoPlan[]).map((k) => (
+              <option key={k} value={k}>
+                {PLAN_LIMITS[k].label} ({PLAN_LIMITS[k].limit}{PLAN_LIMITS[k].monthly ? "/month" : " ever"})
+              </option>
+            ))}
+          </select>
+          {left.monthly ? (
+            <label className="flex items-center gap-1 text-muted-foreground">
+              resets on day
+              <input
+                type="number"
+                min={1}
+                max={28}
+                value={plan.resetDay}
+                onChange={(e) => changePlan({ ...plan, resetDay: Math.max(1, Math.min(28, Number(e.target.value) || 1)) })}
+                aria-label="Day of the month your downloads reset"
+                className="w-12 rounded border border-border bg-card px-1 py-0.5 text-xs"
+              />
+            </label>
+          ) : null}
+          <span className="w-full text-[11px] text-muted-foreground">
+            Counts the takes you tick as Downloaded, across all your songs in this browser. Rate takes by
+            listening on Suno, and download only the keeper.
+          </span>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-0.5" role="radiogroup" aria-label="Rating">
             {([1, 2, 3, 4, 5] as const).map((n) => (
@@ -107,6 +170,13 @@ export function TakeLog({
         </div>
         {linkBad ? (
           <p className="mt-2 text-xs text-destructive">Use the song's link from suno.com.</p>
+        ) : null}
+        {dup ? (
+          <p className="mt-2 text-xs text-signal-mid">
+            {dup.kind === "same" ? "You already logged this exact prompt" : "You logged a nearly identical prompt"} (
+            {dup.take.rating}★, {new Date(dup.take.at).toLocaleDateString()}). Rerunning is fine, since Suno is
+            random, but rate this take against that one rather than as a new idea.
+          </p>
         ) : null}
         <p className="mt-2 text-[11px] text-muted-foreground">
           Saves the style prompt above with your rating. The diagnosis uses your last few takes, so
@@ -173,9 +243,7 @@ export function TakeLog({
                       <input
                         type="checkbox"
                         checked={Boolean(t.downloaded)}
-                        onChange={(e) =>
-                          onTakes(takes.map((x) => (x.id === t.id ? { ...x, downloaded: e.target.checked } : x)))
-                        }
+                        onChange={(e) => toggleDownloaded(t, e.target.checked)}
                         className="size-3.5 accent-primary"
                       />
                       Downloaded
