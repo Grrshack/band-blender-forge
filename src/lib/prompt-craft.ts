@@ -64,8 +64,14 @@ export function looksLikeBrief(style: string): boolean {
 // ---------------------------------------------------------------------------------------------
 // Vocal placement
 
-const SOFT_VOCAL = /\b(soft|softly|whisper(?:ed|y|ing)?|intimate|gentle|breathy|hushed|delicate|tender)\b/i;
-const PLACED = /\b(close[- ]?mi(?:c|ke)d?|upfront|up[- ]front|forward|dry vocal|dry,|above the (?:band|mix)|on top of the mix|front of the mix|lead vocal loud|in your ear)\b/i;
+const SOFT_WORD = "soft|softly|gentle|gently|breathy|hushed|delicate|tender|intimate|airy|quiet";
+const VOCAL_WORD = "vocals?|voice|singer|singing|sung|sings|lead|alto|soprano|tenor|baritone|falsetto|croon(?:ed|ing)?";
+/** A soft word describing the voice ("soft breathy female vocal", "vocals soft and airy"), or a whisper. */
+const SOFT_VOCAL = new RegExp(
+  `\\b(?:${SOFT_WORD})\\b(?:[\\s,-]+[a-z-]+){0,2}?[\\s,-]+(?:${VOCAL_WORD})\\b|\\b(?:${VOCAL_WORD})\\b(?:[\\s,-]+[a-z-]+){0,2}?[\\s,-]+(?:${SOFT_WORD})\\b|\\bwhisper(?:ed|y|ing|s)?\\b`,
+  "i",
+);
+const PLACED = /\b(close[- ]?mi(?:c|ke)d?|upfront|up[- ]front|forward|dry vocal|dry,|(?:clearly )?above the [a-z]+|on top of the (?:mix|band)|front of the mix|lead vocal loud|in your ear|close and (?:clear|dry|upfront))\b/i;
 
 /** True when the style asks for a soft voice but never says where it sits. */
 export function softVocalUnplaced(style: string): boolean {

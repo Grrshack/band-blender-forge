@@ -14,3 +14,10 @@ export const APP_DOMAIN = "suno-blender.lovable.app";
  * (src/components/forge/TesterWelcome.tsx). Set to false when testing ends.
  */
 export const TESTING_PHASE = true;
+
+/**
+ * The extension's Chrome Web Store page. Paste the link here once Google approves the listing
+ * (it looks like https://chromewebstore.google.com/detail/...); until then it stays empty and the
+ * Send to Suno help shows the manual zip install.
+ */
+export const EXTENSION_STORE_URL = "";

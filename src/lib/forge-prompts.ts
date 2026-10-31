@@ -332,7 +332,9 @@ Preset purposes:
   subCutHz (0…40 Hz — see hard rule below), subCutSlope (1|2), subCutQ (0.5…2),
   subCompAmount (0…1, sub-band compressor intensity), subCompFreq (30…80 Hz, sub compressor crossover),
   subScoopDb (−12…0 dB, narrow cut at rumble freq), subScoopFreq (20…50 Hz), subScoopQ (1…6),
-  lowMidCutDb (−6…0 dB), airDb (0…6 dB), glue (0…1), ceilingDb (−3…−0.1 dBFS)
+  lowMidCutDb (−6…0 dB), airDb (0…6 dB), glue (0…1), ceilingDb (−3…−0.1 dBFS),
+  midDb (−4…4 dB, 800 Hz body), presenceDb (−4…4 dB, 3 kHz vocal clarity),
+  deHiss (0…1, hiss and shimmer tamer above 7 kHz: suggest 0.3–0.5 when the air band is noisy or the user mentions hiss, harshness or shimmer)
 
 HARD RULES — never violate these:
 1. subCutHz must NEVER exceed 40 — values above 40 permanently remove audible bass fundamentals.
