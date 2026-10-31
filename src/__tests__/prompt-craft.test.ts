@@ -30,13 +30,12 @@ describe("format detection", () => {
 });
 
 describe("prompts", () => {
-  it("asks for a Studio Brief only when picked", () => {
+  it("describes both formats, and every blend asks for both", () => {
     expect(styleFieldSpec("brief", 700)).toMatch(/Studio Brief/);
     expect(styleFieldSpec("tags", 700)).toMatch(/comma-separated/);
-    const brief = buildPrompt("blend", { artists: ["A", "B"], promptFormat: "brief" });
-    const tags = buildPrompt("blend", { artists: ["A", "B"] });
-    expect(brief).toMatch(/Studio Brief/);
-    expect(tags).not.toMatch(/Studio Brief/);
+    const p = buildPrompt("blend", { artists: ["A", "B"] });
+    expect(p).toMatch(/"styleTag":"a single comma-separated/);
+    expect(p).toMatch(/"styleBrief":"the SAME sound/);
   });
 
   it("keeps the current format when revising", () => {
@@ -126,5 +125,35 @@ describe("Suno box limits", () => {
 
   it("tells the lyric AI the character budget", () => {
     expect(buildPrompt("lyrics", { theme: "x" })).toMatch(/5,000 characters/);
+  });
+});
+
+describe("two versions of one style", () => {
+  it("folds a fresh result into the preferred format with the other kept", async () => {
+    const { arrangeFormats, swapFormat, dropAlt, activeFormat } = await import("@/lib/prompt-craft");
+    const fresh: { styleTag: string; styleBrief?: string; styleAlt?: string; styleFormat?: "tags" | "brief" } = { styleTag: TAGS, styleBrief: BRIEF };
+    const asTags = arrangeFormats(fresh, "tags");
+    expect(asTags).toMatchObject({ styleTag: TAGS, styleAlt: BRIEF, styleFormat: "tags" });
+    expect("styleBrief" in asTags).toBe(false);
+    const asBrief = arrangeFormats(fresh, "brief");
+    expect(asBrief).toMatchObject({ styleTag: BRIEF, styleAlt: TAGS, styleFormat: "brief" });
+
+    // Swapping is lossless, including edits made to the active side.
+    const edited = { ...asTags, styleTag: `${TAGS}, clean modern mix` };
+    const swapped = swapFormat(edited);
+    expect(swapped).toMatchObject({ styleTag: BRIEF, styleFormat: "brief" });
+    expect(swapFormat(swapped).styleTag).toBe(`${TAGS}, clean modern mix`);
+
+    // An AI rewrite drops the stale alternative.
+    const rewritten = dropAlt(asTags, "darker indie rock, 110 bpm");
+    expect(rewritten.styleAlt).toBeUndefined();
+    expect(activeFormat(rewritten)).toBe("tags");
+    expect(activeFormat({ styleTag: BRIEF })).toBe("brief");
+  });
+
+  it("asks the AI for both versions and offers a format rewrite", () => {
+    const blend = buildPrompt("blend", { artists: ["A", "B"] });
+    expect(blend).toMatch(/"styleBrief"/);
+    expect(buildPrompt("refine", { styleTag: TAGS, convertTo: "brief" })).toMatch(/Rewrite this Suno style prompt in a different format/);
   });
 });
