@@ -259,6 +259,15 @@ Return JSON exactly:
       const vTarget = STYLE_TARGET_FOR_VERSION[version];
       const reimagine = typeof payload["reimagine"] === "string" ? payload["reimagine"].trim() : "";
       const convertTo = payload["convertTo"] === "brief" || payload["convertTo"] === "tags" ? (payload["convertTo"] as PromptFormat) : null;
+      if (payload["splitBrief"] === true) {
+        return `Split this Studio Brief (a Suno style prompt written in sentences) into its six parts.
+Input: ${p}
+"styleTag" is the brief. Keep its wording as close as you can: move each sentence or phrase to the part it belongs to. If a part isn't covered, write one short sentence for it from what the brief already implies; add no new instruments or genres.
+${briefPartsRule(vTarget, false)}
+Never use real artist, band, producer, label or song names.
+Return JSON exactly:
+{${briefPartsField()}}`;
+      }
       if (convertTo) {
         return `Rewrite this Suno style prompt in a different format. Keep every musical detail (genre, tempo, instruments, vocal and where it sits, production, mood); add nothing new and drop nothing.
 Input: ${p}

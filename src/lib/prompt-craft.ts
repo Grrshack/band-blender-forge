@@ -298,7 +298,8 @@ export function dropAlt<T extends TwoFormat>(r: T, styleTag: string): T {
 // The Studio Brief, part by part
 
 export type BriefKey = (typeof BRIEF_PARTS)[number]["key"];
-export type BriefParts = Record<BriefKey, string>;
+/** The parts that came back. Usually all six; at least four. */
+export type BriefParts = Partial<Record<BriefKey, string>>;
 export const BRIEF_KEYS = BRIEF_PARTS.map((b) => b.key) as BriefKey[];
 
 /** What each part should say, for the AI. One sentence each, never naming the part. */
@@ -313,25 +314,35 @@ export const BRIEF_PART_SPECS: Record<BriefKey, string> = {
 
 const PART_LEADS = /^(?:the\s+)?(?:sound|pulse|players?|voice|arc|finish)\s*(?:is|are|include|includes|keeps|:|-)\s*/i;
 
-/** Cleans AI parts: strings only, trimmed, no "The pulse is…" leads, each ending in a full stop. */
+/**
+ * Cleans AI parts: strings only, trimmed, no "The pulse is…" leads, each ending in a full stop.
+ * Forgiving: labels in any case ("Sound", "VOICE"), and up to two parts may be missing. Fewer than
+ * four usable parts is treated as no parts.
+ */
 export function cleanBriefParts(raw: unknown): BriefParts | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const out = {} as BriefParts;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const byKey = new Map<string, unknown>();
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) byKey.set(k.trim().toLowerCase(), v);
+  const out: BriefParts = {};
+  let n = 0;
   for (const k of BRIEF_KEYS) {
-    let v = typeof o[k] === "string" ? (o[k] as string).replace(/\s+/g, " ").trim() : "";
+    const val = byKey.get(k) ?? (k === "players" ? byKey.get("player") : undefined);
+    let v = typeof val === "string" ? val.replace(/\s+/g, " ").trim() : "";
     v = v.replace(PART_LEADS, "");
-    if (!v) return null;
+    if (!v) continue;
     v = v.charAt(0).toUpperCase() + v.slice(1);
     if (!/[.!?]$/.test(v)) v += ".";
     out[k] = v;
+    n++;
   }
-  return out;
+  return n >= 4 ? out : null;
 }
 
 /** The parts as one block for Suno's style box, in Studio Brief order. */
 export function joinBrief(parts: BriefParts): string {
-  return BRIEF_KEYS.map((k) => parts[k]).join(" ");
+  return BRIEF_KEYS.map((k) => parts[k])
+    .filter((v): v is string => Boolean(v))
+    .join(" ");
 }
 
 /** True when the parts still describe this exact text (not edited or cut since). */
