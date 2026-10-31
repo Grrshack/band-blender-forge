@@ -255,3 +255,39 @@ export const SUNO_PASSES = [
     why: "Spend the slower, higher-quality pass only on a song you already know works.",
   },
 ] as const;
+
+// ---------------------------------------------------------------------------------------------
+// Two versions of one style
+
+type TwoFormat = { styleTag?: string; styleAlt?: string | undefined; styleFormat?: PromptFormat | undefined; styleBrief?: string | undefined };
+
+/** The format the active style is in. */
+export function activeFormat(r: TwoFormat | null | undefined): PromptFormat {
+  if (!r) return "tags";
+  return r.styleFormat ?? (looksLikeBrief(r.styleTag ?? "") ? "brief" : "tags");
+}
+
+/**
+ * Folds a fresh AI result (tag list in styleTag, brief in styleBrief) into one active style
+ * plus its alternative, with the person's preferred format active.
+ */
+export function arrangeFormats<T extends TwoFormat>(r: T, preferred: PromptFormat): T {
+  const brief = r.styleBrief?.trim();
+  const { styleBrief: _drop, ...rest } = r;
+  if (!brief || !r.styleTag?.trim()) return { ...rest, styleFormat: activeFormat(r) } as T;
+  return (preferred === "brief"
+    ? { ...rest, styleTag: brief, styleAlt: r.styleTag, styleFormat: "brief" }
+    : { ...rest, styleAlt: brief, styleFormat: "tags" }) as T;
+}
+
+/** Swaps the active style and its alternative. Lossless: edits to either side are kept. */
+export function swapFormat<T extends TwoFormat>(r: T): T {
+  if (!r.styleAlt) return r;
+  const now = activeFormat(r);
+  return { ...r, styleTag: r.styleAlt, styleAlt: r.styleTag ?? "", styleFormat: now === "brief" ? "tags" : "brief" };
+}
+
+/** After an AI rewrite of the active style, the alternative no longer matches; drop it. */
+export function dropAlt<T extends TwoFormat>(r: T, styleTag: string): T {
+  return { ...r, styleTag, styleAlt: undefined, styleFormat: looksLikeBrief(styleTag) ? "brief" : "tags" };
+}

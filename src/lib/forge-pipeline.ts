@@ -99,7 +99,9 @@ async function cleanBlocks(
  */
 export function clampSunoFields(result: Json): Json {
   const out = { ...result };
-  if (typeof out["styleTag"] === "string") out["styleTag"] = fitToLimit(out["styleTag"] as string, SUNO_LIMITS.style);
+  for (const k of ["styleTag", "styleBrief"]) {
+    if (typeof out[k] === "string") out[k] = fitToLimit(out[k] as string, SUNO_LIMITS.style);
+  }
   if (typeof out["excludeStyles"] === "string") out["excludeStyles"] = fitToLimit(out["excludeStyles"] as string, SUNO_LIMITS.exclude);
   return out;
 }

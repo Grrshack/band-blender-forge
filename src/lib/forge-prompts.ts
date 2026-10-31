@@ -99,7 +99,8 @@ Return JSON exactly:
 {"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. High artist familiarity"},
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
-"styleTag":"${styleFieldSpec(formatOf(payload, "styleTag"), vTarget)}",
+"styleTag":"${styleFieldSpec("tags", vTarget)}",
+"styleBrief":"the SAME sound as styleTag, written as ${styleFieldSpec("brief", vTarget)} Same genre, tempo, instruments and vocal as styleTag; only the format differs.",
 "voiceTags":"Suno v6 bracket vocal tags to prepend to the lyrics field, e.g. '[Female Vocal]' or '[Male Vocal], [Whisper]'. Choose from: [Male Vocal] [Female Vocal] [Duet] [Choir] [Rap] [Whisper] [Falsetto] [Raw Vocals]. Max 2-3 tags. Empty string if not applicable.",
 "vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound (for Suno's Exclude styles box), e.g. 'autotune, trap hi-hats, EDM drop'",
@@ -245,6 +246,16 @@ Return JSON exactly:
       const version: SunoVersion = normalizeSunoVersion(payload["sunoVersion"]);
       const vTarget = STYLE_TARGET_FOR_VERSION[version];
       const reimagine = typeof payload["reimagine"] === "string" ? payload["reimagine"].trim() : "";
+      const convertTo = payload["convertTo"] === "brief" || payload["convertTo"] === "tags" ? (payload["convertTo"] as PromptFormat) : null;
+      if (convertTo) {
+        return `Rewrite this Suno style prompt in a different format. Keep every musical detail (genre, tempo, instruments, vocal and where it sits, production, mood); add nothing new and drop nothing.
+Input: ${p}
+"styleTag" is the current style.
+Format: ${styleFieldSpec(convertTo, vTarget)}
+Never use real artist, band, producer, label or song names.
+Return JSON exactly:
+{"styleTag":"the rewritten style"}`;
+      }
       if (reimagine) {
         return `Reimagine this song's Suno style as ${reimagine}, like a cover version in a new genre.
 Input: ${p}
@@ -371,7 +382,8 @@ Return JSON exactly:
 {"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. Confident — well-known recording"},
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
-"styleTag":"${styleFieldSpec(formatOf(payload, "styleTag"), STYLE_TARGET)}",
+"styleTag":"${styleFieldSpec("tags", STYLE_TARGET)}",
+"styleBrief":"the SAME sound as styleTag, written as ${styleFieldSpec("brief", STYLE_TARGET)} Same genre, tempo, instruments and vocal as styleTag; only the format differs.",
 "vocalPrompt":{"voice":"timbre and range","delivery":"phrasing and performance","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound",
 "reconciliation":"2-3 sentences describing the specific sonic character of this recording and what makes it distinctive from the artist's typical sound (if applicable). May name the song title and artist here only.",

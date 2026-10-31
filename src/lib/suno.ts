@@ -197,6 +197,8 @@ const STYLE_KEYS = [
   "vocals",
   "mood",
   "styleTag",
+  "styleBrief",
+  "styleAlt",
   "excludeStyles",
 ] as const;
 const VOCAL_KEYS = ["voice", "delivery", "harmonies", "effects"] as const;
@@ -232,7 +234,7 @@ export function scrubBlend(blend: Json, names: string[]): { blend: Json; removed
   const out = mapStyleFields(blend, (t, key) => {
     const r = scrubArtistNames(t, names);
     removed.push(...r.removed);
-    if (key === "styleTag") return fitToLimit(r.text, SUNO_LIMITS.style);
+    if (key === "styleTag" || key === "styleBrief" || key === "styleAlt") return fitToLimit(r.text, SUNO_LIMITS.style);
     if (key === "excludeStyles") return fitToLimit(r.text, SUNO_LIMITS.exclude);
     return r.text;
   });
