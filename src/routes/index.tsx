@@ -384,6 +384,7 @@ function Landing() {
             <Link to="/tools">Free tools</Link>
             <Link to="/guides">Guides</Link>
             <a href="#faq">FAQ</a>
+            <Link to="/privacy">Privacy</Link>
           </nav>
         </div>
       </footer>
