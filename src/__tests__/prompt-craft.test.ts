@@ -174,13 +174,18 @@ describe("the Studio Brief in parts", () => {
     const parts = cleanBriefParts(raw)!;
     expect(parts.sound).toBe("Urgent, melancholic post-hardcore with emo-punk bite.");
     expect(parts.pulse).toBe("A fast 152 BPM punk drive.");
-    expect(parts.players.startsWith("Dual guitars")).toBe(true);
+    expect(parts.players!.startsWith("Dual guitars")).toBe(true);
     expect(parts.finish).toBe("A crisp, modern room mix with clear separation.");
     const text = joinBrief(parts);
     expect(text.startsWith("Urgent, melancholic post-hardcore")).toBe(true);
     expect(briefMatches(parts, text)).toBe(true);
     expect(briefMatches(parts, `${text} Extra words.`)).toBe(false);
-    expect(cleanBriefParts({ ...raw, arc: "" })).toBeNull();
+    // Forgiving: one missing part still works, labels in any case; fewer than four is nothing.
+    const five = cleanBriefParts({ ...raw, arc: "" })!;
+    expect(five.arc).toBeUndefined();
+    expect(joinBrief(five)).not.toMatch(/undefined/);
+    expect(cleanBriefParts({ Sound: "Dark rock", PULSE: "90 BPM", Players: "Guitars", VOICE: "Low male vocal" })?.voice).toBe("Low male vocal.");
+    expect(cleanBriefParts({ sound: "a", pulse: "b", voice: "c" })).toBeNull();
   });
 
   it("builds the brief on the server, and the style itself for a rewrite", () => {
@@ -191,6 +196,14 @@ describe("the Studio Brief in parts", () => {
     const rewrite = clampSunoFields({ styleBriefParts: raw });
     expect(rewrite["styleTag"]).toBe(rewrite["styleBrief"]);
     expect("styleBriefParts" in clampSunoFields({ styleTag: TAGS, styleBriefParts: { sound: "x" } })).toBe(false);
+  });
+
+  it("can split an existing brief into parts", () => {
+    const p = buildPrompt("refine", { styleTag: BRIEF, splitBrief: true });
+    expect(p).toMatch(/Split this Studio Brief/);
+    expect(p).toMatch(/"styleBriefParts"/);
+    const out = clampSunoFields({ styleBriefParts: raw });
+    expect(out["styleTag"]).toMatch(/^Urgent, melancholic/);
   });
 
   it("keeps the parts with the brief when a result is arranged", async () => {
