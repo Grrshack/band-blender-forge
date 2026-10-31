@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSettings } from "./settings";
 import type { BlendResult } from "./types";
 import { useForge } from "./use-forge";
-import { PROMPT_FORMAT_LABELS, activeFormat, swapFormat, type PromptFormat } from "@/lib/prompt-craft";
+import { PROMPT_FORMAT_LABELS, activeFormat, cleanBriefParts, swapFormat, type PromptFormat } from "@/lib/prompt-craft";
 import { normalizeSunoVersion, type SunoVersion } from "@/lib/suno";
 import { cn } from "@/lib/utils";
 
@@ -56,9 +56,16 @@ export function StyleFormatSwitch({
           payload: { styleTag: result.styleTag, convertTo: f, instruction: `Rewrite as ${PROMPT_FORMAT_LABELS[f]}`, sunoVersion: normalizeSunoVersion(sunoVersion) },
         },
       });
-      const out = JSON.parse(res.json) as { styleTag?: string };
+      const out = JSON.parse(res.json) as { styleTag?: string; styleBriefParts?: unknown };
       if (!out.styleTag?.trim()) throw new Error("No style came back. Try again.");
-      onResult({ ...result, styleTag: out.styleTag, styleAlt: result.styleTag, styleFormat: f });
+      const parts = f === "brief" ? cleanBriefParts(out.styleBriefParts) : null;
+      onResult({
+        ...result,
+        styleTag: out.styleTag,
+        styleAlt: result.styleTag,
+        styleFormat: f,
+        ...(parts ? { briefParts: parts } : {}),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't rewrite the style.");
     } finally {

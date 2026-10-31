@@ -20,7 +20,8 @@ import { shareBlend } from "@/lib/forge.functions";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { activeFormat, arrangeFormats, dropAlt } from "@/lib/prompt-craft";
+import { activeFormat, arrangeFormats, briefMatches, dropAlt } from "@/lib/prompt-craft";
+import { BriefReadout } from "./BriefReadout";
 import { StyleFormatSwitch } from "./StyleFormatSwitch";
 import { track } from "@/lib/stats";
 
@@ -559,7 +560,11 @@ export function BandBlender({
                   sunoVersion={sunoVersion}
                   onResult={(next) => onChange({ ...value, result: next, promptFormat: activeFormat(next) })}
                 />
-                <ReadoutField label="Style prompt" value={result.styleTag ?? "—"} mono accent />
+                {activeFormat(result) === "brief" && briefMatches(result.briefParts, result.styleTag) ? (
+                  <BriefReadout parts={result.briefParts} text={result.styleTag ?? ""} />
+                ) : (
+                  <ReadoutField label="Style prompt" value={result.styleTag ?? "—"} mono accent />
+                )}
               </div>
               {result.excludeStyles ? (
                 <div className="mt-3">

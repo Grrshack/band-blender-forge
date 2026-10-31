@@ -1,7 +1,7 @@
 import { composeSunoLyrics, normalizeSunoVersion, type SunoVersion, vocalString } from "@/lib/suno";
 import type { Take } from "@/lib/takes";
 import type { LyricVoice, RhymeStyle } from "@/lib/rhyme";
-import { normalizePromptFormat, type PromptFormat } from "@/lib/prompt-craft";
+import { normalizePromptFormat, type BriefParts, type PromptFormat } from "@/lib/prompt-craft";
 
 /** What MusicBrainz said about an artist. "unavailable" means the lookup failed — NOT that the artist doesn't exist. */
 export type MbInfo = {
@@ -36,6 +36,10 @@ export type BlendResult = {
   styleAlt?: string | undefined;
   /** Raw second version from the AI; folded into styleTag/styleAlt as soon as it arrives. */
   styleBrief?: string | undefined;
+  /** Raw Studio Brief parts from the AI; folded into briefParts with the brief. */
+  styleBriefParts?: unknown;
+  /** The Studio Brief in its six parts, shown as labelled lines while it still matches the text. */
+  briefParts?: BriefParts | undefined;
   reconciliation?: string;
   recommendedSliders?: { energy?: number; complexity?: number; brightness?: number };
   sliderNotes?: string;
