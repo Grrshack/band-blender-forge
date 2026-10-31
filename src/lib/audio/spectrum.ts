@@ -110,6 +110,12 @@ export type ReferenceAdvice = {
     lowMidCutDb: number;
     airDb: number;
     subCutHz: number | null;
+    /** 800 Hz bell. */
+    midDb: number;
+    /** 3 kHz bell. */
+    presenceDb: number;
+    /** Hiss tamer amount to add (0–1) when the song is brighter or noisier up top than the reference. */
+    deHiss: number;
   };
   lines: string[];
 };
@@ -133,6 +139,12 @@ export function adviseFromReference(songDb: number[], referenceDb: number[]): Re
   const lowMidCutDb = lowMid < -1.5 ? half(clamp(lowMid * 0.8, -6, 0)) : 0;
   const airDb = air > 1.5 ? half(clamp(air * 0.6, 0, 6)) : 0;
   const subCutHz = sub < -4 ? 28 : null;
+  const mid = avg(630, 1250);
+  const presence = avg(2000, 5000);
+  const midDb = Math.abs(mid) < 1.5 ? 0 : half(clamp(mid * 0.6, -3, 3));
+  const presenceDb = Math.abs(presence) < 1.5 ? 0 : half(clamp(presence * 0.6, -3, 3));
+  // The air shelf only boosts, so a song brighter up top than the reference gets the hiss tamer.
+  const deHiss = air < -2 ? Math.round(clamp(-air / 8, 0.2, 0.8) * 10) / 10 : 0;
 
   const lines: string[] = [];
   if (bassGainDb !== 0) {
@@ -155,5 +167,42 @@ export function adviseFromReference(songDb: number[], referenceDb: number[]): Re
       `Reference is brighter above 8 kHz (+${air.toFixed(1)} dB) — add ${airDb} dB of air.`,
     );
 
-  return { diffDb, delta: { bassGainDb, lowMidCutDb, airDb, subCutHz }, lines };
+  if (midDb !== 0)
+    lines.push(
+      midDb > 0
+        ? `Reference has more body around 800 Hz (+${mid.toFixed(1)} dB) — add ${midDb} dB there.`
+        : `Reference is lighter around 800 Hz (${mid.toFixed(1)} dB) — cut ${-midDb} dB there.`,
+    );
+  if (presenceDb !== 0)
+    lines.push(
+      presenceDb > 0
+        ? `Reference is clearer at 2–5 kHz (+${presence.toFixed(1)} dB), where vocals cut through — add ${presenceDb} dB of presence.`
+        : `Reference is softer at 2–5 kHz (${presence.toFixed(1)} dB) — ease presence by ${-presenceDb} dB.`,
+    );
+  if (deHiss > 0)
+    lines.push(
+      `Your song has more top end than the reference above 8 kHz (${(-air).toFixed(1)} dB more), often Suno's hiss and shimmer — turn the hiss tamer to ${Math.round(deHiss * 100)}%.`,
+    );
+
+  return { diffDb, delta: { bassGainDb, lowMidCutDb, airDb, subCutHz, midDb, presenceDb, deHiss }, lines };
+}
+
+/** Scales a set of suggested moves by a match amount (0–1), keeping the steps on half-dB. */
+export function scaleAdvice(d: ReferenceAdvice["delta"], amount: number): ReferenceAdvice["delta"] {
+  const k = clamp(amount, 0, 1);
+  return {
+    bassGainDb: half(d.bassGainDb * k),
+    lowMidCutDb: half(d.lowMidCutDb * k),
+    airDb: half(d.airDb * k),
+    subCutHz: k >= 0.5 ? d.subCutHz : null,
+    midDb: half(d.midDb * k),
+    presenceDb: half(d.presenceDb * k),
+    deHiss: Math.round(d.deHiss * k * 10) / 10,
+  };
+}
+
+/** A loudness target from a reference, kept inside a sensible range for streaming masters. */
+export function targetFromReference(refLufs: number): number | null {
+  if (!Number.isFinite(refLufs)) return null;
+  return Math.round(clamp(refLufs, -16, -7) * 2) / 2;
 }

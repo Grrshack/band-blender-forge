@@ -50,6 +50,15 @@ export type MasterParams = {
   lowMidCutDb: number;
   /** High shelf at 10 kHz. dB. */
   airDb: number;
+  /** Broad bell at 800 Hz (body of vocals and guitars). dB, -4…4. Optional so older saves load. */
+  midDb?: number;
+  /** Bell at 3 kHz (presence, vocal clarity). dB, -4…4. */
+  presenceDb?: number;
+  /**
+   * Hiss and shimmer tamer, 0–1: compresses only the top band (above 7 kHz) when it flares up,
+   * plus a gentle shelf cut. For the noisy top end Suno v6 is known for. 0 = off.
+   */
+  deHiss?: number;
   /** Master bus compression amount. 0–1. */
   glue: number;
   /** Limiter ceiling. dBFS. */
@@ -85,6 +94,9 @@ export const DEFAULT_PARAMS: MasterParams = {
   subCutQ: 0.707,
   lowMidCutDb: 0,
   airDb: 0,
+  midDb: 0,
+  presenceDb: 0,
+  deHiss: 0,
   glue: 0,
   ceilingDb: -1,
   makeupDb: 0,
@@ -368,6 +380,40 @@ export const PRESETS: Array<{
 ];
 
 const SMOOTH = 0.02; // seconds, parameter smoothing for live tweaks
+
+const HISS_SPLIT_HZ = 7000;
+/**
+ * Web Audio reads a lowpass/highpass Q as resonance in dB, not a plain Q. Butterworth (Q 0.707)
+ * is 20·log10(0.707) = -3.01 dB; two in a row make a Linkwitz-Riley split whose bands sum flat.
+ */
+const BUTTERWORTH_Q_DB = 20 * Math.log10(Math.SQRT1_2);
+
+/**
+ * A compressor that never compresses (ratio 1, no make-up), used only for its look-ahead delay.
+ * Put on the branch of a band split that has no real compressor, so both branches line up in
+ * time and sum flat in every browser, whatever its compressor latency is.
+ */
+function latencyMatch(ctx: BaseAudioContext): DynamicsCompressorNode {
+  const c = ctx.createDynamicsCompressor();
+  c.threshold.value = 0;
+  c.ratio.value = 1;
+  c.knee.value = 0;
+  return c;
+}
+const clampN = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
+
+/**
+ * Hiss tamer settings for an amount 0–1. Web Audio compressors add automatic make-up gain
+ * (spec: 0.6 × the gain reduction at full scale), which would raise the hiss in quiet parts;
+ * `makeupDb` is that boost so the chain can take it back off. Hard knee keeps the formula exact.
+ */
+export function hissSettings(amount: number): { thresholdDb: number; ratio: number; makeupDb: number; shelfDb: number } {
+  const a = clampN(amount, 0, 1);
+  const thresholdDb = -18 - a * 24;
+  const ratio = 1 + a * 7;
+  const makeupDb = a === 0 ? 0 : -0.6 * thresholdDb * (1 - 1 / ratio);
+  return { thresholdDb, ratio, makeupDb, shelfDb: -3 * a };
+}
 const SAT_K = 2.5;
 
 function satCurve(): Float32Array<ArrayBuffer> {
@@ -413,6 +459,11 @@ export class MasterChain {
   // post
   private readonly mud: BiquadFilterNode;
   private readonly air: BiquadFilterNode;
+  private readonly midBell: BiquadFilterNode;
+  private readonly presence: BiquadFilterNode;
+  private readonly hissComp: DynamicsCompressorNode;
+  private readonly hissTrim: GainNode;
+  private readonly hissShelf: BiquadFilterNode;
   private readonly glue: DynamicsCompressorNode;
   private readonly makeup: GainNode;
   private readonly limiter: DynamicsCompressorNode;
@@ -454,7 +505,7 @@ export class MasterChain {
     this.lp2 = bq("lowpass");
     this.hp1 = bq("highpass");
     this.hp2 = bq("highpass");
-    for (const f of [this.lp1, this.lp2, this.hp1, this.hp2]) f.Q.value = Math.SQRT1_2;
+    for (const f of [this.lp1, this.lp2, this.hp1, this.hp2]) f.Q.value = BUTTERWORTH_Q_DB;
     this.punchB = bq("peaking");
     this.level = ctx.createGain();
     this.satDry = ctx.createGain();
@@ -484,6 +535,29 @@ export class MasterChain {
     this.mud.Q.value = 1;
     this.air = bq("highshelf");
     this.air.frequency.value = 10000;
+    this.midBell = bq("peaking");
+    this.midBell.frequency.value = 800;
+    this.midBell.Q.value = 0.8;
+    this.presence = bq("peaking");
+    this.presence.frequency.value = 3000;
+    this.presence.Q.value = 0.9;
+    // Hiss tamer: Linkwitz-Riley split at 7 kHz (sums flat), compressor on the top band only.
+    const hissLp1 = bq("lowpass");
+    const hissLp2 = bq("lowpass");
+    const hissHp1 = bq("highpass");
+    const hissHp2 = bq("highpass");
+    for (const f of [hissLp1, hissLp2, hissHp1, hissHp2]) {
+      f.frequency.value = HISS_SPLIT_HZ;
+      f.Q.value = BUTTERWORTH_Q_DB;
+    }
+    this.hissComp = ctx.createDynamicsCompressor();
+    this.hissComp.knee.value = 0; // hard knee, so its automatic make-up gain can be undone exactly
+    this.hissComp.attack.value = 0.003;
+    this.hissComp.release.value = 0.06;
+    this.hissTrim = ctx.createGain();
+    this.hissShelf = bq("highshelf");
+    this.hissShelf.frequency.value = 12000;
+    const hissSum = ctx.createGain();
     this.glue = ctx.createDynamicsCompressor();
     this.glue.knee.value = 10;
     this.glue.attack.value = 0.03;
@@ -561,13 +635,29 @@ export class MasterChain {
     lowSum.connect(bandSum);
     this.subCompSum.connect(this.hp1);
     this.hp1.connect(this.hp2);
-    this.hp2.connect(bandSum);
+    // The low band runs through a compressor; delay the high band the same amount.
+    const highDelay = latencyMatch(ctx);
+    this.hp2.connect(highDelay);
+    highDelay.connect(bandSum);
     bandSum.connect(this.bandGain);
     this.bandGain.connect(bus);
 
     bus.connect(this.mud);
     this.mud.connect(this.air);
-    this.air.connect(this.glue);
+    this.air.connect(this.midBell);
+    this.midBell.connect(this.presence);
+    this.presence.connect(hissLp1);
+    hissLp1.connect(hissLp2);
+    const hissLowDelay = latencyMatch(ctx);
+    hissLp2.connect(hissLowDelay);
+    hissLowDelay.connect(hissSum);
+    this.presence.connect(hissHp1);
+    hissHp1.connect(hissHp2);
+    hissHp2.connect(this.hissComp);
+    this.hissComp.connect(this.hissTrim);
+    this.hissTrim.connect(this.hissShelf);
+    this.hissShelf.connect(hissSum);
+    hissSum.connect(this.glue);
     this.glue.connect(this.makeup);
     this.makeup.connect(this.limiter);
     this.limiter.connect(this.mainMute);
@@ -618,6 +708,13 @@ export class MasterChain {
     // post
     set(this.mud.gain, Math.min(0, p.lowMidCutDb));
     set(this.air.gain, p.airDb);
+    set(this.midBell.gain, clampN(p.midDb ?? 0, -4, 4));
+    set(this.presence.gain, clampN(p.presenceDb ?? 0, -4, 4));
+    const hiss = hissSettings(p.deHiss ?? 0);
+    set(this.hissComp.threshold, hiss.thresholdDb);
+    set(this.hissComp.ratio, hiss.ratio);
+    set(this.hissTrim.gain, dbLin(-hiss.makeupDb));
+    set(this.hissShelf.gain, hiss.shelfDb);
     set(this.glue.threshold, -10 - p.glue * 12);
     set(this.glue.ratio, 1 + p.glue * 2.5);
     set(this.makeup.gain, dbLin(p.makeupDb));
@@ -656,7 +753,7 @@ export class MasterChain {
       return { mag, ph };
     };
     const out = new Float32Array(n);
-    const common = [this.subCut, this.subCut2, this.subScoop, this.mud, this.air].map(resp);
+    const common = [this.subCut, this.subCut2, this.subScoop, this.mud, this.air, this.midBell, this.presence, this.hissShelf].map(resp);
     const full = p.mode === "full";
     const fullPath = full ? [this.shelf, this.punchF].map(resp) : [];
     const lowPath = full ? [] : [this.lp1, this.lp2, this.punchB].map(resp);
