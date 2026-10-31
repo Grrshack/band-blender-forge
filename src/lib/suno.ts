@@ -209,6 +209,15 @@ function mapStyleFields(blend: Json, fn: (text: string, key: string) => string):
   for (const k of STYLE_KEYS) {
     if (typeof out[k] === "string") out[k] = fn(out[k] as string, k);
   }
+  // Studio Brief parts are shown on screen and joined into the style, so they get the same checks.
+  const bp = out["styleBriefParts"];
+  if (bp && typeof bp === "object") {
+    const next: Json = { ...(bp as Json) };
+    for (const k of Object.keys(next)) {
+      if (typeof next[k] === "string") next[k] = fn(next[k] as string, `styleBriefParts.${k}`);
+    }
+    out["styleBriefParts"] = next;
+  }
   const vp = out["vocalPrompt"];
   if (vp && typeof vp === "object") {
     const next: Json = { ...(vp as Json) };

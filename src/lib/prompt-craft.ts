@@ -259,7 +259,7 @@ export const SUNO_PASSES = [
 // ---------------------------------------------------------------------------------------------
 // Two versions of one style
 
-type TwoFormat = { styleTag?: string; styleAlt?: string | undefined; styleFormat?: PromptFormat | undefined; styleBrief?: string | undefined };
+type TwoFormat = { styleTag?: string; styleAlt?: string | undefined; styleFormat?: PromptFormat | undefined; styleBrief?: string | undefined; styleBriefParts?: unknown; briefParts?: BriefParts | undefined };
 
 /** The format the active style is in. */
 export function activeFormat(r: TwoFormat | null | undefined): PromptFormat {
@@ -273,7 +273,9 @@ export function activeFormat(r: TwoFormat | null | undefined): PromptFormat {
  */
 export function arrangeFormats<T extends TwoFormat>(r: T, preferred: PromptFormat): T {
   const brief = r.styleBrief?.trim();
-  const { styleBrief: _drop, ...rest } = r;
+  const { styleBrief: _drop, styleBriefParts: rawParts, ...rest0 } = r;
+  const parts = cleanBriefParts(rawParts);
+  const rest = parts ? { ...rest0, briefParts: parts } : rest0;
   if (!brief || !r.styleTag?.trim()) return { ...rest, styleFormat: activeFormat(r) } as T;
   return (preferred === "brief"
     ? { ...rest, styleTag: brief, styleAlt: r.styleTag, styleFormat: "brief" }
@@ -290,4 +292,49 @@ export function swapFormat<T extends TwoFormat>(r: T): T {
 /** After an AI rewrite of the active style, the alternative no longer matches; drop it. */
 export function dropAlt<T extends TwoFormat>(r: T, styleTag: string): T {
   return { ...r, styleTag, styleAlt: undefined, styleFormat: looksLikeBrief(styleTag) ? "brief" : "tags" };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The Studio Brief, part by part
+
+export type BriefKey = (typeof BRIEF_PARTS)[number]["key"];
+export type BriefParts = Record<BriefKey, string>;
+export const BRIEF_KEYS = BRIEF_PARTS.map((b) => b.key) as BriefKey[];
+
+/** What each part should say, for the AI. One sentence each, never naming the part. */
+export const BRIEF_PART_SPECS: Record<BriefKey, string> = {
+  sound: "one short sentence: genre and mood, genre within the first five words",
+  pulse: "one sentence: one BPM number and how the groove feels",
+  players: "one or two sentences: two to four instruments, each with what it is doing",
+  voice: "one sentence: who sings, how, and where the voice sits (close and upfront, or set back)",
+  arc: "one sentence: what the verses hold back and what the chorus adds",
+  finish: "one sentence: the room and the mix",
+};
+
+const PART_LEADS = /^(?:the\s+)?(?:sound|pulse|players?|voice|arc|finish)\s*(?:is|are|include|includes|keeps|:|-)\s*/i;
+
+/** Cleans AI parts: strings only, trimmed, no "The pulse is…" leads, each ending in a full stop. */
+export function cleanBriefParts(raw: unknown): BriefParts | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const out = {} as BriefParts;
+  for (const k of BRIEF_KEYS) {
+    let v = typeof o[k] === "string" ? (o[k] as string).replace(/\s+/g, " ").trim() : "";
+    v = v.replace(PART_LEADS, "");
+    if (!v) return null;
+    v = v.charAt(0).toUpperCase() + v.slice(1);
+    if (!/[.!?]$/.test(v)) v += ".";
+    out[k] = v;
+  }
+  return out;
+}
+
+/** The parts as one block for Suno's style box, in Studio Brief order. */
+export function joinBrief(parts: BriefParts): string {
+  return BRIEF_KEYS.map((k) => parts[k]).join(" ");
+}
+
+/** True when the parts still describe this exact text (not edited or cut since). */
+export function briefMatches(parts: BriefParts | null | undefined, text: string | undefined): parts is BriefParts {
+  return Boolean(parts && text && joinBrief(parts).trim() === text.trim());
 }

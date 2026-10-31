@@ -1,6 +1,8 @@
 import { lyricStyleRules } from "./rhyme";
 import { SYMPTOM_PLAYBOOK } from "./symptoms";
 import {
+  BRIEF_KEYS,
+  BRIEF_PART_SPECS,
   LYRIC_CHAR_BUDGET,
   LYRIC_NOTATION_RULE,
   VOCAL_PLACEMENT_RULE,
@@ -53,6 +55,16 @@ function playbookFor(symptoms: unknown): string {
   return lines.length ? `- Starting points that usually work for the picked symptoms:\n${lines.join("\n")}\n` : "";
 }
 
+/** The JSON field asking for a Studio Brief in its six parts. */
+function briefPartsField(): string {
+  return `"styleBriefParts":{${BRIEF_KEYS.map((k) => `"${k}":"${BRIEF_PART_SPECS[k]}"`).join(",")}}`;
+}
+
+/** How to write those parts. Goes with the rules, outside the JSON example. */
+function briefPartsRule(max: number, sameAs: boolean): string {
+  return `styleBriefParts is a Studio Brief in six parts${sameAs ? " describing the SAME sound as styleTag (same genre, tempo, instruments and vocal, only written as sentences)" : ""}. Write each part as a natural sentence a producer would say, never starting with the part's name (no "The pulse is", "Players include", "The arc", "The finish is"). All six together max ${max} characters. No negatives (those go in excludeStyles).`;
+}
+
 /** The format to write a style in: what the user picked, or the format of the style being revised. */
 function formatOf(payload: Record<string, unknown>, styleKey: string): PromptFormat {
   if (payload["promptFormat"] !== undefined) return normalizePromptFormat(payload["promptFormat"]);
@@ -100,7 +112,7 @@ Return JSON exactly:
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
 "styleTag":"${styleFieldSpec("tags", vTarget)}",
-"styleBrief":"the SAME sound as styleTag, written as ${styleFieldSpec("brief", vTarget)} Same genre, tempo, instruments and vocal as styleTag; only the format differs.",
+${briefPartsField()},
 "voiceTags":"Suno v6 bracket vocal tags to prepend to the lyrics field, e.g. '[Female Vocal]' or '[Male Vocal], [Whisper]'. Choose from: [Male Vocal] [Female Vocal] [Duet] [Choir] [Rap] [Whisper] [Falsetto] [Raw Vocals]. Max 2-3 tags. Empty string if not applicable.",
 "vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound (for Suno's Exclude styles box), e.g. 'autotune, trap hi-hats, EDM drop'",
@@ -108,7 +120,7 @@ Return JSON exactly:
 "reconciliation":"2-4 sentences explaining exactly how conflicting elements of the chosen artists are fused, naming the specific conflicts and the resolution",
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this blend"}
-HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.\n${VOCAL_PLACEMENT_RULE}`;
+HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.\n${VOCAL_PLACEMENT_RULE}\n${briefPartsRule(vTarget, true)}`;
     }
     case "lyrics": {
       const avoidWords = Array.isArray(payload["avoidWords"])
@@ -251,10 +263,10 @@ Return JSON exactly:
         return `Rewrite this Suno style prompt in a different format. Keep every musical detail (genre, tempo, instruments, vocal and where it sits, production, mood); add nothing new and drop nothing.
 Input: ${p}
 "styleTag" is the current style.
-Format: ${styleFieldSpec(convertTo, vTarget)}
+${convertTo === "brief" ? briefPartsRule(vTarget, false) : `Format: ${styleFieldSpec("tags", vTarget)}`}
 Never use real artist, band, producer, label or song names.
 Return JSON exactly:
-{"styleTag":"the rewritten style"}`;
+${convertTo === "brief" ? `{${briefPartsField()}}` : '{"styleTag":"the rewritten style"}'}`;
       }
       if (reimagine) {
         return `Reimagine this song's Suno style as ${reimagine}, like a cover version in a new genre.
@@ -383,13 +395,13 @@ Return JSON exactly:
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
 "styleTag":"${styleFieldSpec("tags", STYLE_TARGET)}",
-"styleBrief":"the SAME sound as styleTag, written as ${styleFieldSpec("brief", STYLE_TARGET)} Same genre, tempo, instruments and vocal as styleTag; only the format differs.",
+${briefPartsField()},
 "vocalPrompt":{"voice":"timbre and range","delivery":"phrasing and performance","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound",
 "reconciliation":"2-3 sentences describing the specific sonic character of this recording and what makes it distinctive from the artist's typical sound (if applicable). May name the song title and artist here only.",
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this recording"}
-HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names. Translate each influence into sonic description.\n${VOCAL_PLACEMENT_RULE}`;
+HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names. Translate each influence into sonic description.\n${VOCAL_PLACEMENT_RULE}\n${briefPartsRule(STYLE_TARGET, true)}`;
     }
     default:
       throw new Error("Unknown task");

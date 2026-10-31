@@ -7,6 +7,7 @@
 import { findBannedWords } from "@/lib/banned-words";
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
 import { clicheFixPrompt, polishPrompt, prompt } from "@/lib/forge-prompts";
+import { cleanBriefParts, joinBrief } from "@/lib/prompt-craft";
 import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
 import {
   SUNO_LIMITS,
@@ -99,6 +100,16 @@ async function cleanBlocks(
  */
 export function clampSunoFields(result: Json): Json {
   const out = { ...result };
+  // A Studio Brief that arrives in parts: the joined text is the brief (and the style itself
+  // when the AI was asked to rewrite a style as a brief).
+  const parts = cleanBriefParts(out["styleBriefParts"]);
+  if (parts) {
+    out["styleBriefParts"] = parts;
+    out["styleBrief"] = joinBrief(parts);
+    if (typeof out["styleTag"] !== "string" || !(out["styleTag"] as string).trim()) out["styleTag"] = out["styleBrief"];
+  } else {
+    delete out["styleBriefParts"];
+  }
   for (const k of ["styleTag", "styleBrief"]) {
     if (typeof out[k] === "string") out[k] = fitToLimit(out[k] as string, SUNO_LIMITS.style);
   }
