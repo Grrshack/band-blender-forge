@@ -7,7 +7,7 @@ const run = (style: string, exclude = "", artistNames: string[] = []) =>
 
 describe("preflight", () => {
   it("passes a clean prompt", () => {
-    expect(run("trip-hop, dark art-pop, 80 bpm, sub bass, breathy alto, melancholic")).toEqual([]);
+    expect(run("trip-hop, dark art-pop, 80 bpm, sub bass, smoky alto, melancholic")).toEqual([]);
   });
 
   it("stops on an empty prompt, artist names and style/exclude overlap", () => {
