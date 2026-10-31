@@ -20,6 +20,17 @@ import {
 } from "@/lib/suno";
 import { ENGINE_LABELS, buildEngineExport, type Engine } from "@/lib/engines";
 import { preflight } from "@/lib/preflight";
+import {
+  COMMON_EXCLUDES,
+  MIX_CLAUSES,
+  SUNO_PASSES,
+  addClause,
+  hasClause,
+  mergeExcludes,
+  placeVocal,
+  exportLyrics,
+  type Clause,
+} from "@/lib/prompt-craft";
 import { cn } from "@/lib/utils";
 
 function Counter({ n, max }: { n: number; max: number }) {
@@ -116,7 +127,10 @@ export function SunoSheet({
   const style = result?.styleTag ?? "";
   const exclude = result?.excludeStyles ?? "";
   const vocal = vocalString(result?.vocalPrompt);
-  const lyricText = composeSunoLyrics(lyrics.sections);
+  const cleanEnding = lyrics.cleanEnding !== false;
+  const rawLyrics = composeSunoLyrics(lyrics.sections);
+  const exported = exportLyrics(rawLyrics, cleanEnding);
+  const lyricText = exported.text;
   const names = blend.artists.map((a) => a.trim()).filter(Boolean);
 
   const setResult = (patch: Partial<BlendResult>) =>
@@ -137,6 +151,16 @@ export function SunoSheet({
     const base = style.replace(/[,\s]+$/, "");
     setResult({ styleTag: base ? `${base}, ${vocal}` : vocal });
   };
+
+  const applyClause = (c: Clause) => {
+    const next = addClause(style, c);
+    setResult({
+      styleTag: next,
+      ...(c.exclude ? { excludeStyles: mergeExcludes(exclude, c.exclude, next) } : {}),
+    });
+  };
+
+  const commonMerged = mergeExcludes(exclude, COMMON_EXCLUDES, style);
 
   const vocalAlreadyIn = Boolean(vocal) && style.toLowerCase().includes(vocal.toLowerCase());
 
@@ -186,6 +210,12 @@ export function SunoSheet({
       <div className="space-y-4">
         <PreflightCard
           issues={preflight({ style, exclude, version: blend.sunoVersion, artistNames: names })}
+          onFix={(fix) => {
+            if (fix === "placeVocal") {
+              const next = placeVocal(style);
+              setResult({ styleTag: next, excludeStyles: mergeExcludes(exclude, "buried vocals, distant vocals", next) });
+            }
+          }}
         />
         <div
           role="radiogroup"
@@ -322,6 +352,8 @@ export function SunoSheet({
           }
         />
 
+        <ClauseChips style={style} onAdd={applyClause} />
+
         <StyleVariants blend={blend} onBlend={onBlend} />
 
         <SunoBox
@@ -332,6 +364,20 @@ export function SunoSheet({
           mono
           onChange={(v) => setResult({ excludeStyles: v })}
           hint="Paste into Suno's Exclude Styles field — keep negatives out of the style box."
+          extra={
+            commonMerged !== exclude && commonMerged.length <= SUNO_LIMITS.exclude ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setResult({ excludeStyles: commonMerged })}
+                className="mt-2 h-7 gap-1 text-xs"
+                title={COMMON_EXCLUDES}
+              >
+                <Plus className="size-3" /> Add the usual suspects
+              </Button>
+            ) : null
+          }
         />
 
         <SunoBox
@@ -341,6 +387,21 @@ export function SunoSheet({
           rows={14}
           hint="Section tags and [cues] are included. Edit lines in Lyric Forge."
           extra={
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={cleanEnding}
+                onChange={(e) => onLyrics({ ...lyrics, cleanEnding: e.target.checked })}
+                className="accent-primary"
+              />
+              Clean ending: add a short instrumental outro and an [End] marker
+            </label>
+            {exported.noRoom ? (
+              <span className="text-[11px] text-signal-mid">
+                Left off: the lyrics are too close to Suno&apos;s {SUNO_LIMITS.lyrics.toLocaleString()}-character limit. Trim a line or two to make room.
+              </span>
+            ) : null}
             <Button
               type="button"
               variant="ghost"
@@ -350,8 +411,11 @@ export function SunoSheet({
             >
               Open Lyric Forge
             </Button>
+            </div>
           }
         />
+
+        <SunoSettingsCard />
 
         <ShareExport
           disabled={!style.trim() && !lyricText.trim()}
@@ -380,7 +444,13 @@ export function SunoSheet({
  * Runs before the person goes to Suno: a generation (and, after it, one of their limited
  * downloads) is the expensive part, so catch prompt problems first.
  */
-function PreflightCard({ issues }: { issues: ReturnType<typeof preflight> }) {
+function PreflightCard({
+  issues,
+  onFix,
+}: {
+  issues: ReturnType<typeof preflight>;
+  onFix?: (fix: NonNullable<ReturnType<typeof preflight>[number]["fix"]>) => void;
+}) {
   const stops = issues.filter((i) => i.level === "stop");
   const ok = issues.length === 0;
   return (
@@ -420,11 +490,89 @@ function PreflightCard({ issues }: { issues: ReturnType<typeof preflight> }) {
                   i.level === "stop" ? "bg-destructive" : "bg-signal-mid",
                 )}
               />
-              {i.message}
+              <span className="min-w-0 flex-1">
+                {i.message}
+                {i.fix && onFix ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onFix(i.fix!)}
+                    className="ml-2 h-6 px-2 text-[11px]"
+                  >
+                    Fix it
+                  </Button>
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+/** One-tap mix and arrangement clauses, written in the style's own format. */
+function ClauseChips({ style, onAdd }: { style: string; onAdd: (c: Clause) => void }) {
+  return (
+    <section aria-label="Mix clauses" className="rounded-lg border border-border bg-card/40 p-3">
+      <p className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase">Finish the prompt</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Short production lines that steer the mix and arrangement. Each one also adds what to keep
+        out to Exclude styles.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {MIX_CLAUSES.map((c) => {
+          const added = hasClause(style, c);
+          const tooLong = addClause(style, c).length > SUNO_LIMITS.style;
+          return (
+            <Button
+              key={c.id}
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={added || tooLong}
+              onClick={() => onAdd(c)}
+              title={tooLong ? "Not enough room left in the style box" : c.help}
+              className={cn("h-7 gap-1 text-xs", added && "border-primary/50 text-primary")}
+            >
+              {added ? <CheckCircle2 className="size-3" /> : <Plus className="size-3" />}
+              {c.label}
+            </Button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** Slider routine. Community-tested starting points, not official Suno numbers. */
+function SunoSettingsCard() {
+  return (
+    <details className="rounded-lg border border-border bg-card/40 p-3">
+      <summary className="cursor-pointer font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+        Suno settings: a three-pass routine
+      </summary>
+      <ol className="mt-3 space-y-2.5">
+        {SUNO_PASSES.map((p, i) => (
+          <li key={p.name} className="flex gap-3 text-xs">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] text-primary">
+              {i + 1}
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground">
+                {p.name} <span className="font-normal text-muted-foreground">· {p.when}</span>
+              </p>
+              <p className="font-mono text-[11px] text-accent">{p.settings}</p>
+              <p className="text-muted-foreground">{p.why}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        Starting points from community testing, not Suno's official numbers. Slider names and
+        ranges can change between Suno versions.
+      </p>
+    </details>
   );
 }

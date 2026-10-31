@@ -1,6 +1,7 @@
 import { composeSunoLyrics, normalizeSunoVersion, type SunoVersion, vocalString } from "@/lib/suno";
 import type { Take } from "@/lib/takes";
 import type { LyricVoice, RhymeStyle } from "@/lib/rhyme";
+import { normalizePromptFormat, type PromptFormat } from "@/lib/prompt-craft";
 
 /** What MusicBrainz said about an artist. "unavailable" means the lookup failed — NOT that the artist doesn't exist. */
 export type MbInfo = {
@@ -107,6 +108,8 @@ export type BlendSlice = {
   genreLock: boolean;
   /** Optional era/decade to bias the blend toward. Empty = no bias. */
   targetEra: string;
+  /** How the style prompt is written: a tag list (default) or a Studio Brief in sentences. */
+  promptFormat?: PromptFormat | undefined;
 };
 
 export type LyricSlice = {
@@ -117,6 +120,10 @@ export type LyricSlice = {
   sections: Section[];
   /** Plain-text song-length plan that steers generation (see the length planner). */
   structure?: string | undefined;
+  /** Export adds an instrumental outro and an [End] marker. Default on. */
+  cleanEnding?: boolean | undefined;
+  /** Ask for a short instrumental intro before the first sung line. */
+  instrumentalIntro?: boolean | undefined;
   /** Generate section structure only — no lyric lines. User writes the words. */
   tagsOnly: boolean;
   /** Manually pasted Suno style prompt when no blend is linked. */
@@ -223,6 +230,7 @@ export const emptyState = (): ForgeState => ({
     lookupMode: "band",
     songTitle: "",
     sunoVersion: "v6",
+    promptFormat: "tags",
     targetGenre: "",
     genreLock: false,
     targetEra: "",
@@ -271,6 +279,7 @@ export function mergeState(raw: unknown): ForgeState {
       sliders: { ...base.blend.sliders, ...(blend.sliders ?? {}) },
       // Older saves may hold the retired "pro" option.
       sunoVersion: normalizeSunoVersion(blend.sunoVersion ?? base.blend.sunoVersion),
+      promptFormat: normalizePromptFormat(blend.promptFormat),
     },
     lyrics: {
       ...base.lyrics,

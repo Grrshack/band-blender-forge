@@ -34,6 +34,7 @@ import { findBannedWords, parseBannedWords } from "@/lib/banned-words";
 import { findPronunciationRisks } from "@/lib/pronunciation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
+import { LYRIC_NOTATION, exportLyrics } from "@/lib/prompt-craft";
 import { cn } from "@/lib/utils";
 
 /** Estimated syllables, plus a flag for worn-out phrases and lines far off the section's typical length. */
@@ -194,6 +195,7 @@ export function LyricForge({
             ...styleOpts,
             ...(value.structure ? { structure: value.structure } : {}),
             ...(tagsOnly ? { tagsOnly: true } : {}),
+            ...(value.instrumentalIntro ? { instrumentalIntro: true } : {}),
             // Words used >= 2 times in previous generations get soft-avoided
             ...(Object.keys(recentWords).length > 0
               ? {
@@ -503,7 +505,42 @@ export function LyricForge({
                 onCheckedChange={(v) => onChange({ ...value, tagsOnly: v })}
               />
             </label>
+            <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/40 px-3 py-2">
+              <div>
+                <span className="block text-xs font-medium text-foreground/90">Instrumental intro</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  Open with a few bars of band before the first line, instead of starting on the vocal.
+                </span>
+              </div>
+              <Switch
+                checked={value.instrumentalIntro === true}
+                onCheckedChange={(v) => onChange({ ...value, instrumentalIntro: v })}
+              />
+            </label>
             </div>
+          </details>
+
+          <details className="group rounded-lg border border-border bg-card/30">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">
+                <span className="block text-sm font-medium">Punctuation Suno performs</span>
+                <span className="block text-xs text-muted-foreground">
+                  Small marks in a line change how it&apos;s sung.
+                </span>
+              </span>
+              <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <ul className="space-y-1.5 px-3 pb-3">
+              {LYRIC_NOTATION.map((n) => (
+                <li key={n.mark} className="flex gap-3 text-xs">
+                  <span className="w-16 shrink-0 font-mono text-accent">{n.mark}</span>
+                  <span className="text-muted-foreground">{n.effect}</span>
+                </li>
+              ))}
+              <li className="pt-1 text-[11px] text-muted-foreground">
+                Suno treats these as hints, not commands. Use one or two per section.
+              </li>
+            </ul>
           </details>
 
           <Button
@@ -542,7 +579,7 @@ export function LyricForge({
               >
                 <Rows3 className="size-3.5" /> {showRhymes ? "Hide rhyme scheme" : "Rhyme scheme"}
               </Button>
-              <CopyButton value={composeSunoLyrics(sections)} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
+              <CopyButton value={exportLyrics(composeSunoLyrics(sections), value.cleanEnding !== false).text} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
             </div>
           ) : undefined
         }

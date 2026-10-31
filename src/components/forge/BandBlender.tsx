@@ -20,6 +20,7 @@ import { shareBlend } from "@/lib/forge.functions";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { BRIEF_PARTS, PROMPT_FORMAT_LABELS, type PromptFormat } from "@/lib/prompt-craft";
 import { track } from "@/lib/stats";
 
 export type { BlendResult } from "./types";
@@ -65,6 +66,7 @@ export function BandBlender({
     sunoVersion = "v6",
     targetGenre = "", genreLock = false,
     targetEra = "",
+    promptFormat = "tags",
   } = value;
   const [showCard, setShowCard] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
@@ -110,8 +112,8 @@ export function BandBlender({
     );
     try {
       const payload = isSong
-        ? { title: songTitle.trim(), artist: names[0] ?? "" }
-        : { artists: names, sliders, sunoVersion, targetGenre, genreLock, targetEra };
+        ? { title: songTitle.trim(), artist: names[0] ?? "", promptFormat }
+        : { artists: names, sliders, sunoVersion, targetGenre, genreLock, targetEra, promptFormat };
       const res = await forge({
         data: { task: isSong ? "song" : "blend", routing, apiKey, payload },
       });
@@ -130,6 +132,7 @@ export function BandBlender({
         targetGenre,
         genreLock,
         targetEra,
+        promptFormat,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Blend failed.");
@@ -447,6 +450,37 @@ export function BandBlender({
               </p>
             </div>
           )}
+
+          {/* Style prompt format */}
+          <div className="mt-5">
+            <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
+              Style prompt format
+            </span>
+            <div role="radiogroup" aria-label="Style prompt format" className="flex rounded-lg border border-border p-0.5">
+              {(Object.keys(PROMPT_FORMAT_LABELS) as PromptFormat[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="radio"
+                  aria-checked={promptFormat === f}
+                  onClick={() => onChange({ ...value, promptFormat: f })}
+                  className={cn(
+                    "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
+                    promptFormat === f
+                      ? "bg-primary/20 text-primary"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {PROMPT_FORMAT_LABELS[f]}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {promptFormat === "brief"
+                ? `A few plain sentences, like briefing a session band: ${BRIEF_PARTS.map((b) => b.label.toLowerCase()).join(", ")}. v6 reads full sentences well; try both on the same song and keep the one that sounds better.`
+                : "Short comma-separated tags, genre first. Compact and works on every Suno version."}
+            </p>
+          </div>
 
           {/* Quick-start presets */}
           {lookupMode === "band" && !result && (

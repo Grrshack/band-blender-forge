@@ -59,6 +59,7 @@ export function SongAnalyzer({
             title: title.trim(),
             artist: artist.trim(),
             description: description.trim(),
+            promptFormat: blend.promptFormat ?? "tags",
             measured: measuredForPrompt(analysis),
           },
         },

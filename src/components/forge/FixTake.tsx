@@ -19,7 +19,7 @@ import { measureTake, type TakeMeasurements } from "@/lib/audio/take-diagnosis";
 import { submitPublicPrompt } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/stats";
-import { SYMPTOMS } from "@/lib/symptoms";
+import { KEEP_WHAT_WORKS, SYMPTOMS } from "@/lib/symptoms";
 
 export function FixTake({
   blend,
@@ -309,6 +309,19 @@ export function FixTake({
               Suno is random — the same prompt gives different takes. Change one thing at a time and
               generate a few takes before judging a revision.
             </p>
+            <details className="rounded-lg border border-border bg-card/40 p-3">
+              <summary className="cursor-pointer text-xs font-medium text-foreground/90">
+                Mostly good take? Keep what works
+              </summary>
+              <ul className="mt-2 space-y-2">
+                {KEEP_WHAT_WORKS.map((k) => (
+                  <li key={k.title} className="text-xs">
+                    <span className="font-semibold text-foreground">{k.title}.</span>{" "}
+                    <span className="text-muted-foreground">{k.body}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
         </Panel>
 
