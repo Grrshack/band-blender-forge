@@ -30,6 +30,12 @@ export type BlendResult = {
   vocals?: string;
   mood?: string;
   styleTag?: string;
+  /** Which format styleTag is written in. Missing = guessed from the text. */
+  styleFormat?: PromptFormat | undefined;
+  /** The same sound in the other format, for an instant swap. Cleared when an AI rewrite changes the style. */
+  styleAlt?: string | undefined;
+  /** Raw second version from the AI; folded into styleTag/styleAlt as soon as it arrives. */
+  styleBrief?: string | undefined;
   reconciliation?: string;
   recommendedSliders?: { energy?: number; complexity?: number; brightness?: number };
   sliderNotes?: string;

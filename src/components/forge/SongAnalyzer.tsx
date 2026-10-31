@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ErrorNote, Panel } from "./Field";
 import { SongDrop, SongMeasurements, useSongAnalysis } from "./SongMeasurements";
 import { useSettings } from "./settings";
+import { arrangeFormats } from "@/lib/prompt-craft";
 import type { BlendResult, BlendSlice, LyricSlice } from "./types";
 import { useForge } from "./use-forge";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,6 @@ export function SongAnalyzer({
             title: title.trim(),
             artist: artist.trim(),
             description: description.trim(),
-            promptFormat: blend.promptFormat ?? "tags",
             measured: measuredForPrompt(analysis),
           },
         },
@@ -75,7 +75,7 @@ export function SongAnalyzer({
           complexity: result.recommendedSliders?.complexity ?? blend.sliders.complexity,
           brightness: result.recommendedSliders?.brightness ?? blend.sliders.brightness,
         },
-        result,
+        result: arrangeFormats(result, blend.promptFormat ?? "tags"),
       });
       track("start_choice", "analyzer_prompt", { once: true });
       toast.success("Prompt built from your song. It's in the Band Blender.");

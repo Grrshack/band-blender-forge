@@ -20,7 +20,8 @@ import { shareBlend } from "@/lib/forge.functions";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { BRIEF_PARTS, PROMPT_FORMAT_LABELS, type PromptFormat } from "@/lib/prompt-craft";
+import { activeFormat, arrangeFormats, dropAlt } from "@/lib/prompt-craft";
+import { StyleFormatSwitch } from "./StyleFormatSwitch";
 import { track } from "@/lib/stats";
 
 export type { BlendResult } from "./types";
@@ -125,7 +126,7 @@ export function BandBlender({
           complexity: blend.recommendedSliders?.complexity ?? sliders.complexity,
           brightness: blend.recommendedSliders?.brightness ?? sliders.brightness,
         },
-        result: blend,
+        result: arrangeFormats(blend, promptFormat),
         lookupMode,
         songTitle,
         sunoVersion,
@@ -197,8 +198,7 @@ export function BandBlender({
         onChange({
           ...value,
           result: {
-            ...result,
-            styleTag: refined.styleTag,
+            ...dropAlt(result, refined.styleTag),
             ...(reimagine && refined.excludeStyles ? { excludeStyles: refined.excludeStyles } : {}),
             ...(reimagine && refined.genre ? { genre: refined.genre } : {}),
             refineChanges: refined.changes ?? [],
@@ -451,37 +451,6 @@ export function BandBlender({
             </div>
           )}
 
-          {/* Style prompt format */}
-          <div className="mt-5">
-            <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
-              Style prompt format
-            </span>
-            <div role="radiogroup" aria-label="Style prompt format" className="flex rounded-lg border border-border p-0.5">
-              {(Object.keys(PROMPT_FORMAT_LABELS) as PromptFormat[]).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  role="radio"
-                  aria-checked={promptFormat === f}
-                  onClick={() => onChange({ ...value, promptFormat: f })}
-                  className={cn(
-                    "flex-1 rounded-md py-1.5 font-mono text-[10px] tracking-wider uppercase transition-colors",
-                    promptFormat === f
-                      ? "bg-primary/20 text-primary"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {PROMPT_FORMAT_LABELS[f]}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {promptFormat === "brief"
-                ? `A few plain sentences, like briefing a session band: ${BRIEF_PARTS.map((b) => b.label.toLowerCase()).join(", ")}. v6 reads full sentences well; try both on the same song and keep the one that sounds better.`
-                : "Short comma-separated tags, genre first. Compact and works on every Suno version."}
-            </p>
-          </div>
-
           {/* Quick-start presets */}
           {lookupMode === "band" && !result && (
             <div className="mt-4">
@@ -585,6 +554,11 @@ export function BandBlender({
                 </div>
               ) : null}
               <div className="mt-1">
+                <StyleFormatSwitch
+                  result={result}
+                  sunoVersion={sunoVersion}
+                  onResult={(next) => onChange({ ...value, result: next, promptFormat: activeFormat(next) })}
+                />
                 <ReadoutField label="Style prompt" value={result.styleTag ?? "—"} mono accent />
               </div>
               {result.excludeStyles ? (

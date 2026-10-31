@@ -20,6 +20,7 @@ import { submitPublicPrompt } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/stats";
 import { KEEP_WHAT_WORKS, SYMPTOMS } from "@/lib/symptoms";
+import { dropAlt } from "@/lib/prompt-craft";
 
 export function FixTake({
   blend,
@@ -139,17 +140,18 @@ export function FixTake({
     }
   };
 
+  /** An AI rewrite or a restored old prompt: the other-format version no longer matches. */
+  const replaceStyle = (styleTag: string, excludeStyles: string) =>
+    onBlend({ ...blend, result: { ...dropAlt(blend.result ?? {}, styleTag), excludeStyles } });
+
   const apply = (r: FixResult) => {
     onChange({ ...value, undo: { styleTag: style, excludeStyles: exclude } });
-    setBlendFields({
-      styleTag: r.styleTag ?? style,
-      excludeStyles: r.excludeStyles ?? exclude,
-    });
+    replaceStyle(r.styleTag ?? style, r.excludeStyles ?? exclude);
   };
 
   const revert = () => {
     if (!undo) return;
-    setBlendFields({ styleTag: undo.styleTag, excludeStyles: undo.excludeStyles });
+    replaceStyle(undo.styleTag, undo.excludeStyles);
     onChange({ ...value, undo: null });
   };
 
@@ -493,7 +495,7 @@ export function FixTake({
           onTakes={onTakes}
           style={style}
           exclude={exclude}
-          onRestore={(s, e) => setBlendFields({ styleTag: s, excludeStyles: e })}
+          onRestore={(s, e) => replaceStyle(s, e)}
           onShareRecipe={shareRecipe}
           defaultTitle={blend.artists.filter((a) => a.trim()).slice(0, 2).join(" × ")}
         />

@@ -5,6 +5,7 @@ import { CopyButton } from "./CopyButton";
 import { ErrorNote } from "./Field";
 import { useSettings } from "./settings";
 import { useForge } from "./use-forge";
+import { dropAlt } from "@/lib/prompt-craft";
 import type { BlendSlice, StyleVariant } from "./types";
 import { Button } from "@/components/ui/button";
 import { SUNO_LIMITS } from "@/lib/suno";
@@ -70,7 +71,7 @@ export function StyleVariants({
   const use = (v: StyleVariant) =>
     onBlend({
       ...blend,
-      result: { ...(result ?? {}), styleTag: v.styleTag, excludeStyles: v.excludeStyles },
+      result: { ...dropAlt(result ?? {}, v.styleTag), excludeStyles: v.excludeStyles },
     });
 
   return (

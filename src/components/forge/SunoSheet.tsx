@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { CopyButton } from "./CopyButton";
 import { Panel } from "./Field";
 import { SendToChat } from "./SendToChat";
+import { StyleFormatSwitch } from "./StyleFormatSwitch";
 import { SendToEngine, SendToSuno } from "./SendToSuno";
 import { ShareExport } from "./ShareExport";
 import { SoundProfiles } from "./SoundProfiles";
@@ -25,6 +26,7 @@ import {
   COMMON_EXCLUDES,
   MIX_CLAUSES,
   SUNO_PASSES,
+  activeFormat,
   addClause,
   hasClause,
   mergeExcludes,
@@ -331,6 +333,13 @@ export function SunoSheet({
           hint="Doesn't change how the song sounds."
         />
 
+        {result?.styleTag ? (
+          <StyleFormatSwitch
+            result={result}
+            sunoVersion={blend.sunoVersion}
+            onResult={(next) => onBlend({ ...blend, result: next, promptFormat: activeFormat(next) })}
+          />
+        ) : null}
         <SunoBox
           label="Style of music"
           value={style}
