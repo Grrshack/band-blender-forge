@@ -179,6 +179,9 @@ export function scrubArtistNames(
 export function fitToLimit(text: string, max: number): string {
   if (text.length <= max) return text;
   const cut = text.slice(0, max);
+  // Sentences (a Studio Brief) cut best at a full stop; tag lists at a comma.
+  const stop = cut.lastIndexOf(". ");
+  if (stop > max * 0.5) return cut.slice(0, stop + 1).trim();
   const comma = cut.lastIndexOf(",");
   return (comma > max * 0.5 ? cut.slice(0, comma) : cut).trim();
 }

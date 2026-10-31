@@ -10,8 +10,14 @@ import {
   findStyleLeaks,
   type SunoVersion,
 } from "./suno";
+import { looksLikeBrief, placeVocal, softVocalUnplaced } from "./prompt-craft";
 
-export type PreflightIssue = { level: "stop" | "warn"; message: string };
+export type PreflightIssue = {
+  level: "stop" | "warn";
+  message: string;
+  /** A one-click fix the UI can offer. */
+  fix?: "placeVocal";
+};
 
 const tagsOf = (s: string) =>
   s
@@ -39,6 +45,8 @@ export function preflight(input: {
   const lower = style.toLowerCase();
   const tags = tagsOf(style);
   const target = STYLE_TARGET_FOR_VERSION[input.version];
+  // A Studio Brief is sentences, not a tag list: count and order rules don't apply to it.
+  const brief = looksLikeBrief(style);
 
   if (!style) return [{ level: "stop", message: "There's no style prompt yet." }];
 
@@ -51,7 +59,7 @@ export function preflight(input: {
     });
   }
 
-  if (tags.length > 20) {
+  if (!brief && tags.length > 20) {
     issues.push({ level: "warn", message: `${tags.length} tags is a lot. Suno tends to follow the first 8–12; cut the weakest.` });
   }
 
@@ -62,7 +70,12 @@ export function preflight(input: {
 
   const genres = ALL_GENRES.map((g) => g.toLowerCase());
   const genreAt = tags.findIndex((t) => genres.some((g) => t.includes(g)));
-  if (genreAt > 2) {
+  if (brief) {
+    const opening = lower.slice(0, 80);
+    if (!genres.some((g) => opening.includes(g))) {
+      issues.push({ level: "warn", message: "The brief doesn't name a genre in its opening words. Start with the genre and mood." });
+    }
+  } else if (genreAt > 2) {
     issues.push({ level: "warn", message: "The genre comes late. Put it first; Suno weighs the opening tags most." });
   }
 
@@ -81,11 +94,23 @@ export function preflight(input: {
     issues.push({ level: "warn", message: 'Both male and female vocals. If you want two singers, say "duet".' });
   }
 
-  const negatives = tags.filter((t) => /^(no|without|avoid|not)\b/.test(t));
+  const negatives = brief
+    ? [...lower.matchAll(/\b(?:no|without|avoid)\s+[a-z][a-z-]*(?:\s+[a-z-]+)?/g)].map((m) => m[0])
+    : tags.filter((t) => /^(no|without|avoid|not)\b/.test(t));
   if (negatives.length) {
     issues.push({
       level: "warn",
       message: `"${negatives[0]}" is a negative inside the style box, where it can do the opposite. Move it to Exclude styles.`,
+    });
+  }
+
+  if (softVocalUnplaced(style)) {
+    issues.push({
+      level: "warn",
+      message:
+        "Soft or intimate vocal with no placement. Suno often reads that as quiet and tucks the voice behind the band. Say it's close-miked and upfront.",
+      // Only offer the button when the fix still fits the style box.
+      ...(placeVocal(style) !== style ? { fix: "placeVocal" as const } : {}),
     });
   }
 

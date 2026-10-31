@@ -93,7 +93,22 @@ async function cleanBlocks(
   return fixed;
 }
 
+/**
+ * Last line of defence for Suno's box limits (style 1,000, exclude 1,000), whatever task
+ * produced the fields. Prompts already ask for less; this catches a model that ignores them.
+ */
+export function clampSunoFields(result: Json): Json {
+  const out = { ...result };
+  if (typeof out["styleTag"] === "string") out["styleTag"] = fitToLimit(out["styleTag"] as string, SUNO_LIMITS.style);
+  if (typeof out["excludeStyles"] === "string") out["excludeStyles"] = fitToLimit(out["excludeStyles"] as string, SUNO_LIMITS.exclude);
+  return out;
+}
+
 export async function runPipeline(task: string, payload: Json, deps: PipelineDeps): Promise<Json> {
+  return clampSunoFields(await runTask(task, payload, deps));
+}
+
+async function runTask(task: string, payload: Json, deps: PipelineDeps): Promise<Json> {
   const base = prompt(task, payload);
 
   switch (task) {

@@ -1,4 +1,15 @@
 import { lyricStyleRules } from "./rhyme";
+import { SYMPTOM_PLAYBOOK } from "./symptoms";
+import {
+  LYRIC_CHAR_BUDGET,
+  LYRIC_NOTATION_RULE,
+  VOCAL_PLACEMENT_RULE,
+  looksLikeBrief,
+  normalizePromptFormat,
+  styleFieldSpec,
+  styleRule,
+  type PromptFormat,
+} from "@/lib/prompt-craft";
 import { bannedWordsInstruction } from "@/lib/banned-words";
 import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
 import {
@@ -27,6 +38,26 @@ export function prompt(task: string, payload: Record<string, unknown>): string {
     ? (payload["bannedWords"] as unknown[]).filter((w): w is string => typeof w === "string")
     : [];
   return body + bannedWordsInstruction(banned);
+}
+
+/** Known-good starting moves for the symptoms the person picked. */
+function playbookFor(symptoms: unknown): string {
+  if (!Array.isArray(symptoms)) return "";
+  const lines = symptoms
+    .filter((x): x is string => typeof x === "string")
+    .map((x) => {
+      const move = SYMPTOM_PLAYBOOK[x as keyof typeof SYMPTOM_PLAYBOOK];
+      return move ? `    "${x}": ${move}` : "";
+    })
+    .filter(Boolean);
+  return lines.length ? `- Starting points that usually work for the picked symptoms:\n${lines.join("\n")}\n` : "";
+}
+
+/** The format to write a style in: what the user picked, or the format of the style being revised. */
+function formatOf(payload: Record<string, unknown>, styleKey: string): PromptFormat {
+  if (payload["promptFormat"] !== undefined) return normalizePromptFormat(payload["promptFormat"]);
+  const st = payload[styleKey];
+  return typeof st === "string" && looksLikeBrief(st) ? "brief" : "tags";
 }
 
 function promptBody(task: string, payload: Record<string, unknown>): string {
@@ -68,7 +99,7 @@ Return JSON exactly:
 {"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. High artist familiarity"},
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
-"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${vTarget} characters.",
+"styleTag":"${styleFieldSpec(formatOf(payload, "styleTag"), vTarget)}",
 "voiceTags":"Suno v6 bracket vocal tags to prepend to the lyrics field, e.g. '[Female Vocal]' or '[Male Vocal], [Whisper]'. Choose from: [Male Vocal] [Female Vocal] [Duet] [Choir] [Rap] [Whisper] [Falsetto] [Raw Vocals]. Max 2-3 tags. Empty string if not applicable.",
 "vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound (for Suno's Exclude styles box), e.g. 'autotune, trap hi-hats, EDM drop'",
@@ -76,7 +107,7 @@ Return JSON exactly:
 "reconciliation":"2-4 sentences explaining exactly how conflicting elements of the chosen artists are fused, naming the specific conflicts and the resolution",
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this blend"}
-HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.`;
+HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names — not the input artists, not any other. Translate each influence into sonic description.\n${VOCAL_PLACEMENT_RULE}`;
     }
     case "lyrics": {
       const avoidWords = Array.isArray(payload["avoidWords"])
@@ -90,6 +121,10 @@ HARD RULE: every field except "reconciliation" must contain NO artist, band, pro
       const tagsNote = tagsOnly
         ? `\nTAGS-ONLY MODE: output section structure with NO lyric lines. Every section's "lines" array must be empty []. Generate a realistic song structure (tags, cues) only — the user will write the words.`
         : "";
+      const introNote =
+        payload["instrumentalIntro"] === true && !payload["structure"]
+          ? `\nStart with an [Instrumental Intro] section ("lines":[]) before the first sung section.`
+          : "";
       return `Write song lyrics for this brief.
 Input: ${p}
 Rules: hooks must be rhythmically repeatable and easy to sing; concrete images and specific nouns only;
@@ -97,7 +132,7 @@ avoid banned crutch phrases; vary line lengths; the chorus hook must land in its
 Hook-craft rules (apply to every chorus):
 - Favour open vowel sounds (ah, oh, ay, ee) on the syllable that lands on the strongest beat — these project further and read as catchier.
 - The chorus hook phrase must repeat at least twice within the chorus itself.
-- Apply the stranger test: would a stranger who heard this twice be able to sing back the hook? If not, simplify it.${avoidNote}${tagsNote}${lyricStyleRules(payload["rhymeStyle"], payload["voice"])}
+- Apply the stranger test: would a stranger who heard this twice be able to sing back the hook? If not, simplify it.${avoidNote}${tagsNote}${introNote}${lyricStyleRules(payload["rhymeStyle"], payload["voice"])}
 If "structure" is present in the input it is a plan: produce EXACTLY those sections, in that order, with exactly that many lyric lines in each (instrumental sections get "lines":[]). Do not add or drop sections.
 Suno reads bracketed performance cues, so use them with purpose, not on every section:
 - "cue" is an optional 1-4 word delivery direction for that section, e.g. "Whispered, sparse" or "Belted, full band".
@@ -106,7 +141,9 @@ Suno reads bracketed performance cues, so use them with purpose, not on every se
 - Match cues to the linked style's vocal prompt; never put genre or instrument descriptions inside lyric lines.
 Return JSON exactly:
 {"title":"string, max 60 characters","sections":[{"tag":"[Verse 1]","cue":"optional short direction","lines":["line","line"]}]}
-Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] [Outro] as appropriate.`;
+Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] as appropriate. Open with [Instrumental Intro] (lines []) only when the song needs a lead-in. Unless the plan says otherwise, end with an [Instrumental Outro] section (lines []) after the last sung line rather than an [Outro] where words trail off; finishing every lyric before a short instrumental tail helps Suno end cleanly.
+${LYRIC_NOTATION_RULE}
+Length limit: Suno's lyrics box holds 5,000 characters including tags and cues. Keep the whole song (every tag, cue and line) under ${LYRIC_CHAR_BUDGET} characters; if the plan asks for more, shorten lines rather than drop sections.`;
     }
     case "intent":
       return `You are the studio assistant. Turn the user's latest message into settings for the Band Blender form.
@@ -172,8 +209,8 @@ Rules:
 - If "style" is empty the user didn't keep their prompt: write a fresh style prompt from the complaints, lyrics and audio instead of a revision.
 - If "history" is present it lists earlier takes (oldest first) with 1-5 star ratings and notes. Use it: never repeat a change that coincided with a low rating, and keep what scored well.
 - Be honest: Suno is stochastic and some problems (e.g. a voice that sounds synthetic) cannot be fully fixed by prompting. Say so in the diagnosis when it applies.
-- Common prompt-side causes: contradictory tags, too many tags diluting each other, genre words buried late, negatives written inside the style box instead of Exclude styles, conflicting tempo or energy words, instrument lists that crowd the mix.
-- styleTag: the full revised style prompt, max ${STYLE_TARGET} characters, genre and mood first, NO real artist, band, producer, label or song names.
+${playbookFor(payload["symptoms"])}- Common prompt-side causes: contradictory tags, too many tags diluting each other, genre words buried late, negatives written inside the style box instead of Exclude styles, conflicting tempo or energy words, instrument lists that crowd the mix.
+- styleTag: the full revised style prompt. ${styleRule(formatOf(payload, "style"), STYLE_TARGET)} NO real artist, band, producer, label or song names.\n- ${VOCAL_PLACEMENT_RULE}
 - excludeStyles: the full revised comma-separated exclude list, no artist names.
 - lyricFixes: only if the complaints or lyrics justify it; quote the exact original line or section tag.
 - If "audio" is present, it holds measurements of the actual generated file, taken in the user's browser:
@@ -183,6 +220,7 @@ Rules:
     spectrum: peakDb, rmsDb, dynamicRangeDb, lowPeakHz, and bands (sub 20-80 Hz, bass 80-250, lowMid 250-500, mid 500-2k, highMid 2k-8k, air 8k-20k) in dB relative to the full-range level, measured on 30 s from the middle of the song.
     "flags" are findings the measurements already support; treat them as facts. Use the rest to confirm or question the user's complaints, and say plainly when the audio does not show what they describe.
     Mix-level problems (boomy or muddy low end, harsh highs, clipping, too quiet) are often better fixed in mastering than by regenerating.
+- When a take is mostly right, keeping it beats starting over: replace one section, extend from just before the point it went wrong, or splice the good section of one take with another. Say which in routeWhy when it applies.
 - Suno v6 can edit part of an existing song from a plain-language instruction (change one section, one instrument or one lyric) while keeping the rest. When the take is mostly good and the problem is local, prefer that: write sunoEdits the user can paste into Suno's edit feature. Each instruction must be specific and under 200 characters, name the part to change, and contain no real artist, band or song names. Leave sunoEdits empty when the problem is the whole song.
 - fixRoute: "edit" if editing parts of this take is the best next step, "regenerate" if the prompt itself needs to change, "master" if the song is fine and only the mix needs treatment. routeWhy: one sentence.
 Return JSON exactly:
@@ -200,7 +238,7 @@ The three variants, in this order:
 1. "Safe": stays closest to the current style; the most predictable take.
 2. "Experimental": change ONE dimension noticeably (tempo feel, lead instrument, production era or texture) while staying coherent.
 3. "Hybrid": fuse the style with ONE contrasting genre. Name the genre, never an artist.
-Rules: differences must be audible, not cosmetic — do not just reorder tags. Each styleTag is one comma-separated line, genre and mood first, max ${STYLE_TARGET} characters. NO real artist, band, producer, label or song names anywhere. Each excludeStyles is 3-8 comma-separated traits.
+Rules: differences must be audible, not cosmetic — do not just reorder tags. For each styleTag: ${styleRule(formatOf(payload, "style"), STYLE_TARGET)} NO real artist, band, producer, label or song names anywhere. Each excludeStyles is 3-8 comma-separated traits.
 Return JSON exactly:
 {"variants":[{"label":"Safe","angle":"one sentence: what is different about this take","styleTag":"string","excludeStyles":"string","vocalLine":"one short line describing the vocal"},{"label":"Experimental","angle":"","styleTag":"","excludeStyles":"","vocalLine":""},{"label":"Hybrid","angle":"","styleTag":"","excludeStyles":"","vocalLine":""}]}`;
     case "refine": {
@@ -214,7 +252,7 @@ Fields: "styleTag" is the current style, "excludeStyles" the current exclusions,
 Rules:
 - ${reimagine} becomes the main genre: put it first, and change the instrumentation, rhythm and production to what that genre uses.
 - Keep what makes the song recognisable where it fits the new genre: the mood, the vocal character and gender, and roughly the energy. Adjust the tempo only if the genre needs it.
-- One comma-separated style tag line, genre and mood first, max ${vTarget} characters.
+- ${styleRule(formatOf(payload, "styleTag"), vTarget)}
 - Rewrite excludeStyles for the new genre: 3-8 comma-separated traits to keep out (drop any that the new genre needs).
 - Never use real artist, band, producer, label or song names.
 Return JSON exactly:
@@ -225,13 +263,13 @@ Return 1-3 changes.`;
 Input: ${p}
 Fields: "styleTag" is the current tag. "instruction" is what the user wants changed.
 Rules:
-- Output a single comma-separated style tag line, genre and mood first, max ${vTarget} characters.
+- ${styleRule(formatOf(payload, "styleTag"), vTarget)} Keep the format the current style uses.
 - Translate requests into production terms — never use real artist, band, producer, label or song names.
 - If a request is ambiguous (e.g. "more chill"), pick the most natural interpretation and explain it in changes.
-- Limit edits: change or add at most 4 tag elements per call; preserve the rest verbatim.
+- Limit edits: change or add at most 4 tag elements (or brief phrases) per call; preserve the rest verbatim.
 - If the instruction is already reflected in the tag, say so in changes and return the tag unchanged.
 Return JSON exactly:
-{"styleTag":"revised comma-separated style tag, max ${vTarget} chars","changes":["one sentence describing what was changed and why"]}
+{"styleTag":"the revised style, max ${vTarget} chars","changes":["one sentence describing what was changed and why"]}
 Return 1–3 changes. No more.`;
     }
     case "masterSuggest": {
@@ -331,13 +369,13 @@ Return JSON exactly:
 {"confidence":{"level":"high"|"medium"|"low","note":"one sentence, e.g. Confident — well-known recording"},
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
-"styleTag":"a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${STYLE_TARGET} characters.",
+"styleTag":"${styleFieldSpec(formatOf(payload, "styleTag"), STYLE_TARGET)}",
 "vocalPrompt":{"voice":"timbre and range","delivery":"phrasing and performance","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing"},
 "excludeStyles":"3-8 comma-separated traits to keep OUT of this sound",
 "reconciliation":"2-3 sentences describing the specific sonic character of this recording and what makes it distinctive from the artist's typical sound (if applicable). May name the song title and artist here only.",
 "recommendedSliders":{"energy":0-100,"complexity":0-100,"brightness":0-100},
 "sliderNotes":"one sentence on why those values suit this recording"}
-HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names. Translate each influence into sonic description.`;
+HARD RULE: every field except "reconciliation" must contain NO artist, band, producer, label or song names. Translate each influence into sonic description.\n${VOCAL_PLACEMENT_RULE}`;
     }
     default:
       throw new Error("Unknown task");

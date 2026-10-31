@@ -1,7 +1,7 @@
 /**
  * Public how-to guides. Each answers one problem Suno users search for and ends at the tool
  * that solves it. Facts that come from other sites carry their source; review these when
- * Suno changes models or plans. Last checked: Oct 24, 2026.
+ * Suno changes models or plans. Last checked: Oct 30, 2026.
  */
 export type GuideSection = { heading: string; body: string[] };
 export type Guide = {
@@ -81,6 +81,14 @@ export const GUIDES: Guide[] = [
           "Avoid opposites (calm and aggressive, acoustic and EDM) unless you say how they fit: \"slow verses, explosive chorus\".",
           "Put negatives like \"no drums\" in Exclude styles, not the style box.",
           "Describe the sound, never name an artist. Suno blocks artist names.",
+        ],
+      },
+      {
+        heading: "Or write it as a brief",
+        body: [
+          "On v6 you can also write the style as a few plain sentences, the way a producer briefs a session band. Band Blender calls this a Studio Brief and covers six things in order: the sound (genre and mood first), the pulse (one tempo and its feel), the players (each instrument and what it's doing), the voice (and where it sits in the mix), the arc (what the verses hold back and the chorus adds) and the finish (the room and the mix).",
+          "Neither format wins every time. Generate the same song both ways and keep whichever sounds better; the tag list is still the safer pick for v6-mini.",
+          "If you ask for a soft, breathy or intimate vocal, say where it sits too: close-miked, dry and upfront. On its own, \"soft\" can make Suno tuck the voice behind the band.",
         ],
       },
       {
@@ -229,6 +237,48 @@ export const GUIDES: Guide[] = [
       { label: "Gemini API: music generation with Lyria 3.5", url: "https://ai.google.dev/gemini-api/docs/music-generation" },
       { label: "Digital Trends: Lyria 3.5 in the Gemini app", url: "https://www.digitaltrends.com/computing/google-brings-its-best-ai-music-model-lyria-3-5-to-the-gemini-app/" },
       { label: "Suno: How to use audio uploads", url: "https://help.suno.com/en/articles/6141569" },
+    ],
+  },
+  {
+    slug: "suno-custom-models",
+    title: "Suno Custom Models: what to upload so the model is worth using",
+    description:
+      "Custom Models learn your arrangements and production habits from your own songs. How many to pick, which ones, what it won't learn, and the rights question to settle first.",
+    sections: [
+      {
+        heading: "What it is",
+        body: [
+          "On Pro and Premier, Suno lets you build up to three private models from your own songs. Training takes a few minutes, and the model then shows up in the model picker.",
+          "Think of it as teaching Suno your habits: how your songs are arranged, which instruments you reach for, how they build. It is not a voice clone. Suno handles voices with a separate feature, so don't expect the model to sing like you.",
+        ],
+      },
+      {
+        heading: "Pick a tight set, not a big one",
+        body: [
+          "Six songs is the minimum Suno accepts. Reviewers who've tested it found a consistent set of about 10 to 15 works better than 30 that wander across genres and eras.",
+          "Choose songs that share a sound: the same genre family, similar production, finished mixes rather than rough demos. A mix of polished masters and phone sketches tends to average out into something that sounds like neither.",
+          "If you make two distinct styles, build two models instead of one blended one. You can't add songs to a model later, so changing it means rebuilding it.",
+        ],
+      },
+      {
+        heading: "Settle the rights first",
+        body: [
+          "Suno says you must own the rights to every song you upload. Co-writes, songs with samples, and anything signed to a label or publisher need the other owners' OK first.",
+          "Read Suno's current terms on uploaded content before you upload unreleased work, so you know what you're agreeing to. Uploads also go through an automatic copyright check that can flag songs you do own; an instrumental or alternate mix sometimes gets through.",
+        ],
+      },
+      {
+        heading: "Using the model well",
+        body: [
+          "Keep prompting as usual. The model supplies your habits; the style prompt still steers each song. Start with a short prompt to hear what the model does on its own, then add detail.",
+          "Judge it on three or four songs, not one. If every take sounds like the same song, your training set was too narrow; if none sound like you, it was too broad.",
+        ],
+      },
+    ],
+    tool: { tab: "blend", label: "Build a style prompt" },
+    sources: [
+      { label: "Suno: Custom Models", url: "https://help.suno.com/en/articles/11362497" },
+      { label: "Dubspot: Suno Custom Models review", url: "https://blog.dubspot.com/suno-custom-models-review" },
     ],
   },
 ];
