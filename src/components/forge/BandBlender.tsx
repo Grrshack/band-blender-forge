@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { activeFormat, arrangeFormats, briefMatches, dropAlt } from "@/lib/prompt-craft";
 import { BriefReadout } from "./BriefReadout";
-import { StyleFormatSwitch } from "./StyleFormatSwitch";
+import { BriefSplitButton, StyleFormatSwitch } from "./StyleFormatSwitch";
 import { track } from "@/lib/stats";
 
 export type { BlendResult } from "./types";
@@ -563,7 +563,16 @@ export function BandBlender({
                 {activeFormat(result) === "brief" && briefMatches(result.briefParts, result.styleTag) ? (
                   <BriefReadout parts={result.briefParts} text={result.styleTag ?? ""} />
                 ) : (
-                  <ReadoutField label="Style prompt" value={result.styleTag ?? "—"} mono accent />
+                  <>
+                    <ReadoutField label="Style prompt" value={result.styleTag ?? "—"} mono accent />
+                    {activeFormat(result) === "brief" && result.styleTag?.trim() ? (
+                      <BriefSplitButton
+                        result={result}
+                        sunoVersion={sunoVersion}
+                        onResult={(next) => onChange({ ...value, result: next, promptFormat: "brief" })}
+                      />
+                    ) : null}
+                  </>
                 )}
               </div>
               {result.excludeStyles ? (

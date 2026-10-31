@@ -15,7 +15,7 @@ export function BriefReadout({ parts, text }: { parts: BriefParts; text: string 
         <CopyButton value={text} label="Copy for Suno" />
       </div>
       <dl className="divide-y divide-border/60">
-        {BRIEF_PARTS.map((b) => (
+        {BRIEF_PARTS.filter((b) => parts[b.key]).map((b) => (
           <div key={b.key} className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 py-2 first:pt-0 last:pb-0">
             <dt className="pt-0.5 font-mono text-[10px] tracking-[0.18em] text-primary uppercase" title={b.hint}>
               {b.label}

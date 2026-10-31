@@ -106,3 +106,62 @@ export function StyleFormatSwitch({
     </div>
   );
 }
+
+/**
+ * For a Studio Brief that has no saved parts (made before parts existed, or the AI didn't split
+ * it): one AI call splits it into the six labelled parts, keeping the wording.
+ */
+export function BriefSplitButton({
+  result,
+  sunoVersion,
+  onResult,
+}: {
+  result: BlendResult;
+  sunoVersion?: SunoVersion | undefined;
+  onResult: (next: BlendResult) => void;
+}) {
+  const forge = useForge();
+  const { apiKey, routing } = useSettings();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const split = async () => {
+    if (!result.styleTag?.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await forge({
+        data: {
+          task: "refine",
+          routing,
+          apiKey,
+          payload: { styleTag: result.styleTag, splitBrief: true, instruction: "Split into Studio Brief parts", sunoVersion: normalizeSunoVersion(sunoVersion) },
+        },
+      });
+      const out = JSON.parse(res.json) as { styleTag?: string; styleBriefParts?: unknown };
+      const parts = cleanBriefParts(out.styleBriefParts);
+      if (!parts || !out.styleTag?.trim()) throw new Error("The parts didn't come back. Try again.");
+      onResult({ ...result, styleTag: out.styleTag, briefParts: parts, styleFormat: "brief" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't split the brief.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => void split()}
+        disabled={busy}
+        className="inline-flex items-center gap-1.5 rounded-md border border-primary/50 bg-primary/10 px-2.5 py-1 text-xs text-primary hover:bg-primary/20 disabled:opacity-60"
+      >
+        {busy ? <Loader2 className="size-3 animate-spin" /> : null}
+        {busy ? "Splitting into parts…" : "Show it part by part"}
+      </button>
+      <span className="text-[11px] text-muted-foreground">Sound, Pulse, Players, Voice, Arc, Finish. One AI call.</span>
+      {error ? <span className="w-full text-[11px] text-destructive">{error}</span> : null}
+    </div>
+  );
+}
