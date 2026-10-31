@@ -35,7 +35,8 @@ describe("prompts", () => {
     expect(styleFieldSpec("tags", 700)).toMatch(/comma-separated/);
     const p = buildPrompt("blend", { artists: ["A", "B"] });
     expect(p).toMatch(/"styleTag":"a single comma-separated/);
-    expect(p).toMatch(/"styleBrief":"the SAME sound/);
+    expect(p).toMatch(/"styleBriefParts":\{"sound":/);
+    expect(p).toMatch(/never starting with the part's name/);
   });
 
   it("keeps the current format when revising", () => {
@@ -153,7 +154,50 @@ describe("two versions of one style", () => {
 
   it("asks the AI for both versions and offers a format rewrite", () => {
     const blend = buildPrompt("blend", { artists: ["A", "B"] });
-    expect(blend).toMatch(/"styleBrief"/);
+    expect(blend).toMatch(/"styleBriefParts"/);
     expect(buildPrompt("refine", { styleTag: TAGS, convertTo: "brief" })).toMatch(/Rewrite this Suno style prompt in a different format/);
+  });
+});
+
+describe("the Studio Brief in parts", () => {
+  const raw = {
+    sound: "Urgent, melancholic post-hardcore with emo-punk bite",
+    pulse: "The pulse is a fast 152 BPM punk drive.",
+    players: "Players include dual guitars trading palm-muted riffs over a fuzzy bass and a tight kit.",
+    voice: "A clean, emotive tenor sits close and upfront, breaking into stacked screams in the chorus.",
+    arc: "Verses stay tense and rhythmic, then the chorus opens wide.",
+    finish: "The finish is a crisp, modern room mix with clear separation.",
+  };
+
+  it("cleans robotic leads and joins the parts into one block", async () => {
+    const { cleanBriefParts, joinBrief, briefMatches } = await import("@/lib/prompt-craft");
+    const parts = cleanBriefParts(raw)!;
+    expect(parts.sound).toBe("Urgent, melancholic post-hardcore with emo-punk bite.");
+    expect(parts.pulse).toBe("A fast 152 BPM punk drive.");
+    expect(parts.players.startsWith("Dual guitars")).toBe(true);
+    expect(parts.finish).toBe("A crisp, modern room mix with clear separation.");
+    const text = joinBrief(parts);
+    expect(text.startsWith("Urgent, melancholic post-hardcore")).toBe(true);
+    expect(briefMatches(parts, text)).toBe(true);
+    expect(briefMatches(parts, `${text} Extra words.`)).toBe(false);
+    expect(cleanBriefParts({ ...raw, arc: "" })).toBeNull();
+  });
+
+  it("builds the brief on the server, and the style itself for a rewrite", () => {
+    const blend = clampSunoFields({ styleTag: TAGS, styleBriefParts: raw });
+    expect(blend["styleTag"]).toBe(TAGS);
+    expect(typeof blend["styleBrief"]).toBe("string");
+    expect((blend["styleBrief"] as string).startsWith("Urgent")).toBe(true);
+    const rewrite = clampSunoFields({ styleBriefParts: raw });
+    expect(rewrite["styleTag"]).toBe(rewrite["styleBrief"]);
+    expect("styleBriefParts" in clampSunoFields({ styleTag: TAGS, styleBriefParts: { sound: "x" } })).toBe(false);
+  });
+
+  it("keeps the parts with the brief when a result is arranged", async () => {
+    const { arrangeFormats, cleanBriefParts, joinBrief } = await import("@/lib/prompt-craft");
+    const fresh = clampSunoFields({ styleTag: TAGS, styleBriefParts: raw }) as { styleTag: string; styleBrief?: string; styleBriefParts?: unknown; briefParts?: import("@/lib/prompt-craft").BriefParts };
+    const r = arrangeFormats(fresh, "brief");
+    expect(r.styleTag).toBe(joinBrief(cleanBriefParts(raw)!));
+    expect(r.briefParts?.voice).toMatch(/close and upfront/);
   });
 });
