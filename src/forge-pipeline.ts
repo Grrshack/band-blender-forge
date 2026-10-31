@@ -1,0 +1,312 @@
+/**
+ * Task orchestration for the forge. Everything that touches the network is
+ * injected (`ask` = call the model and parse JSON, `lookup` = MusicBrainz), so the
+ * whole flow can be tested with a scripted fake model.
+ */
+
+import { findBannedWords } from "@/lib/banned-words";
+import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
+import { clicheFixPrompt, polishPrompt, prompt } from "@/lib/forge-prompts";
+import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
+import {
+  SUNO_LIMITS,
+  enforceNoArtistNames,
+  findStyleLeaks,
+  fitToLimit,
+  scrubArtistNames,
+} from "@/lib/suno";
+
+type Json = Record<string, unknown>;
+
+export type PipelineDeps = {
+  /** Sends a full prompt to the model and returns the parsed JSON object. */
+  ask: (text: string) => Promise<Json>;
+  /** Best-effort artist lookup. May throw; the pipeline then proceeds ungrounded. */
+  lookup: (names: string[]) => Promise<ArtistLookup[]>;
+  /** Best-effort recording lookup. May throw; the pipeline then proceeds ungrounded. */
+  lookupRecording?: (title: string, artist: string) => Promise<RecordingLookup>;
+  /**
+   * Asked once a lyric draft exists: should it get an editor's second pass? The server says
+   * yes for lighter models (Gemini Flash) when there's time left before the host's cut-off.
+   */
+  shouldPolish?: () => boolean;
+};
+
+/** Accepts a polished song only if it kept the draft's exact shape (sections and line counts). */
+export function sameShape(draft: unknown[], polished: unknown[]): boolean {
+  if (draft.length !== polished.length) return false;
+  return draft.every((d, i) => {
+    const a = strings(obj(d)["lines"]);
+    const b = strings(obj(polished[i])["lines"]);
+    return a.length === b.length;
+  });
+}
+
+const strings = (x: unknown): string[] =>
+  Array.isArray(x) ? x.filter((v): v is string => typeof v === "string" && v.trim() !== "") : [];
+
+const obj = (x: unknown): Json =>
+  x && typeof x === "object" && !Array.isArray(x) ? (x as Json) : {};
+
+async function safeLookup(deps: PipelineDeps, names: string[]): Promise<ArtistLookup[]> {
+  if (!names.length) return [];
+  try {
+    return await deps.lookup(names);
+  } catch {
+    return [];
+  }
+}
+
+const slim = (l: ArtistLookup) => ({
+  name: l.name,
+  status: l.status,
+  ...(l.matchedName ? { matchedName: l.matchedName } : {}),
+  tags: l.tags,
+  ...(l.country ? { country: l.country } : {}),
+  ...(l.type ? { type: l.type } : {}),
+});
+
+/** Rewrites cliché lines in `blocks` via one extra model call and reports what is left. */
+async function cleanBlocks(
+  blocks: LyricBlock[],
+  deps: PipelineDeps,
+  payload: Json,
+): Promise<LyricBlock[]> {
+  const style = obj(payload["style"]);
+  const { blocks: fixed } = await fixCliches(blocks, async (hits) => {
+    const out = await deps.ask(
+      clicheFixPrompt(hits, {
+        theme: typeof payload["theme"] === "string" ? (payload["theme"] as string) : "",
+        styleTag: typeof style["styleTag"] === "string" ? (style["styleTag"] as string) : "",
+      }),
+    );
+    const rewrites = Array.isArray(out["rewrites"]) ? out["rewrites"] : [];
+    return rewrites
+      .map((r) => obj(r))
+      .filter((r) => typeof r["si"] === "number" && typeof r["li"] === "number")
+      .map((r) => ({
+        si: r["si"] as number,
+        li: r["li"] as number,
+        line: String(r["line"] ?? ""),
+      }));
+  });
+  return fixed;
+}
+
+/**
+ * Last line of defence for Suno's box limits (style 1,000, exclude 1,000), whatever task
+ * produced the fields. Prompts already ask for less; this catches a model that ignores them.
+ */
+export function clampSunoFields(result: Json): Json {
+  const out = { ...result };
+  for (const k of ["styleTag", "styleBrief"]) {
+    if (typeof out[k] === "string") out[k] = fitToLimit(out[k] as string, SUNO_LIMITS.style);
+  }
+  if (typeof out["excludeStyles"] === "string") out["excludeStyles"] = fitToLimit(out["excludeStyles"] as string, SUNO_LIMITS.exclude);
+  return out;
+}
+
+export async function runPipeline(task: string, payload: Json, deps: PipelineDeps): Promise<Json> {
+  return clampSunoFields(await runTask(task, payload, deps));
+}
+
+async function runTask(task: string, payload: Json, deps: PipelineDeps): Promise<Json> {
+  const base = prompt(task, payload);
+
+  switch (task) {
+    case "blend": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const grounding = await safeLookup(deps, names);
+      const withRef = grounding.length ? { ...payload, reference: grounding.map(slim) } : payload;
+      const text = grounding.length ? prompt("blend", withRef) : base;
+
+      let result = await deps.ask(text);
+      result = await enforceNoArtistNames(result, names, (feedback) =>
+        deps.ask(`${text}\n\n${feedback}`),
+      );
+
+      if (grounding.length) result["grounding"] = grounding.map(slim);
+
+      const missing = grounding.filter((g) => g.status === "not_found").map((g) => g.name);
+      if (missing.length) {
+        // The model graded its own familiarity; real data overrides it.
+        result["confidence"] = {
+          level: "low",
+          note: `Couldn't find ${missing.map((m) => `"${m}"`).join(", ")} in MusicBrainz — the style for ${missing.length > 1 ? "them" : "it"} is inferred and may be off. Check the spelling.`,
+        };
+      }
+      return result;
+    }
+
+    case "lyrics": {
+      let result = await deps.ask(base);
+      // Editor's second pass for lighter models. Kept only if it didn't change the structure.
+      if (payload["tagsOnly"] !== true && deps.shouldPolish?.()) {
+        try {
+          const draftSections = Array.isArray(result["sections"]) ? (result["sections"] as unknown[]) : [];
+          const polished = await deps.ask(polishPrompt(payload, result));
+          const next = Array.isArray(polished["sections"]) ? (polished["sections"] as unknown[]) : [];
+          if (draftSections.length && sameShape(draftSections, next)) {
+            // Tags and cues come from the draft, so the editor can only change words.
+            result = {
+              ...result,
+              ...(typeof polished["title"] === "string" && polished["title"].trim() ? { title: polished["title"] } : {}),
+              sections: draftSections.map((d, i) => ({ ...obj(d), lines: strings(obj(next[i])["lines"]) })),
+              polished: true,
+            };
+          }
+        } catch {
+          /* keep the draft */
+        }
+      }
+      const sections = Array.isArray(result["sections"]) ? (result["sections"] as unknown[]) : [];
+      const blocks = sections.map((s) => ({ lines: strings(obj(s)["lines"]) }));
+      const fixed = await cleanBlocks(blocks, deps, payload);
+      result["sections"] = sections.map((s, i) => ({ ...obj(s), lines: fixed[i]!.lines }));
+      // User blacklist: if any banned word slipped through, ask once more with the offenders named.
+      const banned = strings(payload["bannedWords"]);
+      const offenders = [
+        ...new Set(blocks.flatMap((_, i) => fixed[i]!.lines.flatMap((l) => findBannedWords(l, banned)))),
+      ];
+      if (offenders.length) {
+        try {
+          const again = await deps.ask(
+            `${base}\n\nYour previous answer used banned words: ${offenders.map((w) => `"${w}"`).join(", ")}. Rewrite the complete JSON without them.`,
+          );
+          if (Array.isArray(again["sections"])) return again;
+        } catch {
+          /* keep the first answer; the UI flags the lines */
+        }
+      }
+      return result;
+    }
+
+    case "regenSection": {
+      const result = await deps.ask(base);
+      const original = (Array.isArray(payload["lines"]) ? (payload["lines"] as unknown[]) : []).map(
+        (l) => obj(l),
+      );
+      const locked = original.map((l) => l["locked"] === true);
+      const produced = strings(result["lines"]);
+
+      // Locks are guaranteed in code, not left to the model.
+      const lines = original.map((o, j) =>
+        locked[j] ? String(o["text"] ?? "") : (produced[j] ?? String(o["text"] ?? "")),
+      );
+      const [fixed] = await cleanBlocks([{ lines, locked }], deps, payload);
+      result["lines"] = fixed!.lines;
+      return result;
+    }
+
+    case "regenLine": {
+      let result = await deps.ask(base);
+      const line = typeof result["line"] === "string" ? (result["line"] as string) : "";
+      const found = findCliches(line);
+      if (found.length) {
+        try {
+          const again = await deps.ask(
+            `${base}\n\nYour line contained the worn-out phrase "${found[0]}". Write a different line with a concrete, specific image instead.`,
+          );
+          if (typeof again["line"] === "string" && !findCliches(again["line"] as string).length) {
+            result = again;
+          }
+        } catch {
+          /* keep the first attempt; the UI flags it */
+        }
+      }
+      return result;
+    }
+
+    case "compare": {
+      const result = await deps.ask(base);
+      const artists = Array.isArray(result["artists"]) ? (result["artists"] as unknown[]) : [];
+      const names = artists
+        .map((a) => obj(a)["name"])
+        .filter((n): n is string => typeof n === "string");
+      const found = await safeLookup(deps, names.slice(0, 4));
+      const byName = new Map(found.map((f) => [f.name, f]));
+      result["artists"] = artists.map((a) => {
+        const name = obj(a)["name"];
+        const hit = typeof name === "string" ? byName.get(name.trim()) : undefined;
+        return hit ? { ...obj(a), mb: slim(hit) } : a;
+      });
+      return result;
+    }
+
+    case "song": {
+      const title = typeof payload["title"] === "string" ? payload["title"] : "";
+      const artist = typeof payload["artist"] === "string" ? payload["artist"] : "";
+      let reference: RecordingLookup | null = null;
+      if (title && deps.lookupRecording) {
+        try {
+          reference = await deps.lookupRecording(title, artist);
+        } catch {
+          // proceeds ungrounded
+        }
+      }
+      const withRef = reference ? { ...payload, reference: { ...reference } } : payload;
+      return deps.ask(prompt("song", withRef));
+    }
+
+    case "fixTake": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const result = await deps.ask(base);
+      return enforceNoArtistNames(result, names, (feedback) => deps.ask(`${base}\n\n${feedback}`));
+    }
+
+    case "variants": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const text = (v: Json, k: string) => (typeof v[k] === "string" ? (v[k] as string) : "");
+      const listOf = (r: Json) =>
+        (Array.isArray(r["variants"]) ? (r["variants"] as unknown[]) : [])
+          .map((v) => obj(v))
+          .filter((v) => text(v, "styleTag").trim() !== "")
+          .slice(0, 3);
+      const leaksIn = (vs: Json[]) =>
+        vs.flatMap((v) =>
+          ["styleTag", "excludeStyles", "vocalLine"].flatMap((k) =>
+            findStyleLeaks(text(v, k), names),
+          ),
+        );
+
+      let result = await deps.ask(base);
+      let variants = listOf(result);
+      const leaks = [...new Set(leaksIn(variants))];
+      if (leaks.length) {
+        try {
+          const again = await deps.ask(
+            `${base}\n\nYour previous answer put these in a style field: ${leaks.map((l) => `"${l}"`).join(", ")}. Style fields must contain zero real artist, band, producer, label or song names. Rewrite the complete JSON describing sound only.`,
+          );
+          const retry = listOf(again);
+          if (retry.length) {
+            result = again;
+            variants = retry;
+          }
+        } catch {
+          /* scrub the original below */
+        }
+      }
+
+      const removed = new Set<string>();
+      const clean = (raw: string, max?: number) => {
+        const r = scrubArtistNames(raw, names);
+        r.removed.forEach((x) => removed.add(x));
+        return max ? fitToLimit(r.text, max) : r.text;
+      };
+      const out: Json = {
+        variants: variants.map((v) => ({
+          label: text(v, "label") || "Variant",
+          angle: text(v, "angle"),
+          styleTag: clean(text(v, "styleTag"), SUNO_LIMITS.style),
+          excludeStyles: clean(text(v, "excludeStyles"), SUNO_LIMITS.exclude),
+          vocalLine: clean(text(v, "vocalLine")),
+        })),
+      };
+      if (removed.size) out["styleWarnings"] = [...removed];
+      return out;
+    }
+
+    default:
+      return deps.ask(base);
+  }
+}
