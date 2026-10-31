@@ -28,9 +28,10 @@ const SECTIONS: Array<{ heading: string; body: string[] }> = [
   {
     heading: "The browser extension",
     body: [
-      `The "${APP_NAME}: Send to Suno" extension has one job: carry the title, style, exclude list and lyrics you choose to send from ${APP_NAME} into Suno's Create page.`,
-      "When you press Send to Suno, that text is held in your browser's extension storage until you fill Suno's boxes or dismiss the panel, then it's deleted. It is never sent to us or to anyone else.",
-      "The extension runs only on the Band Blender site and on suno.com. It doesn't read your Suno library, songs, account details or browsing history, it collects no analytics, and it never presses Create for you.",
+      `The "${APP_NAME}: Send to Suno" extension carries the title, style, exclude list and lyrics you choose to send from ${APP_NAME} into Suno's Create page (or the prompt box in Gemini or ElevenLabs Music), and checks Suno's Style, Exclude and Lyrics boxes as you type.`,
+      "When you press Send, that text is held in your browser's extension storage until you fill the boxes or dismiss the panel, then it's deleted. The live check reads only those boxes, on your screen, and changes them only when you press Fix. Nothing is ever sent to us or to anyone else.",
+      "The extension runs only on the Band Blender site, suno.com, gemini.google.com and elevenlabs.io. It doesn't read your songs, library, account details or browsing history, it collects no analytics, and it never presses Create or Send for you. You can turn the live check off in the extension's options.",
+      "The extension's use of this information adheres to the Chrome Web Store User Data Policy, including the Limited Use requirements. It is used only to fill Suno's fields, never sold, never shared and never used for advertising.",
     ],
   },
   {
