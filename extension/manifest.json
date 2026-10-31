@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Band Blender: Send to Suno",
   "short_name": "Band Blender",
-  "version": "1.0.0",
-  "description": "Sends your Band Blender title, style, exclude list and lyrics into Suno's Create page. It fills the boxes; you press Create.",
+  "version": "1.1.0",
+  "description": "Sends your Band Blender song into Suno (or Gemini, ElevenLabs) and checks Suno's boxes as you type. You press Create.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -30,9 +30,21 @@
         "https://suno.com/*"
       ],
       "js": [
+        "live.js",
         "suno.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*",
+        "https://elevenlabs.io/*"
+      ],
+      "js": [
+        "engines.js"
+      ],
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "options_page": "options.html"
 }
