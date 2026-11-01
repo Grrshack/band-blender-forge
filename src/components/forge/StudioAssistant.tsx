@@ -72,7 +72,10 @@ export function StudioAssistant({
   onAddToStyle,
   initialMessage,
   onInitialMessageSent,
+  compact = false,
 }: {
+  /** Drawer version inside Band Blender: chat only, no start cards. */
+  compact?: boolean;
   /** Text typed on the landing page. Sent once if a key is ready, otherwise left in the box. */
   initialMessage?: string | null | undefined;
   onInitialMessageSent?: (() => void) | undefined;
@@ -174,24 +177,20 @@ export function StudioAssistant({
     }
   };
 
-  return (
-    <div className="space-y-5">
-      <StartPaths onGoTab={onGoTab} onFixSong={onFixSong} onAddToStyle={onAddToStyle} />
-      <Panel
-        title="Describe the sound you want"
-        subtitle="Plain English is fine. The assistant sets up the Band Blender for you."
-        action={
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-            <Zap className="size-3.5 text-accent" />
-            Auto-run blend
-            <Switch checked={autoRun} onCheckedChange={onToggleAutoRun} />
-          </label>
-        }
-      >
+  const autoRunToggle = (
+    <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+      <Zap className="size-3.5 text-accent" />
+      Auto-run blend
+      <Switch checked={autoRun} onCheckedChange={onToggleAutoRun} />
+    </label>
+  );
+
+  const chat = (
+      <>
         {/* Chat messages */}
         <div
           ref={scrollRef}
-          className="mb-4 max-h-[420px] space-y-3 overflow-y-auto rounded-lg border border-border bg-card/30 p-4"
+          className=cn("mb-4 space-y-3", compact ? "max-h-[calc(100vh-380px)] min-h-[200px]" : "max-h-[420px]", " overflow-y-auto rounded-lg border border-border bg-card/30 p-4")}
         >
           {messages.map((m, i) => (
             <div
@@ -263,7 +262,7 @@ export function StudioAssistant({
         {/* Input */}
         <div className="flex gap-2">
           <Textarea
-            id="assistant-input"
+            id={compact ? "assistant-drawer-input" : "assistant-input"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -287,6 +286,27 @@ export function StudioAssistant({
             <span className="hidden sm:inline">Send</span>
           </Button>
         </div>
+      </>
+  );
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex justify-end">{autoRunToggle}</div>
+        {chat}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <StartPaths onGoTab={onGoTab} onFixSong={onFixSong} onAddToStyle={onAddToStyle} />
+      <Panel
+        title="Describe the sound you want"
+        subtitle="Plain English is fine. The assistant sets up the Band Blender for you."
+        action={autoRunToggle}
+      >
+        {chat}
       </Panel>
     </div>
   );
