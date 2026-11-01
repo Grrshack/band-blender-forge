@@ -17,7 +17,8 @@ import { GenreGuide } from "@/components/forge/GenreGuide";
 import { UsageDashboard } from "@/components/forge/UsageDashboard";
 import { SettingsProvider } from "@/components/forge/settings";
 import { SharedView } from "@/components/forge/SharedView";
-import { StudioAssistant } from "@/components/forge/StudioAssistant";
+import { StudioAssistant, type IntentResponse } from "@/components/forge/StudioAssistant";
+import { BlendCopilot } from "@/components/forge/BlendCopilot";
 import { SunoSheet } from "@/components/forge/SunoSheet";
 import { AiStatusButton } from "@/components/forge/SystemPanel";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
@@ -83,6 +84,25 @@ function Index() {
   const [assistantAutoRun, setAssistantAutoRun] = useState(true);
   const [blendAutoRun, setBlendAutoRun] = useState(false);
   const [blendFlashKey, setBlendFlashKey] = useState(0);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const applyIntent = (intent: IntentResponse, goToBlend: boolean) => {
+    setState((prev) => {
+      const b = prev.blend;
+      const newBlend: BlendSlice = {
+        ...b,
+        lookupMode: "band",
+        artists: [intent.artist_1, intent.artist_2, intent.artist_3].map((a, i) => a || (b.artists[i] ?? "")),
+        targetGenre: intent.target_genre || b.targetGenre,
+        targetEra: intent.era || b.targetEra,
+        sliders: { energy: intent.energy, complexity: intent.complexity, brightness: intent.brightness },
+        result: null,
+      };
+      return { ...prev, blend: newBlend };
+    });
+    if (goToBlend) setTab("blend");
+    setBlendFlashKey((k) => k + 1);
+    if (assistantAutoRun) setBlendAutoRun(true);
+  };
 
   // A landing-page handoff is read from the URL once and remembered, because the URL is
   // cleaned right after and effects can run twice (React StrictMode in development).
@@ -386,6 +406,17 @@ function Index() {
                       onFix={openFixWith}
                     />
                   )}
+                  {tab === "blend" && (
+                    <BlendCopilot
+                      open={copilotOpen}
+                      onOpenChange={setCopilotOpen}
+                      currentBlend={state.blend}
+                      onApply={(intent) => applyIntent(intent, false)}
+                      autoRun={assistantAutoRun}
+                      onToggleAutoRun={setAssistantAutoRun}
+                      onGoTab={setTab}
+                    />
+                  )}
                   {tab === "lyrics" && (
                     <LyricForge
                       value={state.lyrics}
@@ -513,29 +544,7 @@ function Index() {
                       onToggleAutoRun={setAssistantAutoRun}
                       initialMessage={assistantStart}
                       onInitialMessageSent={() => setAssistantStart(null)}
-                      onApply={(intent) => {
-                        const newBlend: BlendSlice = {
-                          ...state.blend,
-                          lookupMode: "band",
-                          artists: [intent.artist_1, intent.artist_2, intent.artist_3].map(
-                            (a, i) => a || (state.blend.artists[i] ?? ""),
-                          ),
-                          targetGenre: intent.target_genre || state.blend.targetGenre,
-                          targetEra: intent.era || state.blend.targetEra,
-                          sliders: {
-                            energy: intent.energy,
-                            complexity: intent.complexity,
-                            brightness: intent.brightness,
-                          },
-                          result: null,
-                        };
-                        patch("blend", newBlend);
-                        setTab("blend");
-                        setBlendFlashKey((k) => k + 1);
-                        if (assistantAutoRun) {
-                          setBlendAutoRun(true);
-                        }
-                      }}
+                      onApply={(intent) => applyIntent(intent, true)}
                     />
                   )}
                 </div>
