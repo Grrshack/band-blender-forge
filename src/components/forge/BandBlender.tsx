@@ -154,9 +154,11 @@ export function BandBlender({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRun]);
 
+  const tuneRef = useRef<HTMLDetailsElement>(null);
   // One-shot flash on the form panel when the assistant changes something.
   useEffect(() => {
     if (!flashKey) return;
+    if (tuneRef.current) tuneRef.current.open = true;
     setFlashing(true);
     const t = setTimeout(() => setFlashing(false), 1300);
     return () => clearTimeout(t);
@@ -293,7 +295,7 @@ export function BandBlender({
 
           {/* Sliders, genre and era fold away: most people blend first and fine-tune after. */}
           {lookupMode === "band" ? (
-          <details className="group mt-5 rounded-lg border border-border bg-card/30">
+          <details ref={tuneRef} className="group mt-5 rounded-lg border border-border bg-card/30">
             <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
               <span className="flex-1">
                 <span className="block text-sm font-medium">Fine-tune (optional)</span>
