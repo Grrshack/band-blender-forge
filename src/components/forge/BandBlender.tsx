@@ -1,6 +1,6 @@
 import type { Json } from "@/integrations/supabase/types";
 import { ChevronDown, Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
