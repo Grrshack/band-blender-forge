@@ -64,7 +64,7 @@ export function BlendCopilot({
             <X className="size-4" />
           </button>
         </div>
-        {open && (
+        {(
           <StudioAssistant
             compact
             currentBlend={currentBlend}
