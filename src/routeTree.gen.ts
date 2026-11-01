@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as BlendSlugRouteImport } from './routes/blend.$slug'
 import { Route as GuidesIndexRouteImport } from './routes/guides.index'
@@ -32,9 +34,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StudioRoute = StudioRouteImport.update({
   id: '/studio',
   path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
@@ -86,6 +98,7 @@ const ToolsSunoMetatagsRoute = ToolsSunoMetatagsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/studio': typeof StudioRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/blend/$slug': typeof BlendSlugRoute
@@ -94,12 +107,14 @@ export interface FileRoutesByFullPath {
   '/tools/lyric-checker': typeof ToolsLyricCheckerRoute
   '/tools/release-checklist': typeof ToolsReleaseChecklistRoute
   '/tools/suno-metatags': typeof ToolsSunoMetatagsRoute
+  '/admin/': typeof AdminIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/studio': typeof StudioRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/blend/$slug': typeof BlendSlugRoute
@@ -108,6 +123,7 @@ export interface FileRoutesByTo {
   '/tools/lyric-checker': typeof ToolsLyricCheckerRoute
   '/tools/release-checklist': typeof ToolsReleaseChecklistRoute
   '/tools/suno-metatags': typeof ToolsSunoMetatagsRoute
+  '/admin': typeof AdminIndexRoute
   '/guides': typeof GuidesIndexRoute
   '/tools': typeof ToolsIndexRoute
 }
@@ -115,6 +131,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/studio': typeof StudioRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/blend/$slug': typeof BlendSlugRoute
@@ -123,6 +140,7 @@ export interface FileRoutesById {
   '/tools/lyric-checker': typeof ToolsLyricCheckerRoute
   '/tools/release-checklist': typeof ToolsReleaseChecklistRoute
   '/tools/suno-metatags': typeof ToolsSunoMetatagsRoute
+  '/admin/': typeof AdminIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/tools/': typeof ToolsIndexRoute
 }
@@ -131,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/studio'
     | '/admin/feedback'
     | '/blend/$slug'
@@ -139,12 +158,14 @@ export interface FileRouteTypes {
     | '/tools/lyric-checker'
     | '/tools/release-checklist'
     | '/tools/suno-metatags'
+    | '/admin/'
     | '/guides/'
     | '/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/studio'
     | '/admin/feedback'
     | '/blend/$slug'
@@ -153,12 +174,14 @@ export interface FileRouteTypes {
     | '/tools/lyric-checker'
     | '/tools/release-checklist'
     | '/tools/suno-metatags'
+    | '/admin'
     | '/guides'
     | '/tools'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/privacy'
     | '/studio'
     | '/admin/feedback'
     | '/blend/$slug'
@@ -167,6 +190,7 @@ export interface FileRouteTypes {
     | '/tools/lyric-checker'
     | '/tools/release-checklist'
     | '/tools/suno-metatags'
+    | '/admin/'
     | '/guides/'
     | '/tools/'
   fileRoutesById: FileRoutesById
@@ -174,6 +198,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  PrivacyRoute: typeof PrivacyRoute
   StudioRoute: typeof StudioRoute
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   BlendSlugRoute: typeof BlendSlugRoute
@@ -182,6 +207,7 @@ export interface RootRouteChildren {
   ToolsLyricCheckerRoute: typeof ToolsLyricCheckerRoute
   ToolsReleaseChecklistRoute: typeof ToolsReleaseChecklistRoute
   ToolsSunoMetatagsRoute: typeof ToolsSunoMetatagsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
 }
@@ -202,11 +228,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/studio': {
       id: '/studio'
       path: '/studio'
       fullPath: '/studio'
       preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/feedback': {
@@ -278,6 +318,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  PrivacyRoute: PrivacyRoute,
   StudioRoute: StudioRoute,
   AdminFeedbackRoute: AdminFeedbackRoute,
   BlendSlugRoute: BlendSlugRoute,
@@ -286,6 +327,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsLyricCheckerRoute: ToolsLyricCheckerRoute,
   ToolsReleaseChecklistRoute: ToolsReleaseChecklistRoute,
   ToolsSunoMetatagsRoute: ToolsSunoMetatagsRoute,
+  AdminIndexRoute: AdminIndexRoute,
   GuidesIndexRoute: GuidesIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
 }

@@ -59,6 +59,30 @@ export type Database = {
         }
         Relationships: []
       }
+      app_events: {
+        Row: {
+          created_at: string
+          detail: string
+          event: string
+          id: number
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string
+          event: string
+          id?: never
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string
+          event?: string
+          id?: never
+          session_id?: string
+        }
+        Relationships: []
+      }
       custom_genre_cards: {
         Row: {
           bpm: string
@@ -107,6 +131,69 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vocals?: string
+        }
+        Relationships: []
+      }
+      feedback: {
+        Row: {
+          admin_note: string
+          created_at: string
+          device: string
+          id: number
+          kind: string
+          message: string
+          page: string
+          rating: number | null
+          status: string
+          suggestion: string
+          tester_name: string
+          tool: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_note?: string
+          created_at?: string
+          device?: string
+          id?: never
+          kind: string
+          message: string
+          page?: string
+          rating?: number | null
+          status?: string
+          suggestion?: string
+          tester_name?: string
+          tool?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_note?: string
+          created_at?: string
+          device?: string
+          id?: never
+          kind?: string
+          message?: string
+          page?: string
+          rating?: number | null
+          status?: string
+          suggestion?: string
+          tester_name?: string
+          tool?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      feedback_admins: {
+        Row: {
+          email: string
+        }
+        Insert: {
+          email: string
+        }
+        Update: {
+          email?: string
         }
         Relationships: []
       }
@@ -290,7 +377,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_usage_summary: { Args: { days?: number }; Returns: Json }
+      is_feedback_admin: { Args: never; Returns: boolean }
       purge_ai_usage: { Args: never; Returns: undefined }
+      purge_app_events: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
