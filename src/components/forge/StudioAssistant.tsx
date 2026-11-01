@@ -190,7 +190,10 @@ export function StudioAssistant({
         {/* Chat messages */}
         <div
           ref={scrollRef}
-          className=cn("mb-4 space-y-3", compact ? "max-h-[calc(100vh-380px)] min-h-[200px]" : "max-h-[420px]", " overflow-y-auto rounded-lg border border-border bg-card/30 p-4")}
+          className={cn(
+            "mb-4 space-y-3 overflow-y-auto rounded-lg border border-border bg-card/30 p-4",
+            compact ? "max-h-[calc(100vh-380px)] min-h-[200px]" : "max-h-[420px]",
+          )}
         >
           {messages.map((m, i) => (
             <div
