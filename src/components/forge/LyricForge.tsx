@@ -36,6 +36,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { LYRIC_NOTATION, exportLyrics } from "@/lib/prompt-craft";
 import { cn } from "@/lib/utils";
+import { bpmFrom, clock, sectionTimes } from "@/lib/section-times";
 
 /** Estimated syllables, plus a flag for worn-out phrases and lines far off the section's typical length. */
 function LineMarkers({
@@ -156,6 +157,14 @@ export function LyricForge({
   } = value;
   const rhymeInfo = useMemo(() => sections.map((s) => analyzeSection(s.lines.map((l) => l.text))), [sections]);
   const trapCount = rhymeInfo.filter((r) => r.trap).length;
+  const timing = useMemo(
+    () =>
+      sectionTimes(sections, {
+        bpm: bpmFrom(blend?.tempo, blend?.styleTag, blend?.styleAlt, manualStyle),
+        plan: value.structure,
+      }),
+    [sections, blend, manualStyle, value.structure],
+  );
   const styleOpts = {
     ...(rhymeStyle !== "classic" ? { rhymeStyle } : {}),
     ...(voice !== "polished" ? { voice } : {}),
@@ -586,6 +595,10 @@ export function LyricForge({
       >
         {sections.length ? (
           <div className="space-y-4">
+            <p className="font-mono text-[11px] text-muted-foreground" title="Bars come from your length plan when it matches, otherwise about 2 bars per sung line and 8 per instrumental part.">
+              ≈ {clock(timing.totalSec)} at {timing.bpm} BPM
+              {timing.bpmGuessed ? " (no tempo in the style, so 100 is a guess)" : ""} · rough timing, Suno decides the real one
+            </p>
             {trapCount ? (
               <div className="flex flex-wrap items-start gap-2 rounded-lg border border-signal-mid/50 bg-signal-mid/10 px-3 py-2 text-xs">
                 <p className="min-w-0 flex-1 leading-relaxed">
@@ -605,6 +618,14 @@ export function LyricForge({
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs tracking-[0.16em] text-accent uppercase">{s.tag}</span>
+                    {timing.sections[si] ? (
+                      <span
+                        className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums"
+                        title={`About ${timing.sections[si]!.bars} bars. An estimate: Suno decides the real timing.`}
+                      >
+                        {clock(timing.sections[si]!.start)}–{clock(timing.sections[si]!.end)}
+                      </span>
+                    ) : null}
                     {showRhymes && rhymeInfo[si]?.scheme.length ? (
                       <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground" title="Rhyme scheme: lines with the same letter rhyme">
                         {rhymeInfo[si]!.scheme}
