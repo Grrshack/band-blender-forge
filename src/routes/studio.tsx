@@ -24,6 +24,7 @@ import { AiStatusButton } from "@/components/forge/SystemPanel";
 import { Panel } from "@/components/forge/Field";
 import { TakeLog } from "@/components/forge/TakeLog";
 import { SongPackCard } from "@/components/forge/SongPackButton";
+import { LabStudio } from "@/components/forge/LabStudio";
 import { dropAlt } from "@/lib/prompt-craft";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
 import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
@@ -547,6 +548,7 @@ function Index() {
                     />
                   )}
                   {tab === "usage" && <UsageDashboard />}
+                  {tab === "lab" && <LabStudio onGoTab={setTab} />}
                   {tab === "assistant" && (
                     <StudioAssistant
                       currentBlend={state.blend}
