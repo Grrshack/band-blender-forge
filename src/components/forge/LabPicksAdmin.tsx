@@ -3,6 +3,7 @@ import { CalendarClock, FlaskConical, Loader2, RotateCw, Send, Square, Trash2 } 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { BriefReadout } from "./BriefReadout";
 import { ErrorNote, FoldSummary, Panel } from "./Field";
 import type { BlendResult } from "./types";
 import { emptyState } from "./types";
@@ -21,8 +22,10 @@ import {
   pairKey,
   pickSeeds,
   saveDrafts,
+  swapDraftFormat,
   type LabDraft,
 } from "@/lib/lab";
+import { PROMPT_FORMAT_LABELS, briefMatches, type PromptFormat } from "@/lib/prompt-craft";
 import { deleteLabPick, listAdminLabPicks, publishLabPicks, type LabPick } from "@/lib/lab.functions";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +45,7 @@ export function LabPicksAdmin() {
   const [drafts, setDrafts] = useState<LabDraft[]>([]);
   const [count, setCount] = useState(5);
   const [lean, setLean] = useState("");
+  const [format, setFormat] = useState<PromptFormat>("brief");
   const [running, setRunning] = useState(false);
   const stopRef = useRef(false);
   const [drop, setDrop] = useState<DropChoice>("monday");
@@ -87,17 +91,17 @@ export function LabPicksAdmin() {
           targetGenre: lean.trim(),
           genreLock: false,
           targetEra: "",
-          promptFormat: "tags",
+          promptFormat: d.styleFormat,
         },
       },
     });
-    return draftFromBlend(d, JSON.parse(res.json) as BlendResult);
+    return draftFromBlend(d, JSON.parse(res.json) as BlendResult, d.styleFormat);
   };
 
   const generate = async () => {
     setNotice(null);
     const avoid = new Set([...scheduled.map((p) => pairKey(p.artists)), ...drafts.map((d) => pairKey(d.artists))]);
-    const fresh = pickSeeds(count, avoid).map(newDraft);
+    const fresh = pickSeeds(count, avoid).map((pair) => newDraft(pair, format));
     commit((prev) => [...fresh, ...prev]);
     setRunning(true);
     stopRef.current = false;
@@ -211,6 +215,26 @@ export function LabPicksAdmin() {
               ))}
             </select>
           </label>
+          <div className="space-y-1">
+            <span className="block text-xs font-medium">Write them as</span>
+            <div role="radiogroup" aria-label="Pick format" className="inline-flex h-9 rounded-md border border-border p-0.5">
+              {(["brief", "tags"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="radio"
+                  aria-checked={format === f}
+                  onClick={() => setFormat(f)}
+                  className={cn(
+                    "rounded px-2.5 text-xs transition-colors",
+                    format === f ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {PROMPT_FORMAT_LABELS[f]}
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="min-w-48 flex-1 space-y-1">
             <span className="block text-xs font-medium">Lean toward a genre (optional)</span>
             <Input value={lean} onChange={(e) => setLean(e.target.value)} placeholder="e.g. darkwave, or leave empty" maxLength={40} />
@@ -226,8 +250,9 @@ export function LabPicksAdmin() {
           )}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          One AI call per pick, made from this browser with your key. Pairs come from different lanes and skip anything you&apos;ve
-          already dropped.
+          One AI call per pick, made from this browser with your key. Every pick gets both versions: the Studio Brief in its six
+          parts (Sound, Pulse, Players, Voice, Arc, Finish) and the tag list; the one you choose is what gets published. Pairs come
+          from different lanes and skip anything you&apos;ve already dropped.
         </p>
         {notice ? <ErrorNote message={notice} /> : null}
 
@@ -275,14 +300,33 @@ export function LabPicksAdmin() {
                 {d.status === "ready" ? (
                   <div className="mt-2 space-y-2">
                     <Input value={d.title} onChange={(e) => edit(d.id, { title: e.target.value })} maxLength={80} aria-label="Pick title" />
-                    <Textarea
-                      value={d.styleTag}
-                      onChange={(e) => edit(d.id, { styleTag: e.target.value })}
-                      rows={3}
-                      maxLength={1000}
-                      className="font-mono text-xs"
-                      aria-label="Style"
-                    />
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>
+                        Publishing the <span className="text-foreground">{PROMPT_FORMAT_LABELS[d.styleFormat].toLowerCase()}</span> ·{" "}
+                        {d.styleTag.length} / 1,000
+                      </span>
+                      {d.styleAlt ? (
+                        <button type="button" className="text-primary underline-offset-2 hover:underline" onClick={() => edit(d.id, swapDraftFormat(d))}>
+                          Use the {PROMPT_FORMAT_LABELS[d.styleFormat === "brief" ? "tags" : "brief"].toLowerCase()} instead
+                        </button>
+                      ) : null}
+                    </div>
+                    {d.styleFormat === "brief" && briefMatches(d.briefParts, d.styleTag) ? (
+                      <BriefReadout parts={d.briefParts} text={d.styleTag} />
+                    ) : null}
+                    <details className="group rounded-lg border border-border" open={!(d.styleFormat === "brief" && briefMatches(d.briefParts, d.styleTag))}>
+                      <FoldSummary className="py-2 text-xs">Edit the text</FoldSummary>
+                      <div className="px-3 pb-3">
+                        <Textarea
+                          value={d.styleTag}
+                          onChange={(e) => edit(d.id, { styleTag: e.target.value })}
+                          rows={d.styleFormat === "brief" ? 6 : 3}
+                          maxLength={1000}
+                          className="font-mono text-xs"
+                          aria-label="Style"
+                        />
+                      </div>
+                    </details>
                     <Input
                       value={d.excludeStyles}
                       onChange={(e) => edit(d.id, { excludeStyles: e.target.value })}

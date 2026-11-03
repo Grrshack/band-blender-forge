@@ -3,6 +3,7 @@ import { Disc3, Download, ExternalLink, Globe, Loader2, Pause, Play, RotateCw, S
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { BriefReadout } from "./BriefReadout";
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, FoldSummary, Panel } from "./Field";
 import { useForge } from "./use-forge";
@@ -26,6 +27,7 @@ import {
   type AlbumProject,
   type ProducedTrack,
 } from "@/lib/lab";
+import { PROMPT_FORMAT_LABELS, briefMatches, joinBrief, type PromptFormat } from "@/lib/prompt-craft";
 import { packSlug } from "@/lib/song-pack";
 import { composeSunoLyrics } from "@/lib/suno";
 import { createWorkspace, saveWorkspace } from "@/lib/workspace.functions";
@@ -67,6 +69,7 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
   const [artists, setArtists] = useState(["", "", ""]);
   const [artistName, setArtistName] = useState("");
   const [size, setSize] = useState(5);
+  const [format, setFormat] = useState<PromptFormat>("brief");
   const [planning, setPlanning] = useState(false);
   const [writing, setWriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,11 +115,11 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
           },
         },
       });
-      const p = projectFromPlan(JSON.parse(res.json) as Record<string, unknown>, {
-        concept: surprise ? "Surprise me" : concept.trim(),
-        artists: names,
-        artistName: artistName.trim(),
-      });
+      const p = projectFromPlan(
+        JSON.parse(res.json) as Record<string, unknown>,
+        { concept: surprise ? "Surprise me" : concept.trim(), artists: names, artistName: artistName.trim() },
+        format,
+      );
       if (!p.tracks.length) throw new Error("The AI didn't return any tracks. Try again.");
       commit([p, ...projectsRef.current]);
       setCurrentId(p.id);
@@ -272,6 +275,17 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
               <Input value={artistName} onChange={(e) => setArtistName(e.target.value)} placeholder="optional" maxLength={80} />
             </label>
             <label className="space-y-1">
+              <span className="block text-xs font-medium">Style as</span>
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as PromptFormat)}
+                className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+              >
+                <option value="brief">{PROMPT_FORMAT_LABELS.brief}</option>
+                <option value="tags">{PROMPT_FORMAT_LABELS.tags}</option>
+              </select>
+            </label>
+            <label className="space-y-1">
               <span className="block text-xs font-medium">Size</span>
               <select value={size} onChange={(e) => setSize(Number(e.target.value))} className="h-9 rounded-md border border-border bg-background px-2 text-sm">
                 {SIZES.map((s) => (
@@ -291,7 +305,8 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
             <Sparkles className="size-4" /> Surprise me
           </Button>
           <span className="self-center text-[11px] text-muted-foreground">
-            One call plans the record; then one call per track. A {size}-track record is about {size + 1} calls.
+            One call plans the record: a shared Studio Brief (Sound, Pulse, Players, Voice, Arc, Finish) and each track&apos;s own
+            pulse, players and arc, plus a tag list. Then one call per track for lyrics: about {size + 1} calls in all.
           </span>
         </div>
         {error ? <ErrorNote message={error} /> : null}
@@ -347,6 +362,16 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
               <p className="font-mono text-xs">{project.sharedSound}</p>
               {project.excludeStyles ? <p className="mt-1 font-mono text-[10px] text-muted-foreground">Keep out: {project.excludeStyles}</p> : null}
             </div>
+            {project.sharedBrief ? (
+              <details className="group rounded-lg border border-border">
+                <FoldSummary className="py-2 text-xs" hint="Every track keeps the sound, voice and finish; its own pulse, players and arc are swapped in.">
+                  Shared Studio Brief
+                </FoldSummary>
+                <div className="px-3 pb-3">
+                  <BriefReadout parts={project.sharedBrief} text={joinBrief(project.sharedBrief)} />
+                </div>
+              </details>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
               {writing ? (
@@ -416,8 +441,16 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
                     </Button>
                   </div>
                   <details className="group border-t border-border">
-                    <FoldSummary className="py-2 text-xs">{t.sections?.length ? "Style and lyrics" : "Style"}</FoldSummary>
+                    <FoldSummary
+                      className="py-2 text-xs"
+                      hint={`${PROMPT_FORMAT_LABELS[project.format]} · ${t.styleTag.length} / 1,000${t.styleAlt ? " · the other format is in the saved song and the zip" : ""}`}
+                    >
+                      {t.sections?.length ? "Style and lyrics" : "Style"}
+                    </FoldSummary>
                     <div className="space-y-2 px-3 pb-3">
+                      {project.format === "brief" && briefMatches(t.briefParts, t.styleTag) ? (
+                        <BriefReadout parts={t.briefParts} text={t.styleTag} />
+                      ) : null}
                       <Textarea
                         value={t.styleTag}
                         onChange={(e) => updateTrack(project.id, t.n, { styleTag: e.target.value.slice(0, 1000) })}
