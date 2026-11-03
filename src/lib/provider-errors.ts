@@ -120,6 +120,28 @@ export async function withModelBackups<T>(
 }
 
 /**
+ * Each Gemini model has its own free daily allowance. When one model's allowance is used up,
+ * the next model in the chain gets a turn instead of the request failing. Any other error
+ * passes straight through. `run(i)` runs the chain starting at model i.
+ */
+export async function nextModelWhenOutOfQuota<T>(
+  count: number,
+  run: (from: number) => Promise<T>,
+  isOutOfQuota: (e: unknown) => boolean,
+): Promise<T> {
+  let last: unknown;
+  for (let i = 0; i < count; i++) {
+    try {
+      return await run(i);
+    } catch (e) {
+      if (!isOutOfQuota(e) || i === count - 1) throw e;
+      last = e;
+    }
+  }
+  throw last;
+}
+
+/**
  * The host (Cloudflare, in front of Lovable) cuts a request off after about 100 seconds with
  * "error code: 524". Each AI request gets a time budget below that, so a slow model is abandoned
  * in time to fall back to a faster one and the person gets a clear message instead of a 524.

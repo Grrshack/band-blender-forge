@@ -20,6 +20,8 @@ import {
 import { BRIEF_PART_MAX, cleanAlbumPlan, runPipeline } from "./forge-pipeline";
 import { briefMatches, joinBrief } from "./prompt-craft";
 import { fakeAsk } from "./fake-ai";
+import { DAILY_TEXT, limitKind, paced } from "./rate-pace";
+import { nextModelWhenOutOfQuota, rateLimitMessage } from "./provider-errors";
 
 /** A repeatable stand-in for Math.random. */
 function seeded(seed = 7) {
@@ -200,5 +202,46 @@ describe("Album Producer", () => {
     expect(files).toContain("glass-city/02-neon-rain/suno/lyrics.txt");
     expect(files).toContain("glass-city/02-neon-rain/suno/style-tags.txt"); // the other format comes along
     expect(files.some((f) => f.startsWith("glass-city/01-"))).toBe(false); // not written yet
+  });
+});
+
+
+describe("pacing free-key batches", () => {
+  it("tells a daily limit from a per-minute one", () => {
+    expect(limitKind(rateLimitMessage("gemini", { kind: "day", retryMs: null }))).toBe("day");
+    expect(limitKind(rateLimitMessage("gemini", { kind: "minute", retryMs: 30_000 }))).toBe("minute");
+    expect(limitKind(rateLimitMessage("gemini", { kind: "unknown", retryMs: null }))).toBe("minute");
+    expect(limitKind("The AI took too long to answer")).toBeNull();
+    expect(limitKind(DAILY_TEXT)).toBe("day");
+  });
+
+  it("spaces calls out and waits out one per-minute limit", async () => {
+    let clock = 1_000_000;
+    const waits: number[] = [];
+    const state = { lastAt: 0 };
+    const opts = { state, gapMs: 13_000, now: () => clock, wait: async (ms: number) => { waits.push(ms); clock += ms; } };
+    await paced(async () => "a", opts);
+    clock += 2_000;
+    await paced(async () => "b", opts);
+    expect(waits).toEqual([11_000]);
+    let tries = 0;
+    const out = await paced(async () => {
+      tries++;
+      if (tries === 1) throw new Error(rateLimitMessage("gemini", { kind: "minute", retryMs: null }));
+      return "ok";
+    }, opts);
+    expect(out).toBe("ok");
+    expect(waits.at(-1)).toBe(60_000);
+    await expect(paced(async () => { throw new Error(rateLimitMessage("gemini", { kind: "day", retryMs: null })); }, opts)).rejects.toThrow(/today's/);
+  });
+
+  it("moves to the next model when one model's allowance is used up", async () => {
+    const quota = new Error("out");
+    const tried: number[] = [];
+    const v = await nextModelWhenOutOfQuota(3, async (i) => { tried.push(i); if (i < 2) throw quota; return `model ${i}`; }, (e) => e === quota);
+    expect(v).toBe("model 2");
+    expect(tried).toEqual([0, 1, 2]);
+    await expect(nextModelWhenOutOfQuota(3, async () => { throw new Error("rejected"); }, (e) => e === quota)).rejects.toThrow("rejected");
+    await expect(nextModelWhenOutOfQuota(2, async () => { throw quota; }, (e) => e === quota)).rejects.toBe(quota);
   });
 });

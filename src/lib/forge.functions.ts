@@ -21,6 +21,7 @@ import {
   type Deadline,
   parseRateLimit,
   rateLimitMessage,
+  nextModelWhenOutOfQuota,
   withModelBackups,
   type RateLimitInfo,
 } from "@/lib/provider-errors";
@@ -292,8 +293,22 @@ async function callGemini(
 
 /** Flash, and if Google says it's overloaded, a retry and then the backup models. */
 async function geminiFlashWithBackups(key: string, user: string, maxTokens: number, deadline?: Deadline) {
+  const chain = [GEMINI_MODELS.fast, ...GEMINI_BACKUP_MODELS];
+  // Free keys get a small daily allowance per model (the newest Flash has the smallest), so a
+  // used-up model hands over to the next one instead of failing the request.
+  return nextModelWhenOutOfQuota(
+    chain.length,
+    (from) => geminiChain(chain.slice(from), key, user, maxTokens, deadline),
+    (e) =>
+      e instanceof RateLimitError &&
+      (e.info.kind === "day" || e.info.kind === "unknown" || (e.info.kind === "minute" && (e.info.retryMs ?? 0) > 20_000)) &&
+      (deadline?.remaining() ?? 60_000) > 20_000,
+  );
+}
+
+async function geminiChain(models: string[], key: string, user: string, maxTokens: number, deadline?: Deadline) {
   const r = await withModelBackups(
-    [GEMINI_MODELS.fast, ...GEMINI_BACKUP_MODELS],
+    models,
     (model) => {
       deadline?.check();
       return callGemini(key, "fast", user, maxTokens, model, deadline ? deadline.capFor(CALL_CAP_MS) : CALL_CAP_MS);
