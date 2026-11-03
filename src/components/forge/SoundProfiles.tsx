@@ -29,7 +29,10 @@ export function SoundProfiles({
   suggestedName = "",
   hideList = false,
   onSaved,
+  onCount,
 }: {
+  /** Tells the parent how many saved sounds there are (the Suno Sheet moves an empty box down). */
+  onCount?: (n: number) => void;
   blend: BlendSlice;
   onBlend: (next: BlendSlice) => void;
   /** Pre-fills the name box (e.g. from the artists). */
@@ -64,6 +67,9 @@ export function SoundProfiles({
   useEffect(() => {
     void refresh();
   }, [refresh, session?.user.id]);
+  useEffect(() => {
+    onCount?.(rows.length);
+  }, [rows.length, onCount]);
 
   const body = profileFromBlend(blend);
   const canSave = Boolean(body) && name.trim().length > 0;
@@ -143,8 +149,8 @@ export function SoundProfiles({
         {saveRow}
         <p className="text-[11px] text-muted-foreground">
           {session
-            ? "Saved to your account. Load it any time from Sound profiles in the Export Sheet."
-            : "Saved in this browser. Sign in to keep it across devices. Load it from Sound profiles in the Export Sheet."}
+            ? "Saved to your account. Load it any time from Sound profiles in the Suno Sheet."
+            : "Saved in this browser. Sign in to keep it across devices. Load it from Sound profiles in the Suno Sheet."}
         </p>
       </div>
     );

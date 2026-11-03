@@ -446,7 +446,7 @@ export function LyricForge({
                   ].join(" · ")}
                 </span>
               </span>
-              <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+              <ChevronDown aria-hidden className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180" />
             </summary>
             <div className="space-y-4 px-3 pb-3">
             <div>
@@ -537,7 +537,7 @@ export function LyricForge({
                   Small marks in a line change how it&apos;s sung.
                 </span>
               </span>
-              <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+              <ChevronDown aria-hidden className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180" />
             </summary>
             <ul className="space-y-1.5 px-3 pb-3">
               {LYRIC_NOTATION.map((n) => (

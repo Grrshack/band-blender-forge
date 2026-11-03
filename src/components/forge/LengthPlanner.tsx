@@ -58,7 +58,7 @@ export function LengthPlanner({
             {structure ? " · plan active" : " · aim for a length and tempo (optional)"}
           </span>
         </span>
-        <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+        <ChevronDown aria-hidden className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180" />
       </summary>
       <div className="px-3 pb-3">
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { AlertTriangle, ChevronDown, RotateCw } from "lucide-react";
 import { openFeedback } from "@/lib/feedback";
 import type { ReactNode } from "react";
 
@@ -87,5 +87,27 @@ export function ReadoutField({
         {value}
       </p>
     </div>
+  );
+}
+
+/**
+ * The clickable row of a collapsed section. Put it first inside <details className="group …">.
+ * Always shows a down-arrow that turns when open, so people can see the row opens.
+ */
+export function FoldSummary({ children, icon, hint, className }: { children: ReactNode; icon?: ReactNode; hint?: ReactNode; className?: string }) {
+  return (
+    <summary
+      className={cn(
+        "flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden",
+        className,
+      )}
+    >
+      {icon}
+      <span className="min-w-0 flex-1">
+        <span className="block">{children}</span>
+        {hint ? <span className="block text-xs font-normal text-muted-foreground">{hint}</span> : null}
+      </span>
+      <ChevronDown aria-hidden className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180" />
+    </summary>
   );
 }

@@ -305,7 +305,7 @@ export function BandBlender({
                   {targetEra ? ` · ${targetEra}` : ""}
                 </span>
               </span>
-              <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+              <ChevronDown aria-hidden className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180" />
             </summary>
             <div className="px-3 pb-3">
           <div className="mt-2 space-y-4">
@@ -627,7 +627,7 @@ export function BandBlender({
                   <span className="flex-1 text-sm font-medium">
                     Details: genre, tempo, instruments, vocals, mood and why it works
                   </span>
-                  <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                  <ChevronDown aria-hidden className="size-4 shrink-0 text-primary transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="space-y-3 px-3 pb-3">
                   <div className="grid gap-3 sm:grid-cols-2">

@@ -83,7 +83,7 @@ export const TAB_GROUPS: Group[] = [
     tabs: [
       {
         value: "suno",
-        label: "Export Sheet",
+        label: "Suno Sheet",
         icon: Send,
         hint: "Copy your style and lyrics into Suno (or ElevenLabs Music)",
       },
@@ -107,7 +107,7 @@ export const TAB_GROUPS: Group[] = [
       },
       {
         value: "feedback",
-        label: "Honest Feedback",
+        label: "Lyric Feedback",
         icon: Gauge,
         hint: "A blunt critique of your lyrics",
       },
@@ -116,7 +116,7 @@ export const TAB_GROUPS: Group[] = [
         label: "Compare Songs",
         icon: Scale,
         hint: "Put your song next to one you love: see what's different and what to change",
-        badge: "v1",
+        badge: "beta",
       },
       {
         value: "master",
@@ -155,7 +155,7 @@ export const TAB_GROUPS: Group[] = [
       },
       {
         value: "dossier",
-        label: "Release Kit",
+        label: "Bio & Pitch",
         icon: Rocket,
         hint: "Title ideas, metadata, social copy and a playlist pitch",
       },
@@ -179,7 +179,7 @@ export const TAB_GROUPS: Group[] = [
       },
       {
         value: "compare",
-        label: "Comparables",
+        label: "Similar Artists",
         icon: Search,
         hint: "Find real artists that match your lyrics or style",
       },
@@ -252,16 +252,16 @@ export function RackSidebar({ tab, onTab }: { tab: string; onTab: (t: string) =>
                     onClick={() => onTab(t.value)}
                     aria-current={tab === t.value ? "page" : undefined}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                      "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                       tab === t.value
                         ? "bg-primary/20 text-primary"
                         : "text-foreground/75 hover:bg-card/60 hover:text-foreground",
                     )}
                   >
                     <t.icon className="size-4 shrink-0" />
-                    <span className="flex-1">{t.label}</span>
+                    <span className="flex-1 whitespace-nowrap">{t.label}</span>
                     {t.badge ? (
-                      <span className="rounded border border-primary/40 px-1 font-mono text-[11px] leading-4 text-primary">
+                      <span className="shrink-0 rounded border border-primary/40 px-1 font-mono text-[10px] leading-4 text-primary">
                         {t.badge}
                       </span>
                     ) : null}

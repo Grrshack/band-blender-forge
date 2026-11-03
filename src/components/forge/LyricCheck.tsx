@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, Download, FileAudio, Loader2, MicVocal, Tr
 import { useMemo, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
-import { ErrorNote, Panel } from "./Field";
+import { ErrorNote, FoldSummary, Panel } from "./Field";
 import { SaveToTake } from "./SaveToTake";
 import { SongDrop } from "./SongMeasurements";
 import type { ForgeState } from "./types";
@@ -219,9 +219,7 @@ export function LyricCheck({
           )}
 
           <details className="group mt-5 rounded-lg border border-border">
-            <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-              Every line with its time
-            </summary>
+            <FoldSummary>Every line with its time</FoldSummary>
             <ol className="space-y-1 px-3 pb-3 text-sm">
               {result.lines.map((l, i) => (
                 <li key={i} className="flex gap-3">

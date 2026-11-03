@@ -12,11 +12,11 @@ const TASK_LABELS: Record<string, string> = {
   lyrics: "Lyrics",
   regenLine: "Regen line",
   regenSection: "Regen section",
-  compare: "Comparables",
+  compare: "Similar Artists",
   critique: "Feedback",
   fixTake: "Fix a Track",
   variants: "Variants",
-  dossier: "Release Kit",
+  dossier: "Bio & Pitch",
   masterSuggest: "AI Suggest",
   refine: "Refine Blend",
 };

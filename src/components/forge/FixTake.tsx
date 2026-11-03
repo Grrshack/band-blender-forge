@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { CopyButton } from "./CopyButton";
-import { ErrorNote, Panel } from "./Field";
+import { ErrorNote, FoldSummary, Panel } from "./Field";
 import { useSettings } from "./settings";
 import { useForge } from "./use-forge";
 import { TakeLog } from "./TakeLog";
@@ -19,7 +19,7 @@ import { measureTake, type TakeMeasurements } from "@/lib/audio/take-diagnosis";
 import { submitPublicPrompt } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 import { track } from "@/lib/stats";
-import { KEEP_WHAT_WORKS, SYMPTOMS } from "@/lib/symptoms";
+import { KEEP_WHAT_WORKS, SYMPTOM_GROUPS } from "@/lib/symptoms";
 import { dropAlt } from "@/lib/prompt-craft";
 
 export function FixTake({
@@ -247,26 +247,31 @@ export function FixTake({
               <span className="mb-2 block font-mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase">
                 What was wrong
               </span>
-              <div className="flex flex-wrap gap-1.5">
-                {SYMPTOMS.map((s) => {
-                  const on = symptoms.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => toggle(s)}
-                      aria-pressed={on}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-xs transition-colors",
-                        on
-                          ? "border-primary/60 bg-primary/20 text-primary"
-                          : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                      )}
-                    >
-                      {s}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                {SYMPTOM_GROUPS.map((g) => (
+                  <div key={g.label} className="flex flex-wrap items-center gap-1.5">
+                    <span className="w-full text-[11px] font-medium text-muted-foreground">{g.label}</span>
+                    {g.items.map((s) => {
+                      const on = symptoms.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => toggle(s)}
+                          aria-pressed={on}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs transition-colors",
+                            on
+                              ? "border-primary/60 bg-primary/20 text-primary"
+                              : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                          )}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -311,11 +316,9 @@ export function FixTake({
               Suno is random — the same prompt gives different takes. Change one thing at a time and
               generate a few takes before judging a revision.
             </p>
-            <details className="rounded-lg border border-border bg-card/40 p-3">
-              <summary className="cursor-pointer text-xs font-medium text-foreground/90">
-                Mostly good take? Keep what works
-              </summary>
-              <ul className="mt-2 space-y-2">
+            <details className="group rounded-lg border border-border bg-card/40">
+              <FoldSummary>Mostly good take? Keep what works</FoldSummary>
+              <ul className="space-y-2 px-3 pb-3">
                 {KEEP_WHAT_WORKS.map((k) => (
                   <li key={k.title} className="text-xs">
                     <span className="font-semibold text-foreground">{k.title}.</span>{" "}

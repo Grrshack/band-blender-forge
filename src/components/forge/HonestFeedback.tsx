@@ -96,7 +96,7 @@ export function HonestFeedback({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-      <Panel title="Quality Control" subtitle="Blunt lyric autopsy. Nothing is uploaded or stored.">
+      <Panel title="Lyric Feedback" subtitle="A blunt, honest critique of your lyrics. Nothing is uploaded or stored.">
         {error ? <ErrorNote message={error} onRetry={() => void run()} /> : null}
         <div className="space-y-4">
           <div>

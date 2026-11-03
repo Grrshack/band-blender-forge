@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2, Download, ExternalLink, ImagePlus, KeyRoun
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
-import { Panel } from "./Field";
+import { FoldSummary, Panel } from "./Field";
 import { useSettings } from "./settings";
 import type { ForgeState } from "./types";
 import { Button } from "@/components/ui/button";
@@ -242,8 +242,8 @@ export function CoverMaker({
                       className="text-sm"
                     />
                   </div>
-                  <details className="rounded-lg border border-border">
-                    <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium">See or edit the full prompt</summary>
+                  <details className="group rounded-lg border border-border">
+                    <FoldSummary className="py-2 text-xs">See or edit the full prompt</FoldSummary>
                     <div className="space-y-2 px-3 pb-3">
                       <Textarea value={prompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={5} className="text-xs" aria-label="Full image prompt" />
                       {customPrompt !== null ? (

@@ -30,7 +30,7 @@ export function TakeCheck({
   quickSymptoms = QUICK_SYMPTOMS,
   highlight = false,
 }: {
-  /** The natural next step after a keeper (e.g. write lyrics, open the Export Sheet). */
+  /** The natural next step after a keeper (e.g. write lyrics, open the Suno Sheet). */
   next: { label: string; onClick: () => void };
   /** Which tool this card sits in, for the take log note. */
   source: string;

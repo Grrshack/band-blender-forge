@@ -152,7 +152,7 @@ export function SongHub({ state, onGoTab }: { state: ForgeState; onGoTab: (tab: 
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No takes yet. After you generate in Suno, rate each take in Fix a Track or the &quot;How did it come out?&quot; card,
+            No takes yet. After you generate in Suno, rate each take in the Suno Sheet, Fix a Track, or the &quot;How did it come out?&quot; card,
             so this page can track them.
           </p>
         )}

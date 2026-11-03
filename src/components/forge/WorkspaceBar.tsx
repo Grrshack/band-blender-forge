@@ -30,7 +30,7 @@ import {
   type LocalSong,
 } from "@/lib/local-songs";
 import { SongProgress } from "./SongProgress";
-import { buildSongPack } from "@/lib/song-pack";
+import { downloadSongPack } from "./SongPackButton";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -274,21 +274,7 @@ export function WorkspaceBar({
     URL.revokeObjectURL(url);
   };
 
-  const downloadPack = async () => {
-    try {
-      const pack = await buildSongPack(name, state);
-      const url = URL.createObjectURL(pack.blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = pack.filename;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Song pack downloaded (${pack.count} files).`);
-    } catch (e) {
-      console.error("Song pack failed", e);
-      toast.error("Couldn't build the song pack. Try Brief only instead.");
-    }
-  };
+  const downloadPack = () => downloadSongPack(name, state);
 
   return (
     <div className="panel-surface flex flex-wrap items-center gap-2 px-3 py-2">

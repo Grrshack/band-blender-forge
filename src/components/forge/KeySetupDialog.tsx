@@ -1,4 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
+import { FoldSummary } from "./Field";
 import {
   CheckCircle2,
   ExternalLink,
@@ -302,7 +303,7 @@ export function KeySetupDialog() {
             <a href="/studio?tab=master" className="text-primary underline underline-offset-2">Mastering</a>,{" "}
             <a href="/tools/bpm-key-finder" className="text-primary underline underline-offset-2">BPM &amp; key finder</a>,{" "}
             <a href="/tools/lyric-checker" className="text-primary underline underline-offset-2">lyric checker</a>,{" "}
-            <a href="/tools/suno-metatags" className="text-primary underline underline-offset-2">metatags</a>, the Export Sheet and the guides.
+            <a href="/tools/suno-metatags" className="text-primary underline underline-offset-2">metatags</a>, the Suno Sheet and the guides.
           </p>
         ) : null}
 
@@ -374,10 +375,7 @@ export function KeySetupDialog() {
         </div>
 
         <details className="group rounded-lg border border-border">
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium">
-            More options and privacy <span className="text-muted-foreground group-open:hidden">▸</span>
-            <span className="hidden text-muted-foreground group-open:inline">▾</span>
-          </summary>
+          <FoldSummary>More options and privacy</FoldSummary>
           <div className="space-y-3 px-3 pb-3">
         {/* Speed vs quality */}
         <div className="flex items-start gap-3 rounded-lg border border-border p-3">

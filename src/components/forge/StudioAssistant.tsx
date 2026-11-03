@@ -326,7 +326,7 @@ const PATHS = [
   {
     id: "fix",
     icon: Stethoscope,
-    title: "Fix a song Suno made",
+    title: "Fix a track Suno made",
     body: "Tell us what's wrong, add the audio file, and get the quickest fix.",
     tab: "fix",
   },

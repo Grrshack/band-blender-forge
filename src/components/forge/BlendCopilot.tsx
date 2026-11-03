@@ -31,10 +31,13 @@ export function BlendCopilot({
         <button
           type="button"
           onClick={() => onOpenChange(true)}
-          className="glow-primary fixed right-5 bottom-5 z-40 flex items-center gap-2 rounded-full border border-primary/50 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105"
+          aria-label="Tweak the blend by chat"
+          title="Tweak the blend by chat, e.g. 'make it darker'"
+          // Icon-only on phones so it covers less of the page.
+          className="glow-primary fixed right-3 bottom-3 z-40 flex size-12 items-center justify-center gap-2 rounded-full border border-primary/50 bg-primary text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 sm:right-5 sm:bottom-5 sm:size-auto sm:px-4 sm:py-2.5"
         >
-          <Bot className="size-4" />
-          AI Assistant
+          <Bot className="size-5 sm:size-4" />
+          <span className="hidden sm:inline">Tweak by chat</span>
         </button>
       )}
       <aside
@@ -51,7 +54,7 @@ export function BlendCopilot({
               <Bot className="size-4 text-primary" />
             </span>
             <div>
-              <h2 className="font-display text-sm font-semibold">Blend assistant</h2>
+              <h2 className="font-display text-sm font-semibold">Tweak by chat</h2>
               <p className="text-[11px] text-muted-foreground">Watch the controls move as it sets them.</p>
             </div>
           </div>

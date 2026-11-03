@@ -35,8 +35,8 @@ const STEPS = [
 const RACK_TOOLS = [
   { tab: "fix",     label: "Fix a Track",     icon: Stethoscope,  desc: "Diagnose what went wrong and try again" },
   { tab: "master",  label: "Mastering",       icon: AudioWaveform, desc: "EQ & dynamics suggestions for your mix" },
-  { tab: "dossier", label: "Release Kit",    icon: Rocket,        desc: "Cover art, metadata, pitch copy & social hooks" },
-  { tab: "compare", label: "Comparables",     icon: Search,        desc: "Find artists you sound like" },
+  { tab: "dossier", label: "Bio & Pitch",    icon: Rocket,        desc: "Cover art, metadata, pitch copy & social hooks" },
+  { tab: "compare", label: "Similar Artists",     icon: Search,        desc: "Find artists you sound like" },
   { tab: "genres",  label: "Genre Guides",    icon: Map,           desc: "Reference guides for any genre" },
   { tab: "library", label: "Prompt Library",  icon: BookMarked,    desc: "Save and reuse style prompts" },
 ] as const;
@@ -235,7 +235,7 @@ export function GuidedFlow({ state, patch, onExitToRack, onExitToTab, onExitToFi
               onClick={onExitToRack}
               className="gap-1.5 font-mono text-[11px] border-border text-muted-foreground hover:text-foreground"
             >
-              Full rack →
+              All tools →
             </Button>
           </div>
         )}

@@ -1,8 +1,8 @@
-import { AlertTriangle, CheckCircle2, CircleDashed, ExternalLink } from "lucide-react";
-import { useEffect } from "react";
+import { AlertTriangle, CheckCircle2, CircleDashed, ExternalLink, MinusCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
-import { Panel } from "./Field";
+import { FoldSummary, Panel } from "./Field";
 import type { AiLevel, ForgeState } from "./types";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +51,7 @@ export function ReleaseCheck({
 
   const answers = disclosureAnswers(disclosure);
   const checks = autoChecks(state);
+  const [why, setWhy] = useState<string | null>(null);
   const lyrics = plainLyrics(state);
 
   return (
@@ -117,7 +118,9 @@ export function ReleaseCheck({
         <ul className="space-y-2">
           {checks.map((c) => (
             <li key={c.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
-              {c.ok === true ? (
+              {c.ok === "na" ? (
+                <MinusCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground/60" />
+              ) : c.ok === true ? (
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-signal-high" />
               ) : c.ok === false ? (
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
@@ -125,10 +128,10 @@ export function ReleaseCheck({
                 <CircleDashed className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-sm">{c.label}</p>
+                <p className={cn("text-sm", c.ok === "na" && "text-muted-foreground")}>{c.label}</p>
                 <p className="text-xs text-muted-foreground">{c.detail}</p>
               </div>
-              {c.ok !== true && c.tab ? (
+              {c.ok !== true && c.ok !== "na" && c.tab ? (
                 <Button variant="outline" size="sm" onClick={() => onGoTab(c.tab!)} className="h-8 shrink-0 text-xs">
                   Open
                 </Button>
@@ -140,25 +143,37 @@ export function ReleaseCheck({
 
       <Panel title="3. Your checklist" subtitle="Only you can confirm these. Ticks are saved with the song.">
         <ul className="space-y-2">
-          {MANUAL_CHECKS.map((m) => (
-            <li key={m.id}>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3">
-                <input
-                  type="checkbox"
-                  checked={Boolean(release.ticks?.[m.id])}
-                  onChange={(e) => tick(m.id, e.target.checked)}
-                  className="mt-1 size-4 accent-[var(--primary)]"
-                />
-                <span>
-                  <span className="block text-sm">{m.label}</span>
-                  <span className="block text-xs text-muted-foreground">{m.detail}</span>
-                </span>
-              </label>
-            </li>
-          ))}
+          {MANUAL_CHECKS.map((m) => {
+            const on = Boolean(release.ticks?.[m.id]);
+            const open = why === m.id;
+            return (
+              <li key={m.id} className="rounded-lg border border-border">
+                <div className="flex items-start gap-3 p-3">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) => tick(m.id, e.target.checked)}
+                      className="mt-1 size-4 accent-[var(--primary)]"
+                    />
+                    <span className={cn("text-sm", on && "text-muted-foreground")}>{m.label}</span>
+                  </label>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => setWhy(open ? null : m.id)}
+                    className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+                  >
+                    {open ? "Hide" : "Why?"}
+                  </button>
+                </div>
+                {open ? <p className="-mt-1 px-3 pb-3 pl-10 text-xs text-muted-foreground">{m.detail}</p> : null}
+              </li>
+            );
+          })}
         </ul>
-        <details className="mt-3 rounded-lg border border-border">
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium">Suno&apos;s own pages on rights and distribution</summary>
+        <details className="group mt-3 rounded-lg border border-border">
+          <FoldSummary>Suno&apos;s own pages on rights and distribution</FoldSummary>
           <ul className="space-y-1 px-3 pb-3 text-sm">
             {RELEASE_CHECKLIST.flatMap((item) => item.links ?? []).map(([label, href]) => (
               <li key={href}>

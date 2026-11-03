@@ -85,7 +85,7 @@ export function ReleaseDossier({
   return (
     <div className="space-y-5">
     <Panel
-      title="Release Kit"
+      title="Bio & Pitch"
       subtitle="Cover art prompts, streaming metadata, pitch copy and social hooks — one click, one AI call."
       action={current ? <CopyButton value={dossierText(current)} label="Copy all" /> : null}
     >

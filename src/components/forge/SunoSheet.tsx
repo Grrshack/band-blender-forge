@@ -1,8 +1,8 @@
-import { AlertTriangle, CheckCircle2, ExternalLink, Plus, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
-import { Panel } from "./Field";
+import { FoldSummary, Panel } from "./Field";
 import { SendToChat } from "./SendToChat";
 import { StyleFormatSwitch } from "./StyleFormatSwitch";
 import { SendToEngine, SendToSuno } from "./SendToSuno";
@@ -21,7 +21,7 @@ import {
   vocalString,
 } from "@/lib/suno";
 import { ENGINE_LABELS, buildEngineExport, type Engine } from "@/lib/engines";
-import { preflight } from "@/lib/preflight";
+import { preflight, type PreflightIssue } from "@/lib/preflight";
 import {
   COMMON_EXCLUDES,
   MIX_CLAUSES,
@@ -126,6 +126,7 @@ export function SunoSheet({
   onOpenForge: () => void;
 }) {
   const [engine, setEngine] = useState<Engine>("suno");
+  const [profileCount, setProfileCount] = useState(0);
   const result = blend.result;
   const style = result?.styleTag ?? "";
   const exclude = result?.excludeStyles ?? "";
@@ -167,16 +168,18 @@ export function SunoSheet({
 
   const vocalAlreadyIn = Boolean(vocal) && style.toLowerCase().includes(vocal.toLowerCase());
 
-  const problems = [
-    !style.trim() && "no style prompt",
-    !lyricText.trim() && "no lyrics",
-    !lyrics.title.trim() && "no title",
-    style.length > SUNO_LIMITS.style && "style is over the limit",
-    exclude.length > SUNO_LIMITS.exclude && "exclude list is over the limit",
-    lyricText.length > SUNO_LIMITS.lyrics && "lyrics are over the limit",
-    lyrics.title.length > SUNO_LIMITS.title && "title is over the limit",
-    leaks.length > 0 && "artist names in the style fields",
-  ].filter(Boolean) as string[];
+  // Everything to check before generating, in one list (the style checks plus the other boxes).
+  const issues: PreflightIssue[] = [
+    ...preflight({ style, exclude, version: blend.sunoVersion, artistNames: names }),
+    ...(excludeLeaks.length
+      ? [{ level: "stop" as const, message: `Artist names in Exclude styles (${excludeLeaks.join(", ")}). Suno blocks them there too.`, fix: "removeNames" as const }]
+      : []),
+    ...(!lyrics.title.trim() ? [{ level: "warn" as const, message: "No title yet. It doesn't change the sound, but Suno needs one to save the song." }] : []),
+    ...(!lyricText.trim() ? [{ level: "warn" as const, message: "No lyrics yet. Fine for an instrumental; otherwise write them in Lyric Forge." }] : []),
+    ...(lyrics.title.length > SUNO_LIMITS.title ? [{ level: "stop" as const, message: `Title is ${lyrics.title.length} characters; Suno takes ${SUNO_LIMITS.title}.` }] : []),
+    ...(exclude.length > SUNO_LIMITS.exclude ? [{ level: "stop" as const, message: `Exclude styles is ${exclude.length} characters; Suno takes ${SUNO_LIMITS.exclude}.` }] : []),
+    ...(lyricText.length > SUNO_LIMITS.lyrics ? [{ level: "stop" as const, message: `Lyrics are ${lyricText.length} characters; Suno takes ${SUNO_LIMITS.lyrics}.` }] : []),
+  ];
 
   const engineFields =
     engine === "suno"
@@ -204,7 +207,7 @@ export function SunoSheet({
 
   return (
     <Panel
-      title="Export Sheet"
+      title="Suno Sheet"
       subtitle="Check, then paste into Suno. Every box is ready to copy."
       action={
         <div className="flex flex-wrap justify-end gap-1.5">
@@ -230,10 +233,11 @@ export function SunoSheet({
         </div>
       }
     >
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <PreflightCard
-          issues={preflight({ style, exclude, version: blend.sunoVersion, artistNames: names })}
+          issues={issues}
           onFix={(fix) => {
+            if (fix === "removeNames") stripArtists();
             if (fix === "placeVocal") {
               const next = placeVocal(style);
               setResult({ styleTag: next, excludeStyles: mergeExcludes(exclude, "buried vocals, distant vocals", next) });
@@ -285,45 +289,15 @@ export function SunoSheet({
             ))}
             <p className="hairline-top pt-3 text-[11px] leading-relaxed text-muted-foreground">
               Built from the same blend and lyrics as the Suno version. Edit them in Band Blender or
-              Lyric Forge; limits are approximate and live in one place if the engines change.
+              Lyric Forge. Limits are approximate.
             </p>
           </>
         ) : (
         <>
-        <div
-          className={cn(
-            "flex items-start gap-2.5 rounded-lg border px-3 py-2 text-xs",
-            problems.length
-              ? "border-signal-mid/50 bg-signal-mid/10"
-              : "border-signal-high/50 bg-signal-high/10",
-          )}
-        >
-          {problems.length ? (
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-signal-mid" />
-          ) : (
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-signal-high" />
-          )}
-          <p className="leading-relaxed text-foreground/90">
-            {problems.length
-              ? `Not ready yet: ${problems.join(", ")}.`
-              : "Everything fits Suno's limits and no artist names are in the style fields."}
-          </p>
+        {/* No saved sounds yet: keep the empty box out of the way at the bottom. */}
+        <div className={profileCount ? undefined : "order-last"}>
+          <SoundProfiles blend={blend} onBlend={onBlend} onCount={setProfileCount} />
         </div>
-
-        {leaks.length ? (
-          <div className="flex flex-wrap items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
-            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <p className="min-w-0 flex-1 text-xs leading-relaxed text-foreground/90">
-              Suno blocks artist names. Found:{" "}
-              <span className="font-mono text-destructive">{leaks.join(", ")}</span>
-            </p>
-            <Button size="sm" variant="outline" onClick={stripArtists} className="h-7 text-xs">
-              Remove them
-            </Button>
-          </div>
-        ) : null}
-
-        <SoundProfiles blend={blend} onBlend={onBlend} />
 
         <SunoBox
           label="Title"
@@ -449,10 +423,6 @@ export function SunoSheet({
           }}
         />
 
-        <p className="hairline-top pt-3 text-[11px] leading-relaxed text-muted-foreground">
-          Limits are third-party measurements of Suno's current fields and can change — they live in
-          one place (<span className="font-mono">src/lib/suno.ts</span>) if Suno updates them.
-        </p>
         </>
         )}
       </div>
@@ -520,7 +490,7 @@ function PreflightCard({
                     onClick={() => onFix(i.fix!)}
                     className="ml-2 h-6 px-2 text-[11px]"
                   >
-                    Fix it
+                    {i.fix === "removeNames" ? "Remove them" : "Fix it"}
                   </Button>
                 ) : null}
               </span>
@@ -569,11 +539,11 @@ function ClauseChips({ style, onAdd }: { style: string; onAdd: (c: Clause) => vo
 /** Slider routine. Community-tested starting points, not official Suno numbers. */
 function SunoSettingsCard() {
   return (
-    <details className="rounded-lg border border-border bg-card/40 p-3">
-      <summary className="cursor-pointer font-mono text-[10px] tracking-[0.2em] text-primary uppercase">
+    <details className="group rounded-lg border border-border bg-card/40">
+      <FoldSummary hint="Which Suno settings to use for the first takes, the keeper, and the final pass">
         Suno settings: a three-pass routine
-      </summary>
-      <ol className="mt-3 space-y-2.5">
+      </FoldSummary>
+      <ol className="space-y-2.5 px-3 pb-3">
         {SUNO_PASSES.map((p, i) => (
           <li key={p.name} className="flex gap-3 text-xs">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 font-mono text-[10px] text-primary">

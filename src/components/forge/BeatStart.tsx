@@ -103,7 +103,7 @@ export function BeatStart({ onAddToStyle }: { onAddToStyle?: ((line: string) => 
               Gemini app
             </a>{" "}
             (Lyria 3.5 model) makes a free ~2-minute song with vocals from a description. Get a ready prompt from the
-            Export Sheet&apos;s &quot;Gemini / Flow&quot; tab. If you like it, download it and upload it to Suno below. Gemini
+            Suno Sheet&apos;s &quot;Gemini / Flow&quot; tab. If you like it, download it and upload it to Suno below. Gemini
             is good for quick ideas; Suno gives you editing, covers and longer songs to finish it.{" "}
             <a href="/guides/sketch-in-gemini-finish-in-suno" className="text-primary underline underline-offset-2">
               How it works

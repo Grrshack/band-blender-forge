@@ -1,5 +1,5 @@
-import { ArrowRight, Check, CircleSlash, Loader2, TriangleAlert, Wand2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, Check, ChevronDown, CircleSlash, Loader2, TriangleAlert, Wand2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,8 @@ const KIND: Record<VerdictKind, { label: string; tone: string; Icon: typeof Chec
   elsewhere: { label: "Mastering can't fix this", tone: "border-destructive/40 text-destructive", Icon: CircleSlash },
   ok: { label: "Fine", tone: "border-border text-muted-foreground", Icon: Check },
 };
+
+const SCOPE_SEEN = "bb.master.scope-seen";
 
 /** Two columns of what mastering can and can't do. */
 function CanCant() {
@@ -69,18 +71,46 @@ export function MasteringScope({
   onOpenFix?: (() => void) | undefined;
 }) {
   const [showScope, setShowScope] = useState(false);
+  // Open the first time someone visits Mastering; folded after that, so returning users
+  // see the tools first.
+  const [introOpen, setIntroOpen] = useState(true);
+  const checkedSeen = useRef(false);
+  useEffect(() => {
+    // Once per mount (React's dev mode runs effects twice).
+    if (checkedSeen.current) return;
+    checkedSeen.current = true;
+    try {
+      if (localStorage.getItem(SCOPE_SEEN)) setIntroOpen(false);
+      else localStorage.setItem(SCOPE_SEEN, "1");
+    } catch {
+      /* storage unavailable: leave it open */
+    }
+  }, []);
 
   if (!songName) {
     return (
-      <section className="panel-surface p-5">
-        <h2 className="font-display text-lg font-semibold">What mastering can and can't fix</h2>
-        <p className="mt-1 mb-4 text-sm text-muted-foreground">
-          Mastering polishes a finished song. It can't change what Suno generated. Load a song and
-          you'll get a verdict for it before you spend time here. Making an album or EP? Use the same
-          preset and loudness target on every track so they match.
-        </p>
-        <CanCant />
-      </section>
+      <details
+        open={introOpen}
+        onToggle={(e) => setIntroOpen(e.currentTarget.open)}
+        className="group panel-surface"
+      >
+        <summary className="flex cursor-pointer list-none items-start gap-3 p-5 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-lg font-semibold">What mastering can and can't fix</span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              Mastering polishes a finished song. It can't change what Suno generated.
+            </span>
+          </span>
+          <ChevronDown aria-hidden className="mt-1 size-5 shrink-0 text-primary transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-5 pb-5">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Load a song and you&apos;ll get a verdict for it before you spend time here. Making an album or EP? Use the
+            same preset and loudness target on every track so they match.
+          </p>
+          <CanCant />
+        </div>
+      </details>
     );
   }
 

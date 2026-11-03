@@ -15,7 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyButton } from "./CopyButton";
-import { ErrorNote, Panel } from "./Field";
+import { ErrorNote, FoldSummary, Panel } from "./Field";
 import { ReferenceMatch } from "./ReferenceMatch";
 import { useSettings } from "./settings";
 import { useForge } from "./use-forge";
@@ -85,6 +85,25 @@ type Audio = {
 };
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 30)); // let React paint between heavy steps
+
+/** Mix presets in three small groups so they're quicker to scan; stem presets stay as one row. */
+const PRESET_GROUPS: Array<{ label: string; names: string[] }> = [
+  { label: "Start here", names: ["Flat", "Suno v6 starter", "Streaming ready"] },
+  { label: "Fix the low end", names: ["Suno rumble fix", "Suno sub tame", "Tighter low end", "Club sub boost"] },
+  { label: "Fix the mix", names: ["Suno deep clean", "Clean up boxy mix", "Warm & fat"] },
+];
+function presetGroups<P extends { name: string }>(presets: P[], mix: boolean): Array<{ label: string; presets: P[] }> {
+  if (!mix) return [{ label: "", presets }];
+  const used = new Set<string>();
+  const groups = PRESET_GROUPS.map((g) => {
+    const ps = presets.filter((p) => g.names.includes(p.name));
+    ps.forEach((p) => used.add(p.name));
+    return { label: g.label, presets: ps };
+  });
+  const rest = presets.filter((p) => !used.has(p.name));
+  if (rest.length) groups.push({ label: "More", presets: rest });
+  return groups.filter((g) => g.presets.length);
+}
 
 export function MasteringLab({
   onOpenFix,
@@ -735,7 +754,7 @@ export function MasteringLab({
       onShowControls={(g) => openGroup(g)}
       onOpenFix={onOpenFix}
     />
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
       {/* ---------------- controls ---------------- */}
       <Panel
         title="Mastering Lab"
@@ -778,27 +797,32 @@ export function MasteringLab({
             ) : null}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1.5">
-              {presetsForStem.map((p) => (
-                <button
-                  key={p.name}
-                  type="button"
-                  onClick={() => {
-                    setParams((prev) => ({ ...DEFAULT_PARAMS, ...p.params, makeupDb: prev.makeupDb }));
-                    setActivePreset(p.name);
-                  }}
-                  className={cn(
-                    "rounded-full border px-3 py-1 font-mono text-[10px] tracking-wider uppercase transition-all",
-                    activePreset === p.name
-                      ? "glow-primary border-primary/60 bg-primary/10 text-primary"
-                      : "border-border bg-card/60 text-muted-foreground hover:border-accent/60 hover:text-accent",
-                  )}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
+          <div className="space-y-2.5">
+            {presetGroups(presetsForStem, stem === "mix").map((g) => (
+              <div key={g.label}>
+                {g.label ? <p className="mb-1 text-[11px] font-medium text-muted-foreground">{g.label}</p> : null}
+                <div className="flex flex-wrap gap-1.5">
+                  {g.presets.map((p) => (
+                    <button
+                      key={p.name}
+                      type="button"
+                      onClick={() => {
+                        setParams((prev) => ({ ...DEFAULT_PARAMS, ...p.params, makeupDb: prev.makeupDb }));
+                        setActivePreset(p.name);
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition-all",
+                        activePreset === p.name
+                          ? "glow-primary border-primary/60 bg-primary/10 text-primary"
+                          : "border-border bg-card/60 text-muted-foreground hover:border-accent/60 hover:text-accent",
+                      )}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
             {activePreset ? (
               <p className="pl-1 text-[10px] leading-snug text-muted-foreground">
                 {PRESETS.find((p) => p.name === activePreset)?.hint}
@@ -985,7 +1009,8 @@ export function MasteringLab({
             </div>
           </Group>
 
-          <Group title="Low-band treatment" dim={!band} {...groupProps("lowband")}>
+          {band ? (
+          <Group title="Low-band treatment" {...groupProps("lowband")}>
             <ParamSlider
               label="Warmth (saturation)"
               value={params.warmth}
@@ -1023,6 +1048,7 @@ export function MasteringLab({
               />
             </label>
           </Group>
+          ) : null}
 
           <Group title="Sub-40 rumble control" {...groupProps("sub")}>
             <ParamSlider
@@ -1251,8 +1277,8 @@ export function MasteringLab({
       <Panel
         title="Load, Preview & Export"
         subtitle={song ? song.name : "Drop a song or a single stem to start."}
-        // On phones the upload/preview comes first, since loading a song is step one.
-        className={cn("order-first lg:order-none", !song && "lg:self-start")}
+        // Loading a song is step one, so this column comes first everywhere (left on wide screens).
+        className={cn("order-first", !song && "lg:self-start")}
       >
         <div className="space-y-4">
           {error ? <ErrorNote message={error} /> : null}
@@ -1514,17 +1540,23 @@ export function MasteringLab({
             </div>
           ) : null}
 
-          <BandLabFinish />
-
-          <p className="hairline-top flex items-start gap-2 pt-3 text-[11px] leading-relaxed text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-signal-high" />
-            <span>
-              Everything runs locally in your browser with the Web Audio API. Closing or reloading
-              the tab also discards the file. Loudness is measured to ITU-R BS.1770 and the peak is
-              checked as true peak (4× oversampled), so the ceiling holds between samples too. Leave
-              it at −1 dBFS or lower for streaming.
-            </span>
-          </p>
+          <details className="group rounded-lg border border-border bg-card/40">
+            <FoldSummary
+              icon={<ShieldCheck className="size-4 shrink-0 text-signal-high" />}
+              hint="Your file never leaves this tab. Also: finishing in BandLab, and how loudness is measured."
+            >
+              Privacy and finishing tips
+            </FoldSummary>
+            <div className="space-y-3 px-3 pb-3">
+              <BandLabFinish />
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Everything runs locally in your browser with the Web Audio API. Closing or reloading
+                the tab also discards the file. Loudness is measured to ITU-R BS.1770 and the peak is
+                checked as true peak (4× oversampled), so the ceiling holds between samples too. Leave
+                it at −1 dBFS or lower for streaming.
+              </p>
+            </div>
+          </details>
         </div>
       </Panel>
     </div>

@@ -1,7 +1,7 @@
 import { ArrowRight, CheckCircle2, FileAudio, Loader2, Scale, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { ErrorNote, Panel } from "./Field";
+import { ErrorNote, FoldSummary, Panel } from "./Field";
 import { SaveToTake } from "./SaveToTake";
 import { SongDrop } from "./SongMeasurements";
 import type { ForgeState } from "./types";
@@ -247,12 +247,7 @@ export function SongCompare({
             )}
 
             <details className="group mt-5 rounded-lg border border-border">
-              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                <Scale className="size-4 text-primary" />
-                <span className="flex-1">All measurements side by side</span>
-                <span className="text-xs text-muted-foreground group-open:hidden">Show</span>
-                <span className="hidden text-xs text-muted-foreground group-open:inline">Hide</span>
-              </summary>
+              <FoldSummary icon={<Scale className="size-4 text-primary" />}>All measurements side by side</FoldSummary>
               <div className="overflow-x-auto px-3 pb-3">
                 <table className="w-full text-sm">
                   <thead>
