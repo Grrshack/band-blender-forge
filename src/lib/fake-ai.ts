@@ -154,12 +154,18 @@ function answer(task: string, payload: Json): Json {
         title: "Glass City",
         concept: "Test answer: one rainy night in a city, from leaving home to sunrise.",
         sharedSound: "dark synthpop, cinematic, analog bass, glassy synths, breathy female alto",
+        sharedBrief: PARTS,
         excludeStyles: "autotune, trap hi-hats, country twang",
         tracks: Array.from({ length: count }, (_, i) => ({
           title: `Test Track ${i + 1}`,
           role: roles[Math.min(i, roles.length - 1)],
           styleTag: `${TAGS}, track ${i + 1}`,
           twist: i % 2 ? "slower, piano-led" : "driving, brighter",
+          pulse: `${88 + i * 4} BPM, ${i % 2 ? "laid-back and swung" : "steady and driving"}.`,
+          players: i % 2
+            ? "Felt piano chords carry the verses while the analog bass pulses underneath."
+            : "Pulsing analog bass, gated drum machine and glassy arpeggiated synths.",
+          arc: i % 2 ? "Verses stay bare; the chorus adds strings and doubled vocals." : "Sparse verses hold back the drums; the chorus opens wide.",
           theme: `Test answer: theme for track ${i + 1}.`,
           hook: `Hook line ${i + 1}`,
           bpm: 88 + i * 4,

@@ -448,7 +448,8 @@ export const runForge = createServerFn({ method: "POST" })
     };
 
     // Lyrics tasks generate full song sections and need more room than a blend or critique.
-    const initialTokens = ["lyrics", "regenSection"].includes(data.task) ? 4000 : 3000;
+    // A whole album plan (a Studio Brief per track) is the longest answer of all.
+    const initialTokens = data.task === "albumPlan" ? 7000 : ["lyrics", "regenSection"].includes(data.task) ? 4000 : 3000;
 
     const ask = async (text: string): Promise<Record<string, unknown>> => {
       try {

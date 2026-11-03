@@ -7,7 +7,7 @@
 import { findBannedWords } from "@/lib/banned-words";
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
 import { clicheFixPrompt, polishPrompt, prompt } from "@/lib/forge-prompts";
-import { cleanBriefParts, joinBrief } from "@/lib/prompt-craft";
+import { BRIEF_KEYS, cleanBriefParts, joinBrief, type BriefKey, type BriefParts } from "@/lib/prompt-craft";
 import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
 import {
   SUNO_LIMITS,
@@ -339,23 +339,37 @@ async function runTask(task: string, payload: Json, deps: PipelineDeps): Promise
   }
 }
 
-const ALBUM_TEXT_FIELDS = ["styleTag", "twist", "theme", "hook", "title"] as const;
+const ALBUM_TEXT_FIELDS = ["styleTag", "twist", "theme", "hook", "title", "sound", "pulse", "players", "arc"] as const;
 
 function findAlbumLeaks(r: Json, names: string[]): string[] {
   if (!names.length) return [];
   const tracks = Array.isArray(r["tracks"]) ? (r["tracks"] as unknown[]).map(obj) : [];
+  const shared = obj(r["sharedBrief"]);
   const texts = [
     String(r["sharedSound"] ?? ""),
     String(r["excludeStyles"] ?? ""),
     String(r["title"] ?? ""),
+    ...Object.values(shared).map((v) => String(v ?? "")),
     ...tracks.flatMap((t) => ALBUM_TEXT_FIELDS.map((k) => String(t[k] ?? ""))),
   ];
   return [...new Set(texts.flatMap((t) => findStyleLeaks(t, names)))];
 }
 
+/** Longest each Studio Brief part may be, so all six always fit Suno's 1,000-character box. */
+export const BRIEF_PART_MAX: Record<BriefKey, number> = {
+  sound: 120,
+  pulse: 120,
+  players: 220,
+  voice: 180,
+  arc: 180,
+  finish: 140,
+};
+
 /**
- * Makes an album plan safe to use: the right number of tracks, every style within Suno's
- * limit, no artist names left anywhere, sensible tempos. Pure, so it can be tested.
+ * Makes an album plan safe to use: the right number of tracks, every track's Studio Brief
+ * built from the shared parts plus its own pulse, players and arc (each part capped so the
+ * whole brief fits Suno's box), a tag list too, no artist names left anywhere, sensible
+ * tempos. Pure, so it can be tested.
  */
 export function cleanAlbumPlan(raw: Json, names: string[], count: number): Json {
   const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -363,17 +377,30 @@ export function cleanAlbumPlan(raw: Json, names: string[], count: number): Json 
     const t = scrubArtistNames(text(v), names).text.trim();
     return max ? fitToLimit(t, max) : t;
   };
+  const partsFrom = (o: Json): BriefParts => {
+    const out: BriefParts = {};
+    for (const k of BRIEF_KEYS) {
+      const v = scrub(o[k], BRIEF_PART_MAX[k]);
+      if (v) out[k] = v;
+    }
+    return out;
+  };
+  const sharedRaw = cleanBriefParts(obj(raw["sharedBrief"]));
+  const shared = sharedRaw ? partsFrom(sharedRaw as Json) : null;
   const tracks = (Array.isArray(raw["tracks"]) ? (raw["tracks"] as unknown[]) : [])
     .map(obj)
-    .filter((t) => text(t["styleTag"]) !== "")
+    .filter((t) => text(t["styleTag"]) !== "" || text(t["pulse"]) !== "")
     .slice(0, count)
     .map((t, i) => {
       const bpm = Math.round(Number(t["bpm"]));
+      const own = partsFrom({ sound: t["sound"], pulse: t["pulse"], players: t["players"], arc: t["arc"] });
+      const parts: BriefParts | null = shared ? { ...shared, ...own } : null;
       return {
         n: i + 1,
         title: scrub(t["title"], 60) || `Track ${i + 1}`,
         role: scrub(t["role"], 40),
         styleTag: scrub(t["styleTag"], SUNO_LIMITS.style),
+        ...(parts ? { briefParts: parts, styleBrief: joinBrief(parts) } : {}),
         twist: scrub(t["twist"], 120),
         theme: scrub(t["theme"], 300),
         hook: scrub(t["hook"], 120),
@@ -384,6 +411,7 @@ export function cleanAlbumPlan(raw: Json, names: string[], count: number): Json 
     title: scrub(raw["title"], 60) || "Untitled record",
     concept: scrub(raw["concept"], 300),
     sharedSound: scrub(raw["sharedSound"], 300),
+    ...(shared ? { sharedBrief: shared } : {}),
     excludeStyles: scrub(raw["excludeStyles"], SUNO_LIMITS.exclude),
     tracks,
   };

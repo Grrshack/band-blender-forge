@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SEED_BUCKETS,
+  swapDraftFormat,
   albumZipFiles,
   currentDrop,
   draftFromBlend,
@@ -16,7 +17,8 @@ import {
   trackSongName,
   trackState,
 } from "./lab";
-import { cleanAlbumPlan, runPipeline } from "./forge-pipeline";
+import { BRIEF_PART_MAX, cleanAlbumPlan, runPipeline } from "./forge-pipeline";
+import { briefMatches, joinBrief } from "./prompt-craft";
 import { fakeAsk } from "./fake-ai";
 
 /** A repeatable stand-in for Math.random. */
@@ -56,6 +58,20 @@ describe("Lab Picks drafts and drops", () => {
     expect(ok.vocalPrompt).toEqual({ voice: "alto" });
     expect(genreTags(ok.genre)).toEqual(["trip-hop", "alt-metal"]);
     expect(draftFromBlend(d, {}).status).toBe("failed");
+  });
+
+  it("publishes the Studio Brief by default, with its six parts, and keeps the tag list as the other version", async () => {
+    const payload = { artists: ["Portishead", "Deftones"], promptFormat: "brief" };
+    const blend = await runPipeline("blend", payload, { ask: fakeAsk("blend", payload), lookup: async () => [] });
+    const d = draftFromBlend(newDraft(["Portishead", "Deftones"]), blend as never);
+    expect(d.styleFormat).toBe("brief");
+    expect(briefMatches(d.briefParts, d.styleTag)).toBe(true);
+    expect(Object.keys(d.briefParts!)).toEqual(["sound", "pulse", "players", "voice", "arc", "finish"]);
+    expect(d.styleAlt).toMatch(/^dark synthpop,/);
+    const tags = swapDraftFormat(d);
+    expect(tags.styleFormat).toBe("tags");
+    expect(tags.styleTag).toBe(d.styleAlt);
+    expect(swapDraftFormat(tags).styleTag).toBe(d.styleTag);
   });
 
   it("finds the next Monday or Friday at 9:00, always in the future", () => {
@@ -109,6 +125,33 @@ describe("Album Producer", () => {
     expect(out.sharedSound).not.toMatch(/portishead/i);
   });
 
+  it("builds every track's Studio Brief from the shared parts plus its own pulse, players and arc", () => {
+    const long = (w: string) => `${w} `.repeat(80).trim() + ".";
+    const raw = {
+      title: "Record",
+      sharedBrief: { sound: "Dark trip-hop, smoky and slow.", pulse: "80 BPM, heavy.", players: long("bass"), voice: "A breathy alto, close and upfront.", arc: "Verses hold back.", finish: "Dusty and wide." },
+      tracks: [
+        { title: "A", styleTag: "trip-hop, 84 bpm", pulse: "84 BPM, a slow head-nod swing.", players: "Upright bass and brushed drums.", arc: "The chorus adds strings." },
+        { title: "B", styleTag: "trip-hop, 96 bpm", pulse: "96 BPM, pushing forward." },
+      ],
+    };
+    const out = cleanAlbumPlan(raw, [], 5) as { sharedBrief: Record<string, string>; tracks: Array<{ briefParts: Record<string, string>; styleBrief: string }> };
+    expect(out.sharedBrief["players"]!.length).toBeLessThanOrEqual(BRIEF_PART_MAX.players);
+    const [a, b] = out.tracks;
+    expect(a!.briefParts["pulse"]).toBe("84 BPM, a slow head-nod swing.");
+    expect(a!.briefParts["players"]).toBe("Upright bass and brushed drums.");
+    expect(a!.briefParts["voice"]).toBe("A breathy alto, close and upfront.");
+    expect(b!.briefParts["players"]).toBe(out.sharedBrief["players"]); // unchanged parts come from the shared brief
+    for (const t of out.tracks) {
+      expect(t.styleBrief).toBe(joinBrief(t.briefParts));
+      expect(t.styleBrief.length).toBeLessThanOrEqual(1000);
+    }
+    // No shared brief from the AI: tracks still work with their tag lists.
+    const tagsOnly = cleanAlbumPlan({ tracks: [{ styleTag: "lofi, 80 bpm" }] }, [], 3) as { tracks: Array<Record<string, unknown>> };
+    expect(tagsOnly.tracks[0]!["briefParts"]).toBeUndefined();
+    expect(projectFromPlan(tagsOnly, { concept: "", artists: [], artistName: "" }).format).toBe("tags");
+  });
+
   it("plans with the canned AI answer through the real pipeline", async () => {
     const payload = { concept: "rainy city", artists: [], trackCount: 4 };
     const plan = await runPipeline("albumPlan", payload, { ask: fakeAsk("albumPlan", payload), lookup: async () => [] });
@@ -116,6 +159,13 @@ describe("Album Producer", () => {
     expect(p.tracks).toHaveLength(4);
     expect(p.tracks.every((t) => t.status === "planned" && t.styleTag)).toBe(true);
     expect(p.title).toBe("Glass City");
+    expect(p.format).toBe("brief");
+    for (const t of p.tracks) {
+      expect(briefMatches(t.briefParts, t.styleTag)).toBe(true);
+      expect(t.styleAlt).toMatch(/^dark synthpop,/);
+    }
+    expect(p.tracks[0]!.briefParts!.pulse).toMatch(/^88 BPM/);
+    expect(p.tracks[1]!.briefParts!.players).toMatch(/piano/);
   });
 
   it("writes lyrics through the normal lyrics task and saves tracks as normal songs", async () => {
@@ -133,6 +183,10 @@ describe("Album Producer", () => {
     const done = { ...t, sections, lyricTitle: "Neon Rain", status: "done" as const, songId: "song-2" };
     const state = trackState(p, done);
     expect(state.blend.result?.styleTag).toBe(t.styleTag);
+    expect(state.blend.result?.styleFormat).toBe("brief");
+    expect(briefMatches(state.blend.result?.briefParts, state.blend.result?.styleTag)).toBe(true);
+    expect(state.blend.result?.styleAlt).toBe(t.styleAlt);
+    expect((lp["style"] as { vocals: string }).vocals).toMatch(/alto/);
     expect(state.lyrics.title).toBe("Neon Rain");
     expect(state.release?.artist).toBe("Night Bus");
     expect(trackSongName(p, done)).toBe("Glass City — 02 Neon Rain");
@@ -144,6 +198,7 @@ describe("Album Producer", () => {
     const files = albumZipFiles(withDone).map(([path]) => path);
     expect(files).toContain("glass-city/TRACKLIST.txt");
     expect(files).toContain("glass-city/02-neon-rain/suno/lyrics.txt");
+    expect(files).toContain("glass-city/02-neon-rain/suno/style-tags.txt"); // the other format comes along
     expect(files.some((f) => f.startsWith("glass-city/01-"))).toBe(false); // not written yet
   });
 });

@@ -4,6 +4,7 @@
  * Pure helpers only; the screens are LabPicksAdmin and AlbumProducer.
  */
 import { songPackFiles, packSlug } from "@/lib/song-pack";
+import { arrangeFormats, cleanBriefParts, joinBrief, swapFormat, type BriefParts, type PromptFormat } from "@/lib/prompt-craft";
 import type { Album } from "@/lib/album";
 import { emptyState, type BlendResult, type ForgeState, type Section } from "@/components/forge/types";
 
@@ -70,7 +71,13 @@ export type LabDraft = {
   id: string;
   artists: string[];
   title: string;
+  /** The style in the chosen format (what gets published). */
   styleTag: string;
+  /** The same style in the other format. */
+  styleAlt?: string | undefined;
+  styleFormat: PromptFormat;
+  /** The Studio Brief in its six parts (Sound, Pulse, Players, Voice, Arc, Finish). */
+  briefParts?: BriefParts | undefined;
   excludeStyles: string;
   vocalPrompt?: Record<string, string> | undefined;
   genre: string;
@@ -78,30 +85,45 @@ export type LabDraft = {
   error?: string | undefined;
 };
 
-export const newDraft = (artists: string[]): LabDraft => ({
+export const newDraft = (artists: string[], format: PromptFormat = "brief"): LabDraft => ({
   id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
   artists,
   title: artists.join(" × ").slice(0, 80),
   styleTag: "",
+  styleFormat: format,
   excludeStyles: "",
   genre: "",
   status: "waiting",
 });
 
-/** Fills a draft from a blend result (always the tag list: it works on every Suno version). */
-export function draftFromBlend(d: LabDraft, r: BlendResult): LabDraft {
+/**
+ * Fills a draft from a blend result, the same way the Band Blender does: the chosen format
+ * active, the other kept as the alternative, and the Studio Brief's six parts kept.
+ */
+export function draftFromBlend(d: LabDraft, raw: BlendResult, format: PromptFormat = d.styleFormat): LabDraft {
+  const r = arrangeFormats(raw, format);
   const vocal = r.vocalPrompt
     ? Object.fromEntries(Object.entries(r.vocalPrompt).filter(([, v]) => typeof v === "string" && v.trim()))
     : undefined;
   return {
     ...d,
     styleTag: (r.styleTag ?? "").trim(),
+    styleAlt: r.styleAlt?.trim() || undefined,
+    styleFormat: r.styleFormat ?? format,
+    briefParts: r.briefParts,
     excludeStyles: (r.excludeStyles ?? "").trim(),
     ...(vocal && Object.keys(vocal).length ? { vocalPrompt: vocal as Record<string, string> } : {}),
     genre: (r.genre ?? "").trim(),
     status: (r.styleTag ?? "").trim() ? "ready" : "failed",
     ...((r.styleTag ?? "").trim() ? {} : { error: "The AI didn't return a style." }),
   };
+}
+
+/** Shows the draft's other format (lossless: edits on either side are kept). */
+export function swapDraftFormat(d: LabDraft): LabDraft {
+  if (!d.styleAlt) return d;
+  const s = swapFormat({ styleTag: d.styleTag, styleAlt: d.styleAlt, styleFormat: d.styleFormat });
+  return { ...d, styleTag: s.styleTag ?? "", styleAlt: s.styleAlt, styleFormat: s.styleFormat ?? d.styleFormat };
 }
 
 /** Short genre tags for the library filter, from the blend's genre line. */
@@ -149,7 +171,12 @@ export type ProducedTrack = {
   n: number;
   title: string;
   role: string;
+  /** The track's style in the record's format (Studio Brief or tag list). */
   styleTag: string;
+  /** The same style in the other format. */
+  styleAlt?: string | undefined;
+  /** The track's Studio Brief in six parts: shared sound, voice and finish, its own pulse, players and arc. */
+  briefParts?: BriefParts | undefined;
   twist: string;
   theme: string;
   hook: string;
@@ -172,6 +199,10 @@ export type AlbumProject = {
   title: string;
   summary: string;
   sharedSound: string;
+  /** The Studio Brief every track shares before its own pulse, players and arc. */
+  sharedBrief?: BriefParts | undefined;
+  /** Studio Brief (default) or tag list for every track. */
+  format: PromptFormat;
   excludeStyles: string;
   tracks: ProducedTrack[];
   /** The matching album in Album Planner. */
@@ -182,21 +213,32 @@ export type AlbumProject = {
 export function projectFromPlan(
   plan: Record<string, unknown>,
   input: { concept: string; artists: string[]; artistName: string },
+  format: PromptFormat = "brief",
 ): AlbumProject {
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   const tracks = (Array.isArray(plan["tracks"]) ? (plan["tracks"] as Array<Record<string, unknown>>) : []).map(
-    (t, i): ProducedTrack => ({
+    (t, i): ProducedTrack => {
+      const parts = cleanBriefParts(t["briefParts"]);
+      const brief = parts ? joinBrief(parts) : "";
+      const tags = str(t["styleTag"]);
+      // The chosen format leads; fall back to whichever one the AI actually wrote.
+      const useBrief = format === "brief" ? Boolean(brief) : !tags && Boolean(brief);
+      return {
       n: i + 1,
       title: str(t["title"]) || `Track ${i + 1}`,
       role: str(t["role"]),
-      styleTag: str(t["styleTag"]),
+      styleTag: useBrief ? brief : tags,
+      ...((useBrief ? tags : brief) ? { styleAlt: useBrief ? tags : brief } : {}),
+      ...(parts ? { briefParts: parts } : {}),
       twist: str(t["twist"]),
       theme: str(t["theme"]),
       hook: str(t["hook"]),
       ...(typeof t["bpm"] === "number" ? { bpm: t["bpm"] } : {}),
       status: "planned",
-    }),
+      };
+    },
   );
+  const shared = cleanBriefParts(plan["sharedBrief"]);
   return {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     createdAt: new Date().toISOString(),
@@ -206,10 +248,13 @@ export function projectFromPlan(
     title: str(plan["title"]) || "Untitled record",
     summary: str(plan["concept"]),
     sharedSound: str(plan["sharedSound"]),
+    ...(shared ? { sharedBrief: shared } : {}),
+    format: tracks.some((t) => t.briefParts) ? format : "tags",
     excludeStyles: str(plan["excludeStyles"]),
     tracks,
   };
 }
+
 
 /** The payload for the existing "lyrics" task, so album lyrics follow every Lyric Forge rule. */
 export function lyricsPayload(p: AlbumProject, t: ProducedTrack): Record<string, unknown> {
@@ -224,7 +269,14 @@ export function lyricsPayload(p: AlbumProject, t: ProducedTrack): Record<string,
     ]
       .filter(Boolean)
       .join(" "),
-    style: { styleTag: t.styleTag, genre: p.sharedSound.split(",")[0]?.trim() ?? "", vocals: "", mood: "", vocalPrompt: "" },
+    // The full style (the Studio Brief when that's the format) so the lyrics fit the voice and the build.
+    style: {
+      styleTag: t.styleTag,
+      genre: p.sharedSound.split(",")[0]?.trim() ?? "",
+      vocals: t.briefParts?.voice ?? p.sharedBrief?.voice ?? "",
+      mood: t.briefParts?.sound ?? "",
+      vocalPrompt: "",
+    },
     bannedWords: [],
   };
 }
@@ -242,9 +294,12 @@ export function sectionsFrom(out: { sections?: Array<{ tag?: string; cue?: strin
 export function trackState(p: AlbumProject, t: ProducedTrack): ForgeState {
   const s = emptyState();
   s.blend.artists = [...p.artists, "", "", ""].slice(0, 3);
+  s.blend.promptFormat = p.format;
   s.blend.result = {
     styleTag: t.styleTag,
-    styleFormat: "tags",
+    styleFormat: p.format,
+    ...(t.styleAlt ? { styleAlt: t.styleAlt } : {}),
+    ...(t.briefParts ? { briefParts: t.briefParts } : {}),
     excludeStyles: p.excludeStyles,
     genre: p.sharedSound.split(",")[0]?.trim() ?? "",
     ...(t.bpm ? { tempo: `${t.bpm} BPM` } : {}),
@@ -336,7 +391,7 @@ function write(key: string, v: unknown[]) {
     /* storage full or blocked */
   }
 }
-export const loadDrafts = () => read<LabDraft>(DRAFTS_KEY);
+export const loadDrafts = () => read<LabDraft>(DRAFTS_KEY).map((d) => ({ ...d, styleFormat: d.styleFormat ?? "tags" }));
 export const saveDrafts = (d: LabDraft[]) => write(DRAFTS_KEY, d.slice(0, 20));
-export const loadProjects = () => read<AlbumProject>(PROJECTS_KEY);
+export const loadProjects = () => read<AlbumProject>(PROJECTS_KEY).map((p) => ({ ...p, format: p.format ?? "tags" }));
 export const saveProjects = (p: AlbumProject[]) => write(PROJECTS_KEY, p.slice(0, 12));

@@ -160,18 +160,27 @@ Length limit: Suno's lyrics box holds 5,000 characters including tags and cues. 
     }
     case "albumPlan": {
       const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
-      return `You are a record producer planning a ${count >= 7 ? "full album" : "EP"} for Suno, the AI music generator.
+      const spec = (k: (typeof BRIEF_KEYS)[number]) => BRIEF_PART_SPECS[k];
+      return `You are a record producer planning ${count >= 7 ? "a full album" : "an EP"} for Suno, the AI music generator.
 Input: ${p}
 "concept" is the direction; "artists" (optional) are influences to translate into sound; "artistName" is the act releasing it.
 Plan exactly ${count} tracks that sound like one record: one shared sound, with each track changing only one or two things (tempo, energy, lead instrument, mood). Order them as a real album arc: a strong opener, the most immediate song early as a single, a slower emotional core, a peak, and a closer that resolves.
-For every track:
-- "styleTag": the complete Suno style for that track. ${styleRule("tags", 500)} Start with the shared genre, include the track's own tempo in BPM. ${VOCAL_PLACEMENT_RULE}
+
+Write the shared sound as a Studio Brief in six parts ("sharedBrief"): sound (${spec("sound")}), pulse (${spec("pulse")}), players (${spec("players")}), voice (${spec("voice")}), arc (${spec("arc")}), finish (${spec("finish")}).
+Then, for every track, rewrite only the parts that change for that track:
+- "sound": ${spec("sound")} — only if this track's mood differs from the shared sound; otherwise "".
+- "pulse": ${spec("pulse")} — this track's own tempo and groove.
+- "players": ${spec("players")} — the shared players with at most one or two changed for this track.
+- "arc": ${spec("arc")} — this track's own build.
+- "styleTag": the same track as a Suno tag list. ${styleRule("tags", 400)}
 - "twist": a few words on how it differs from the shared sound, e.g. "slower, piano-led".
 - "theme": one sentence on what the song is about, concrete and specific; every theme different, all fitting the concept.
 - "hook": a short, singable hook line or phrase for the chorus.
+Write every brief part as a natural sentence a producer would say, never starting with the part's name (no "The pulse is", "Players include", "The arc"). No negatives in any brief part or styleTag (those go in excludeStyles). A track's six parts together (its own parts plus the shared ones it keeps) must stay under ${STYLE_TARGET} characters.
+${VOCAL_PLACEMENT_RULE}
 HARD RULE: no real artist, band, producer, label or song names in any field. Translate influences into sonic description. Titles must be original.
 Return JSON exactly:
-{"title":"album title, max 60 characters","concept":"one sentence on what ties the record together","sharedSound":"the core style every track shares, comma-separated, max 300 characters","excludeStyles":"3-8 comma-separated traits to keep out of every track","tracks":[{"title":"max 60 characters","role":"e.g. Opener, Single, Emotional core, Peak, Closer","styleTag":"string","twist":"string","theme":"string","hook":"string","bpm":0}]}`;
+{"title":"album title, max 60 characters","concept":"one sentence on what ties the record together","sharedSound":"the shared sound as a short tag summary, comma-separated, max 200 characters","sharedBrief":{"sound":"","pulse":"","players":"","voice":"","arc":"","finish":""},"excludeStyles":"3-8 comma-separated traits to keep out of every track","tracks":[{"title":"max 60 characters","role":"e.g. Opener, Single, Emotional core, Peak, Closer","bpm":0,"sound":"","pulse":"","players":"","arc":"","styleTag":"","twist":"","theme":"","hook":""}]}`;
     }
     case "intent":
       return `You are the studio assistant. Turn the user's latest message into settings for the Band Blender form.
