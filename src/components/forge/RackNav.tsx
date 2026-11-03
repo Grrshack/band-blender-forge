@@ -1,4 +1,5 @@
 import {
+  FlaskConical,
   AudioWaveform,
   BarChart2,
   BookMarked,
@@ -195,15 +196,27 @@ const USAGE_TAB: TabDef = {
   hint: "Your built-in model calls",
 };
 
+/** Admin only: Lab Picks and the Album Producer. */
+const LAB_TAB: TabDef = {
+  value: "lab",
+  label: "Lab",
+  icon: FlaskConical,
+  hint: "Admin only: generate and schedule Lab Picks, and produce whole EPs or albums",
+};
+
 export const ALL_TAB_VALUES = [
   ...TAB_GROUPS.flatMap((g) => g.tabs.map((t) => t.value)),
   USAGE_TAB.value,
+  LAB_TAB.value,
 ];
 
 function useGroups(): Group[] {
   const { builtIn } = useSettings();
-  if (!builtIn) return TAB_GROUPS;
-  return TAB_GROUPS.map((g) => (g.stage === "More" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g));
+  const { isAdmin } = useAdminStatus();
+  const groups = builtIn
+    ? TAB_GROUPS.map((g) => (g.stage === "More" ? { ...g, tabs: [...g.tabs, USAGE_TAB] } : g))
+    : TAB_GROUPS;
+  return isAdmin ? [...groups, { stage: "Admin", tabs: [LAB_TAB] }] : groups;
 }
 
 /** Shown only to admins: a link to the dashboard with the count of new feedback. */

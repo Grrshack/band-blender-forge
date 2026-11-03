@@ -224,6 +224,22 @@ export function WorkspaceBar({
     setStatus("saved");
   };
 
+  // Other tools (the admin Album Producer) can ask to open a saved song.
+  const openRef = useRef(open);
+  openRef.current = open;
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) {
+        void openRef.current(id);
+        void refresh();
+      }
+    };
+    window.addEventListener("bb:open-song", onOpen);
+    return () => window.removeEventListener("bb:open-song", onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const drop = async (id: string) => {
     if (session) {
       try {

@@ -19,6 +19,7 @@ const TASK_LABELS: Record<string, string> = {
   dossier: "Bio & Pitch",
   masterSuggest: "AI Suggest",
   refine: "Refine Blend",
+  albumPlan: "Album Producer",
 };
 
 const TASK_COLORS: Record<string, string> = {

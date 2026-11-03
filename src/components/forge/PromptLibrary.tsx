@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "./auth";
 import { CopyButton } from "./CopyButton";
+import { LabPicksStrip } from "./LabPicksStrip";
 import { ErrorNote, Panel } from "./Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,6 +198,7 @@ export function PromptLibrary({ onApply }: { onApply: (kind: string, body: strin
 
       {tab === "community" && (
         <div className="space-y-3">
+          <LabPicksStrip onApply={onApply} />
           <div className="flex flex-wrap items-center gap-2">
             {([
               [false, "Everything"],
