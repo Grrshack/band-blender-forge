@@ -21,6 +21,10 @@ import { StudioAssistant, type IntentResponse } from "@/components/forge/StudioA
 import { BlendCopilot } from "@/components/forge/BlendCopilot";
 import { SunoSheet } from "@/components/forge/SunoSheet";
 import { AiStatusButton } from "@/components/forge/SystemPanel";
+import { Panel } from "@/components/forge/Field";
+import { TakeLog } from "@/components/forge/TakeLog";
+import { SongPackCard } from "@/components/forge/SongPackButton";
+import { dropAlt } from "@/lib/prompt-craft";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
 import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
 import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
@@ -346,7 +350,7 @@ function Index() {
                 {(
                   [
                     ["guided", "Guided", "Guided"],
-                    ["rack", "Full rack", "Rack"],
+                    ["rack", "All tools", "All"],
                   ] as const
                 ).map(([m, label, short]) => (
                   <button
@@ -371,7 +375,7 @@ function Index() {
             </div>
           </header>
 
-          <main className="mx-auto max-w-7xl space-y-4 px-4 sm:px-6">
+          <main className="mx-auto max-w-7xl space-y-4 px-4 pb-20 sm:px-6 lg:pb-6">
             <WorkspaceBar state={state} onLoadState={setState} />
 
             {/* ── Guided Flow (4-step wizard) ── */}
@@ -432,7 +436,7 @@ function Index() {
                           onFix={openFixWith}
                           source="Lyric Forge"
                           quickSymptoms={LYRIC_QUICK_SYMPTOMS}
-                          next={{ label: "Open the Export Sheet", onClick: () => setTab("suno") }}
+                          next={{ label: "Open the Suno Sheet", onClick: () => setTab("suno") }}
                           highlight={highlight}
                         />
                       )}
@@ -446,6 +450,24 @@ function Index() {
                       onLyrics={(v) => patch("lyrics", v)}
                       onOpenForge={() => setTab("lyrics")}
                     />
+                  )}
+                  {tab === "suno" && (
+                    // Right after generating is when people rate takes, so the Take Log lives here too.
+                    <Panel title="Take Log" subtitle="Generated it? Rate each take here. The same log is in Fix a Track and This Song.">
+                      <TakeLog
+                        takes={state.takes}
+                        onTakes={(v) => patch("takes", v)}
+                        style={state.blend.result?.styleTag ?? ""}
+                        exclude={state.blend.result?.excludeStyles ?? ""}
+                        onRestore={(styleTag, excludeStyles) =>
+                          patch("blend", {
+                            ...state.blend,
+                            result: { ...dropAlt(state.blend.result ?? {}, styleTag), excludeStyles },
+                          })
+                        }
+                        defaultTitle={state.blend.artists.filter((a) => a.trim()).slice(0, 2).join(" × ")}
+                      />
+                    </Panel>
                   )}
                   {tab === "dossier" && (
                     <ReleaseDossier
@@ -501,6 +523,7 @@ function Index() {
                   {tab === "lyriccheck" && <LyricCheck state={state} patch={patch} onGoTab={setTab} />}
                   {tab === "song" && <SongHub state={state} onGoTab={setTab} />}
                   {tab === "releasecheck" && <ReleaseCheck state={state} patch={patch} onGoTab={setTab} />}
+                  {(tab === "releasecheck" || tab === "dossier") && <SongPackCard state={state} />}
                   {tab === "cover" && <CoverMaker state={state} patch={patch} />}
                   {tab === "album" && <AlbumPlanner state={state} onGoTab={setTab} />}
                   {tab === "promo" && <PromoClips state={state} onGoTab={setTab} />}
@@ -534,7 +557,7 @@ function Index() {
                           ...state.blend,
                           result: { ...(state.blend.result ?? {}), styleTag: cur ? `${cur}, ${line}` : line },
                         });
-                        toast.success("Added to your style prompt. Find it in Band Blender and the Export Sheet.");
+                        toast.success("Added to your style prompt. Find it in Band Blender and the Suno Sheet.");
                       }}
                       onFixSong={(notes) => {
                         patch("fix", { ...state.fix, notes, result: null });

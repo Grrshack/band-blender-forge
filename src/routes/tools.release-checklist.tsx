@@ -27,9 +27,9 @@ function ReleaseChecklistPage() {
       title="Release Checklist for Suno Songs"
       lede="Tick through these before uploading to Spotify, Apple Music or YouTube. Not legal advice: Suno's terms change, so the links go to their own pages."
       cta={{
-        text: "Master the song for streaming in your browser, and get cover art prompts, metadata and social copy in the Release Kit.",
+        text: "Master the song for streaming in your browser, and get cover art prompts, metadata and social copy in Bio & Pitch.",
         href: "/studio?tab=dossier",
-        label: "Open the Release Kit",
+        label: "Open Bio & Pitch",
       }}
     >
       <p className="mb-3 text-sm text-muted-foreground">

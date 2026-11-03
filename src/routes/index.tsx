@@ -34,7 +34,7 @@ const EXAMPLE_STYLE =
   "alternative grunge, dreamy synthwave chorus, 96 bpm, fuzzed guitars, analog poly pads, breathy female vocal, tape saturation, bittersweet";
 
 const JUMPS = [
-  { tab: "fix", title: "Fix a song Suno made", body: "Get the exact edit to paste into Suno. No download needed." },
+  { tab: "fix", title: "Fix a track Suno made", body: "Get the exact edit to paste into Suno. No download needed." },
   { tab: "lyrics", title: "Write lyrics", body: "Hook-first, with pronunciation and line-length checks." },
   { tab: "master", title: "Master a song or stem", body: "A verdict on what mastering can fix. Runs in your browser." },
   { tab: "analyze", title: "Sound like a song you love", body: "Drop it in for tempo, key and sections, then a prompt in its style." },
