@@ -27,12 +27,11 @@ import {
 } from "@/lib/lab";
 import { PROMPT_FORMAT_LABELS, briefMatches, type PromptFormat } from "@/lib/prompt-craft";
 import { deleteLabPick, listAdminLabPicks, publishLabPicks, type LabPick } from "@/lib/lab.functions";
+import { isGeminiKey } from "@/lib/provider";
+import { DAILY_TEXT, GEMINI_FREE_GAP_MS, WAIT_TEXT, limitKind, paced } from "@/lib/rate-pace";
 import { cn } from "@/lib/utils";
 
 type DropChoice = "monday" | "friday" | "now" | "custom";
-
-/** Messages that mean the key's daily allowance is used up, so the rest of the batch would fail too. */
-const looksLikeDailyLimit = (m: string) => /per day|daily|quota|resource has been exhausted|RESOURCE_EXHAUSTED/i.test(m);
 
 /** Admin only: generate a batch of blends, review them, then schedule them as a drop. */
 export function LabPicksAdmin() {
@@ -48,6 +47,8 @@ export function LabPicksAdmin() {
   const [format, setFormat] = useState<PromptFormat>("brief");
   const [running, setRunning] = useState(false);
   const stopRef = useRef(false);
+  const paceRef = useRef({ lastAt: 0 });
+  const [waiting, setWaiting] = useState<"pace" | "minute" | null>(null);
   const [drop, setDrop] = useState<DropChoice>("monday");
   const [custom, setCustom] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -79,7 +80,8 @@ export function LabPicksAdmin() {
 
   const runOne = async (d: LabDraft): Promise<LabDraft> => {
     const base = emptyState().blend;
-    const res = await forge({
+    const call = () =>
+      forge({
       data: {
         task: "blend",
         routing: "fast",
@@ -94,6 +96,12 @@ export function LabPicksAdmin() {
           promptFormat: d.styleFormat,
         },
       },
+    });
+    // Free Google keys allow about five calls a minute: space them out, and wait out one limit.
+    const res = await paced(call, {
+      state: paceRef.current,
+      gapMs: isGeminiKey(apiKey.trim()) ? GEMINI_FREE_GAP_MS : 0,
+      onWait: setWaiting,
     });
     return draftFromBlend(d, JSON.parse(res.json) as BlendResult, d.styleFormat);
   };
@@ -114,13 +122,14 @@ export function LabPicksAdmin() {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Blend failed.";
         commit((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: "failed", error: msg } : x)));
-        if (looksLikeDailyLimit(msg)) {
-          setNotice("Your AI key looks out of free requests for today. The rest are left waiting; press Redo on them tomorrow.");
+        if (limitKind(msg) === "day") {
+          setNotice(`${DAILY_TEXT} The picks still waiting can be made with Redo.`);
           break;
         }
       }
     }
     setRunning(false);
+    setWaiting(null);
   };
 
   const redo = async (d: LabDraft) => {
@@ -254,6 +263,11 @@ export function LabPicksAdmin() {
           parts (Sound, Pulse, Players, Voice, Arc, Finish) and the tag list; the one you choose is what gets published. Pairs come
           from different lanes and skip anything you&apos;ve already dropped.
         </p>
+        {running && waiting ? (
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" /> {WAIT_TEXT[waiting]}
+          </p>
+        ) : null}
         {notice ? <ErrorNote message={notice} /> : null}
 
         {drafts.length ? (

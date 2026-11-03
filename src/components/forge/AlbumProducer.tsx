@@ -32,6 +32,8 @@ import { packSlug } from "@/lib/song-pack";
 import { composeSunoLyrics } from "@/lib/suno";
 import { createWorkspace, saveWorkspace } from "@/lib/workspace.functions";
 import { buildZip } from "@/lib/zip";
+import { isGeminiKey } from "@/lib/provider";
+import { DAILY_TEXT, GEMINI_FREE_GAP_MS, WAIT_TEXT, limitKind, paced } from "@/lib/rate-pace";
 import { cn } from "@/lib/utils";
 
 const SIZES = [
@@ -43,7 +45,6 @@ const SIZES = [
   { n: 12, label: "Album, 12 tracks" },
 ];
 
-const looksLikeDailyLimit = (m: string) => /per day|daily|quota|resource has been exhausted|RESOURCE_EXHAUSTED/i.test(m);
 
 /** Asks the open song menu (WorkspaceBar) to open a saved song. */
 export function openSavedSong(id: string) {
@@ -74,6 +75,15 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
   const [writing, setWriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pauseRef = useRef(false);
+  const paceRef = useRef({ lastAt: 0 });
+  const [waiting, setWaiting] = useState<"pace" | "minute" | null>(null);
+  /** Free Google keys allow about five calls a minute: space them out, and wait out one limit. */
+  const pacedForge: typeof forge = (args) =>
+    paced(() => forge(args), {
+      state: paceRef.current,
+      gapMs: isGeminiKey(apiKey.trim()) ? GEMINI_FREE_GAP_MS : 0,
+      onWait: setWaiting,
+    });
   const projectsRef = useRef<AlbumProject[]>([]);
 
   useEffect(() => {
@@ -101,7 +111,7 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
     setPlanning(true);
     try {
       const names = artists.map((a) => a.trim()).filter(Boolean);
-      const res = await forge({
+      const res = await pacedForge({
         data: {
           task: "albumPlan",
           routing: "fast",
@@ -144,7 +154,7 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
     const t = p?.tracks.find((x) => x.n === n);
     if (!p || !t) return;
     updateTrack(projectId, n, { status: "writing", error: undefined });
-    const res = await forge({ data: { task: "lyrics", routing: "fast", apiKey, payload: lyricsPayload(p, t) } });
+    const res = await pacedForge({ data: { task: "lyrics", routing: "fast", apiKey, payload: lyricsPayload(p, t) } });
     const out = JSON.parse(res.json) as { title?: string; sections?: Array<{ tag?: string; cue?: string; lines?: string[] }> };
     const sections = sectionsFrom(out);
     if (!sections.length) throw new Error("The AI didn't return any lyrics.");
@@ -175,15 +185,12 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Couldn't write this track.";
         updateTrack(id, t.n, { status: "failed", error: msg });
-        setError(
-          looksLikeDailyLimit(msg)
-            ? "Your AI key looks out of requests for today. Everything written so far is saved; press Continue tomorrow, or switch to a key with billing on."
-            : `Stopped at track ${t.n}: ${msg} Press Continue to try again.`,
-        );
+        setError(limitKind(msg) === "day" ? DAILY_TEXT : `Stopped at track ${t.n}: ${msg} Press Continue to try again.`);
         break;
       }
     }
     setWriting(false);
+    setWaiting(null);
   };
 
   const redoOne = async (n: number) => {
@@ -310,6 +317,11 @@ export function AlbumProducer({ onGoTab }: { onGoTab: (tab: string) => void }) {
           </span>
         </div>
         {error ? <ErrorNote message={error} /> : null}
+        {(writing || planning) && waiting ? (
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" /> {WAIT_TEXT[waiting]}
+          </p>
+        ) : null}
 
         {projects.length > 1 ? (
           <div className="flex flex-wrap gap-1.5">
