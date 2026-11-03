@@ -31,3 +31,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+# Click-through test output
+test-results/
+playwright-report/
