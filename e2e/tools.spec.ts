@@ -83,3 +83,9 @@ test("Release tools end with Download everything", async ({ page }) => {
   await openTool(page, "dossier");
   await expect(page.getByText("Download everything")).toBeVisible();
 });
+
+test("the admin Lab stays closed to everyone else", async ({ page }) => {
+  await openTool(page, "lab");
+  await expect(page.getByText("Sign in with the admin account to use the Lab.")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Tools" }).getByRole("button", { name: /^Lab$/ })).toHaveCount(0);
+});
