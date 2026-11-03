@@ -310,3 +310,16 @@
     font-size: 12px;
   }
 }
+
+/* Collapsed sections: make it obvious they open. Every fold in the studio is a <details class="group">. */
+details.group > summary {
+  transition: background-color 0.15s ease;
+  border-radius: inherit;
+}
+details.group > summary:hover {
+  background-color: color-mix(in oklab, var(--primary) 7%, transparent);
+}
+details.group > summary:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 70%, transparent);
+  outline-offset: -2px;
+}
