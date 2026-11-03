@@ -1,0 +1,62 @@
+# Runs Band Blender's automatic checks on every push to main (including Lovable's edits)
+# and on demand from the Actions tab. A red X on a commit means something broke.
+#   1. Type check     — the code still fits together
+#   2. Unit tests     — prompt rules, limits, mastering maths, song pack, etc.
+#   3. Click-through  — a real browser opens every tool and the main song flow.
+#                       AI answers are canned (BB_FAKE_AI=1), so a run costs nothing.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Lovable can push several commits in a row; only test the newest one.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Lovable keeps bun.lock up to date (package-lock.json lags behind), so install with bun.
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install
+        run: bun install
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Install the test browser
+        # Added only on the test machine; package.json in the repo isn't changed.
+        run: |
+          bun add --dev @playwright/test@1.56.0
+          npx playwright install --with-deps chromium
+
+      - name: Click-through tests
+        run: npx playwright test -c e2e
+        env:
+          CI: "true"
+
+      - name: Keep the report if something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: click-through-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
