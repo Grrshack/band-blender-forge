@@ -158,6 +158,21 @@ Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] as
 ${LYRIC_NOTATION_RULE}
 Length limit: Suno's lyrics box holds 5,000 characters including tags and cues. Keep the whole song (every tag, cue and line) under ${LYRIC_CHAR_BUDGET} characters; if the plan asks for more, shorten lines rather than drop sections.`;
     }
+    case "albumPlan": {
+      const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
+      return `You are a record producer planning a ${count >= 7 ? "full album" : "EP"} for Suno, the AI music generator.
+Input: ${p}
+"concept" is the direction; "artists" (optional) are influences to translate into sound; "artistName" is the act releasing it.
+Plan exactly ${count} tracks that sound like one record: one shared sound, with each track changing only one or two things (tempo, energy, lead instrument, mood). Order them as a real album arc: a strong opener, the most immediate song early as a single, a slower emotional core, a peak, and a closer that resolves.
+For every track:
+- "styleTag": the complete Suno style for that track. ${styleRule("tags", 500)} Start with the shared genre, include the track's own tempo in BPM. ${VOCAL_PLACEMENT_RULE}
+- "twist": a few words on how it differs from the shared sound, e.g. "slower, piano-led".
+- "theme": one sentence on what the song is about, concrete and specific; every theme different, all fitting the concept.
+- "hook": a short, singable hook line or phrase for the chorus.
+HARD RULE: no real artist, band, producer, label or song names in any field. Translate influences into sonic description. Titles must be original.
+Return JSON exactly:
+{"title":"album title, max 60 characters","concept":"one sentence on what ties the record together","sharedSound":"the core style every track shares, comma-separated, max 300 characters","excludeStyles":"3-8 comma-separated traits to keep out of every track","tracks":[{"title":"max 60 characters","role":"e.g. Opener, Single, Emotional core, Peak, Closer","styleTag":"string","twist":"string","theme":"string","hook":"string","bpm":0}]}`;
+    }
     case "intent":
       return `You are the studio assistant. Turn the user's latest message into settings for the Band Blender form.
 Input: ${p}

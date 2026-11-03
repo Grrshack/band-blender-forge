@@ -45,6 +45,7 @@ const InputSchema = z.object({
     "refine",
     "masterSuggest",
     "intent",
+    "albumPlan",
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),

@@ -317,7 +317,74 @@ async function runTask(task: string, payload: Json, deps: PipelineDeps): Promise
       return out;
     }
 
+    case "albumPlan": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
+      let result = await deps.ask(base);
+      const leaks = findAlbumLeaks(result, names);
+      if (leaks.length) {
+        try {
+          result = await deps.ask(
+            `${base}\n\nYour previous answer used these names: ${leaks.map((l) => `"${l}"`).join(", ")}. Every field must contain zero real artist, band, producer, label or song names. Rewrite the complete JSON describing sound only.`,
+          );
+        } catch {
+          /* scrub the original below */
+        }
+      }
+      return cleanAlbumPlan(result, names, count);
+    }
+
     default:
       return deps.ask(base);
   }
+}
+
+const ALBUM_TEXT_FIELDS = ["styleTag", "twist", "theme", "hook", "title"] as const;
+
+function findAlbumLeaks(r: Json, names: string[]): string[] {
+  if (!names.length) return [];
+  const tracks = Array.isArray(r["tracks"]) ? (r["tracks"] as unknown[]).map(obj) : [];
+  const texts = [
+    String(r["sharedSound"] ?? ""),
+    String(r["excludeStyles"] ?? ""),
+    String(r["title"] ?? ""),
+    ...tracks.flatMap((t) => ALBUM_TEXT_FIELDS.map((k) => String(t[k] ?? ""))),
+  ];
+  return [...new Set(texts.flatMap((t) => findStyleLeaks(t, names)))];
+}
+
+/**
+ * Makes an album plan safe to use: the right number of tracks, every style within Suno's
+ * limit, no artist names left anywhere, sensible tempos. Pure, so it can be tested.
+ */
+export function cleanAlbumPlan(raw: Json, names: string[], count: number): Json {
+  const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const scrub = (v: unknown, max?: number) => {
+    const t = scrubArtistNames(text(v), names).text.trim();
+    return max ? fitToLimit(t, max) : t;
+  };
+  const tracks = (Array.isArray(raw["tracks"]) ? (raw["tracks"] as unknown[]) : [])
+    .map(obj)
+    .filter((t) => text(t["styleTag"]) !== "")
+    .slice(0, count)
+    .map((t, i) => {
+      const bpm = Math.round(Number(t["bpm"]));
+      return {
+        n: i + 1,
+        title: scrub(t["title"], 60) || `Track ${i + 1}`,
+        role: scrub(t["role"], 40),
+        styleTag: scrub(t["styleTag"], SUNO_LIMITS.style),
+        twist: scrub(t["twist"], 120),
+        theme: scrub(t["theme"], 300),
+        hook: scrub(t["hook"], 120),
+        ...(bpm >= 50 && bpm <= 220 ? { bpm } : {}),
+      };
+    });
+  return {
+    title: scrub(raw["title"], 60) || "Untitled record",
+    concept: scrub(raw["concept"], 300),
+    sharedSound: scrub(raw["sharedSound"], 300),
+    excludeStyles: scrub(raw["excludeStyles"], SUNO_LIMITS.exclude),
+    tracks,
+  };
 }

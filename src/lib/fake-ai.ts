@@ -147,6 +147,25 @@ function answer(task: string, payload: Json): Json {
       if (payload["convertTo"] === "tags") return { styleTag: TAGS };
       return { genre: "Dark synthpop", styleTag: `${TAGS}, warmer`, excludeStyles: "autotune", changes: ["Test answer: made it warmer."] };
     }
+    case "albumPlan": {
+      const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
+      const roles = ["Opener", "Single", "Emotional core", "Peak", "Closer"];
+      return {
+        title: "Glass City",
+        concept: "Test answer: one rainy night in a city, from leaving home to sunrise.",
+        sharedSound: "dark synthpop, cinematic, analog bass, glassy synths, breathy female alto",
+        excludeStyles: "autotune, trap hi-hats, country twang",
+        tracks: Array.from({ length: count }, (_, i) => ({
+          title: `Test Track ${i + 1}`,
+          role: roles[Math.min(i, roles.length - 1)],
+          styleTag: `${TAGS}, track ${i + 1}`,
+          twist: i % 2 ? "slower, piano-led" : "driving, brighter",
+          theme: `Test answer: theme for track ${i + 1}.`,
+          hook: `Hook line ${i + 1}`,
+          bpm: 88 + i * 4,
+        })),
+      };
+    }
     case "masterSuggest":
       return { preset: "Streaming Ready", adjustments: {}, reasoning: "Test answer: a balanced track.", warnings: [] };
     default:
