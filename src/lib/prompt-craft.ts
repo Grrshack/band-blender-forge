@@ -6,7 +6,7 @@
  * - "brief": a Studio Brief — a few plain sentences written the way a producer briefs a
  *   session band. It covers six things in order: Sound, Pulse, Players, Voice, Arc, Finish.
  *
- * Everything here is pure so prompts, pre-flight and the Export Sheet share one source.
+ * Everything here is pure so prompts, pre-flight and the Suno Sheet share one source.
  */
 
 import { SUNO_LIMITS } from "./suno";
@@ -95,7 +95,7 @@ export function placeVocal(style: string): string {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Mix and arrangement clauses for the Export Sheet
+// Mix and arrangement clauses for the Suno Sheet
 
 export type Clause = { id: string; label: string; help: string; tag: string; brief: string; exclude?: string };
 

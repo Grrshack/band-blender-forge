@@ -16,7 +16,7 @@ export type PreflightIssue = {
   level: "stop" | "warn";
   message: string;
   /** A one-click fix the UI can offer. */
-  fix?: "placeVocal";
+  fix?: "placeVocal" | "removeNames";
 };
 
 const tagsOf = (s: string) =>
@@ -65,7 +65,7 @@ export function preflight(input: {
 
   const leaks = findStyleLeaks(style, input.artistNames);
   if (leaks.length) {
-    issues.push({ level: "stop", message: `Artist names in the style (${leaks.join(", ")}). Suno blocks them; describe the sound instead.` });
+    issues.push({ level: "stop", message: `Artist names in the style (${leaks.join(", ")}). Suno blocks them; describe the sound instead.`, fix: "removeNames" });
   }
 
   const genres = ALL_GENRES.map((g) => g.toLowerCase());

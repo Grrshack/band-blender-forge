@@ -65,7 +65,8 @@ export function disclosureAnswers(d: Partial<Record<DisclosurePart, AiLevel>>): 
   ];
 }
 
-export type AutoCheck = { id: string; label: string; ok: boolean | null; detail: string; tab?: string };
+/** ok: true passed, false problem, null not checked yet, "na" nothing to check (e.g. no lyrics). */
+export type AutoCheck = { id: string; label: string; ok: boolean | null | "na"; detail: string; tab?: string };
 
 /** Real artist names in the title or lyrics read as impersonation to stores. */
 export function artistNameHits(state: ForgeState): string[] {
@@ -82,20 +83,25 @@ export function autoChecks(state: ForgeState): AutoCheck[] {
   const hasLyrics = state.lyrics.sections.some((s) => s.lines.length > 0) || Boolean(lyric);
   const missing = lyric?.issues.filter((i) => i.status === "missing").length ?? 0;
   const cover = state.release?.cover;
+  const hasWords = Boolean(state.lyrics.title.trim()) || state.lyrics.sections.some((s) => s.lines.length > 0);
   return [
     {
       id: "names",
       label: "No real artist names in the title or lyrics",
-      ok: hits.length === 0,
-      detail: hits.length ? `Found: ${hits.join(", ")}. Stores treat this as impersonation; describe the sound instead.` : "None of the artists you blended appear.",
+      ok: hits.length ? false : hasWords ? true : "na",
+      detail: hits.length
+        ? `Found: ${hits.join(", ")}. Stores treat this as impersonation; describe the sound instead.`
+        : hasWords
+          ? "None of the artists you blended appear."
+          : "Nothing to check yet: no title or lyrics.",
       tab: "lyrics",
     },
     {
       id: "lyrics",
       label: "Suno sang the lyrics you wrote",
-      ok: !hasLyrics ? true : lyric ? missing === 0 && lyric.accuracyPct >= 85 : null,
+      ok: !hasLyrics ? "na" : lyric ? missing === 0 && lyric.accuracyPct >= 85 : null,
       detail: !hasLyrics
-        ? "No lyrics in this song."
+        ? "Nothing to check: no lyrics in this song (fine for an instrumental)."
         : lyric
           ? `${lyric.accuracyPct}% as written${missing ? `, ${missing} line(s) not heard` : ""}.`
           : "Not checked yet. Static lyrics you submit should match what's sung.",

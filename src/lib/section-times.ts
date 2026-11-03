@@ -20,11 +20,10 @@ const INSTRUMENTAL_BARS = 8;
 export function bpmFrom(...texts: Array<string | undefined | null>): number | null {
   for (const t of texts) {
     if (!t) continue;
-    const m =
-      t.match(/(\d{2,3})\s*(?:[-–]\s*\d{2,3}\s*)?bpm\b/i) ??
-      t.match(/\bbpm\s*:?\s*(\d{2,3})/i) ??
-      t.match(/^\s*(\d{2,3})\s*$/);
-    const n = m ? Number(m[1]) : NaN;
+    // A range ("88-96 bpm") counts as its middle.
+    const range = t.match(/(\d{2,3})\s*[-–]\s*(\d{2,3})\s*bpm\b/i);
+    const m = range ?? t.match(/(\d{2,3})\s*bpm\b/i) ?? t.match(/\bbpm\s*:?\s*(\d{2,3})/i) ?? t.match(/^\s*(\d{2,3})\s*$/);
+    const n = range ? Math.round((Number(range[1]) + Number(range[2])) / 2) : m ? Number(m[1]) : NaN;
     if (n >= 50 && n <= 220) return n;
   }
   return null;

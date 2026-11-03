@@ -1,5 +1,5 @@
 /**
- * Release checklist for Suno songs. Shared by the studio's Release Kit and the free
+ * Release checklist for Suno songs. Shared by the studio's Bio & Pitch and the free
  * /tools/release-checklist page. Links go to Suno's own help pages rather than restating
  * their terms, which change.
  */

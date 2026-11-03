@@ -3,6 +3,7 @@ import { barsFromPlan, bpmFrom, clock, sectionTimes } from "./section-times";
 import { packSlug, songPackFiles } from "./song-pack";
 import { buildZip, crc32 } from "./zip";
 import { planSong } from "./planner";
+import { SYMPTOMS, SYMPTOM_GROUPS } from "./symptoms";
 import { emptyState, type ForgeState } from "@/components/forge/types";
 
 const line = (text: string) => ({ text }) as never;
@@ -12,7 +13,8 @@ describe("section times", () => {
     expect(bpmFrom("dark synthpop, 92 bpm, analog")).toBe(92);
     expect(bpmFrom(undefined, "Tempo is BPM 140")).toBe(140);
     expect(bpmFrom("96")).toBe(96);
-    expect(bpmFrom("85–90 BPM half-time")).toBe(85);
+    expect(bpmFrom("85–90 BPM half-time")).toBe(88);
+    expect(bpmFrom("88-96 BPM, steady")).toBe(92);
     expect(bpmFrom("no tempo here", "")).toBeNull();
     expect(bpmFrom("999 bpm")).toBeNull();
   });
@@ -127,5 +129,13 @@ describe("song pack robustness", () => {
     s.release = { disclosure: { lyrics: "some", music: "all", vocals: "all", artwork: "none" } as never };
     const files = new Map(songPackFiles("Odd", s));
     expect(files.has("release/ai-disclosure.txt")).toBe(false);
+  });
+});
+
+describe("symptom groups", () => {
+  it("hold every symptom exactly once", () => {
+    const grouped = SYMPTOM_GROUPS.flatMap((g) => g.items);
+    expect(grouped.length).toBe(SYMPTOMS.length);
+    expect(new Set(grouped)).toEqual(new Set(SYMPTOMS));
   });
 });

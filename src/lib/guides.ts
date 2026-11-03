@@ -94,11 +94,11 @@ export const GUIDES: Guide[] = [
       {
         heading: "Check before you generate",
         body: [
-          "The Export Sheet runs these checks on your prompt instantly, so you don't spend a generation, or one of your limited downloads, on a prompt that was never going to work.",
+          "The Suno Sheet runs these checks on your prompt instantly, so you don't spend a generation, or one of your limited downloads, on a prompt that was never going to work.",
         ],
       },
     ],
-    tool: { tab: "suno", label: "Open the Export Sheet" },
+    tool: { tab: "suno", label: "Open the Suno Sheet" },
     sources: [{ label: "Suno: Introducing v6", url: "https://suno.com/blog/introducing-v6" }],
   },
   {
@@ -217,10 +217,10 @@ export const GUIDES: Guide[] = [
       {
         heading: "The workflow",
         body: [
-          "1. Build the sound and lyrics in Band Blender, then open the Export Sheet and pick the Gemini / Flow tab. Copy that prompt into the Gemini app's music option or Flow Music.",
+          "1. Build the sound and lyrics in Band Blender, then open the Suno Sheet and pick the Gemini / Flow tab. Copy that prompt into the Gemini app's music option or Flow Music.",
           "2. Generate a few versions and download the one you like.",
           "3. In Suno, press Upload Audio next to Create. Free plans take up to 60 seconds, so trim to the best part; Pro and Premier take up to 8 minutes.",
-          "4. Use Cover to remake it with your Suno style prompt, or Extend to continue it. Paste the Suno style and lyrics from the Export Sheet's Suno tab.",
+          "4. Use Cover to remake it with your Suno style prompt, or Extend to continue it. Paste the Suno style and lyrics from the Suno Sheet's Suno tab.",
         ],
       },
       {
@@ -231,7 +231,7 @@ export const GUIDES: Guide[] = [
         ],
       },
     ],
-    tool: { tab: "suno", label: "Open the Export Sheet" },
+    tool: { tab: "suno", label: "Open the Suno Sheet" },
     sources: [
       { label: "Google: Lyria 3.5 in Flow Music", url: "https://blog.google/innovation-and-ai/models-and-research/google-labs/lyria-3-5/" },
       { label: "Gemini API: music generation with Lyria 3.5", url: "https://ai.google.dev/gemini-api/docs/music-generation" },

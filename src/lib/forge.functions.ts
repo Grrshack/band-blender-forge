@@ -6,6 +6,7 @@ import { runPipeline } from "@/lib/forge-pipeline";
 import { lookupArtists, lookupRecording } from "@/lib/musicbrainz";
 import { optionalSupabaseAuth } from "@/lib/optional-auth";
 import { chooseProvider, isBuiltInAiAllowed, NO_KEY_MESSAGE } from "@/lib/provider";
+import { fakeAsk, isFakeAi } from "@/lib/fake-ai";
 import { BUILT_IN_CALLS_PER_HOUR, consumeUsage } from "@/lib/usage-limit";
 import { SYSTEM } from "@/lib/forge-prompts";
 import {
@@ -350,6 +351,15 @@ export const runForge = createServerFn({ method: "POST" })
   .middleware([optionalSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }) => {
+    // Automatic tests only: canned answers, no AI call, no cost. Never set on the live site.
+    if (isFakeAi(process.env)) {
+      const result = await runPipeline(data.task, data.payload, {
+        ask: fakeAsk(data.task, data.payload),
+        lookup: async () => [],
+        shouldPolish: () => false,
+      });
+      return { provider: "anthropic" as const, json: JSON.stringify(result), downgraded: false };
+    }
     const choice = chooseProvider({
       userKey: data.apiKey,
       serverAnthropicKey: process.env["ANTHROPIC_API_KEY"],

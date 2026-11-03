@@ -23,6 +23,19 @@ export const SYMPTOMS = [
   "Words sung wrong",
 ] as const;
 
+/** The same symptoms in groups, so the list is quicker to scan. Every symptom is in exactly one group. */
+export const SYMPTOM_GROUPS: Array<{ label: string; items: Array<(typeof SYMPTOMS)[number]> }> = [
+  {
+    label: "Vocals",
+    items: ["Vocals sound robotic or over-polished", "Vocals buried or unclear", "Vocal sounds far away", "Wrong vocal style or gender"],
+  },
+  { label: "Low end", items: ["Bass is buried", "Bass is boomy or muddy"] },
+  { label: "Mix and sound", items: ["Mix is too busy", "Whole mix is muddy", "Sounds thin or weak", "Harsh, piercing highs"] },
+  { label: "Style and tempo", items: ["Wrong genre", "Generic, sounds like AI", "Too fast", "Too slow", "Too repetitive"] },
+  { label: "Structure", items: ["Verses go quiet or empty", "Ending is abrupt", "Cut off before the last lyric", "Outro drags on"] },
+  { label: "Lyrics", items: ["Ignored my lyrics", "Words sung wrong"] },
+];
+
 /** The handful shown as quick picks right after a disappointing first take. */
 export const QUICK_SYMPTOMS: readonly string[] = [
   "Wrong genre",
