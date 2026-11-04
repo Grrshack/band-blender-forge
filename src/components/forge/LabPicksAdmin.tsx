@@ -49,6 +49,7 @@ export function LabPicksAdmin() {
   const stopRef = useRef(false);
   const paceRef = useRef({ lastAt: 0 });
   const [waiting, setWaiting] = useState<"pace" | "minute" | null>(null);
+  const [redoing, setRedoing] = useState<Set<string>>(new Set());
   const [drop, setDrop] = useState<DropChoice>("monday");
   const [custom, setCustom] = useState("");
   const [publishing, setPublishing] = useState(false);
@@ -133,13 +134,30 @@ export function LabPicksAdmin() {
   };
 
   const redo = async (d: LabDraft) => {
-    commit((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: "making", error: undefined } : x)));
+    // A pick that was already made keeps showing while it's redone, and if the redo fails.
+    const hadOne = d.status === "ready" && d.styleTag.trim() !== "";
+    commit((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: hadOne ? "ready" : "making", error: undefined } : x)));
+    setRedoing((r) => new Set(r).add(d.id));
     try {
       const done = await runOne(d);
       commit((prev) => prev.map((x) => (x.id === d.id ? done : x)));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Blend failed.";
-      commit((prev) => prev.map((x) => (x.id === d.id ? { ...x, status: "failed", error: msg } : x)));
+      commit((prev) =>
+        prev.map((x) =>
+          x.id === d.id
+            ? hadOne
+              ? { ...x, status: "ready", error: `Redo didn't work, so the earlier version is kept. ${msg}` }
+              : { ...x, status: "failed", error: msg }
+            : x,
+        ),
+      );
+    } finally {
+      setRedoing((r) => {
+        const n = new Set(r);
+        n.delete(d.id);
+        return n;
+      });
     }
   };
 
@@ -285,7 +303,7 @@ export function LabPicksAdmin() {
                       d.status === "waiting" && "bg-muted text-muted-foreground",
                     )}
                   >
-                    {d.status === "making" ? (
+                    {d.status === "making" || redoing.has(d.id) ? (
                       <span className="inline-flex items-center gap-1">
                         <Loader2 className="size-3 animate-spin" /> making
                       </span>
@@ -295,7 +313,7 @@ export function LabPicksAdmin() {
                   </span>
                   {d.genre ? <span className="text-[11px] text-muted-foreground">{d.genre}</span> : null}
                   <span className="ml-auto flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" disabled={d.status === "making" || running} onClick={() => void redo(d)}>
+                    <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" disabled={d.status === "making" || redoing.has(d.id) || running} onClick={() => void redo(d)}>
                       <RotateCw className="size-3" /> Redo
                     </Button>
                     <Button
