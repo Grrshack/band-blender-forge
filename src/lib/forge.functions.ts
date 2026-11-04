@@ -144,7 +144,10 @@ class RateLimitError extends Error {
   }
 }
 
-function failure(status: number, provider: string, message: string): Error {
+function failure(status: number, provider: string, body: string): Error {
+  // The whole body is read for the limit details (which come after the message); people see
+  // a short version.
+  const message = body.slice(0, 300);
   // Google answers a bad key with 400 + API_KEY_INVALID rather than 401.
   const badGoogleKey =
     status === 400 && /API_KEY_INVALID|API key not valid|valid API key/i.test(message);
@@ -161,7 +164,7 @@ function failure(status: number, provider: string, message: string): Error {
     return new Error(`Out of AI credits. ${message}`);
   }
   if (status === 429) {
-    return new RateLimitError(parseRateLimit(message), provider);
+    return new RateLimitError(parseRateLimit(body), provider);
   }
   if (isOverloaded(status, message)) {
     return new OverloadedError(provider);
@@ -248,12 +251,22 @@ async function callAnthropic(
   });
   if (!res.ok) {
     const body = await res.text();
-    throw failure(res.status, "anthropic", body.slice(0, 300));
+    throw failure(res.status, "anthropic", body.slice(0, 4000));
   }
   const json = (await res.json()) as { content?: Array<{ text?: string }> };
   return json.content?.map((c) => c.text ?? "").join("") ?? "";
   });
 }
+
+/**
+ * How long Gemini "thinks" before answering. Left unset, Gemini 3 models think at their own
+ * default, which can take most of the time budget and use up the answer's token room, so a
+ * blend times out or comes back cut off. Structured answers need little thinking; lyrics get a
+ * bit more. Undefined = the model's default (used for Pro).
+ */
+type GeminiEffort = "low" | "medium" | undefined;
+const geminiEffortFor = (task: string): Exclude<GeminiEffort, undefined> =>
+  LYRIC_WRITING_TASKS.has(task) || task === "critique" ? "medium" : "low";
 
 async function callGemini(
   key: string,
@@ -262,6 +275,7 @@ async function callGemini(
   maxTokens: number,
   model: string = GEMINI_MODELS[routing],
   timeoutMs: number = CALL_CAP_MS,
+  effort?: GeminiEffort,
 ) {
   return fetchWithTimeout(timeoutMs, async (signal) => {
   const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
@@ -274,6 +288,7 @@ async function callGemini(
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
+      ...(effort ? { reasoning_effort: effort } : {}),
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user", content: user },
@@ -282,7 +297,7 @@ async function callGemini(
   });
   if (!res.ok) {
     const body = await res.text();
-    throw failure(res.status, "gemini", body.slice(0, 300));
+    throw failure(res.status, "gemini", body.slice(0, 4000));
   }
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
@@ -292,7 +307,13 @@ async function callGemini(
 }
 
 /** Flash, and if Google says it's overloaded, a retry and then the backup models. */
-async function geminiFlashWithBackups(key: string, user: string, maxTokens: number, deadline?: Deadline) {
+async function geminiFlashWithBackups(
+  key: string,
+  user: string,
+  maxTokens: number,
+  deadline?: Deadline,
+  effort: GeminiEffort = "low",
+) {
   const chain = [GEMINI_MODELS.fast, ...GEMINI_BACKUP_MODELS];
   // Free keys get a small daily allowance per model (the newest Flash has the smallest), so a
   // used-up model hands over to the next one instead of failing the request.
@@ -305,7 +326,7 @@ async function geminiFlashWithBackups(key: string, user: string, maxTokens: numb
       chain.length,
       (from) => {
         tried = from + 1;
-        return geminiChain(chain.slice(from), key, user, maxTokens, deadline);
+        return geminiChain(chain.slice(from), key, user, maxTokens, deadline, effort);
       },
       (e) => outOfQuota(e) && (deadline?.remaining() ?? 60_000) > 20_000,
     );
@@ -318,12 +339,19 @@ async function geminiFlashWithBackups(key: string, user: string, maxTokens: numb
   }
 }
 
-async function geminiChain(models: string[], key: string, user: string, maxTokens: number, deadline?: Deadline) {
+async function geminiChain(
+  models: string[],
+  key: string,
+  user: string,
+  maxTokens: number,
+  deadline?: Deadline,
+  effort?: GeminiEffort,
+) {
   const r = await withModelBackups(
     models,
     (model) => {
       deadline?.check();
-      return callGemini(key, "fast", user, maxTokens, model, deadline ? deadline.capFor(CALL_CAP_MS) : CALL_CAP_MS);
+      return callGemini(key, "fast", user, maxTokens, model, deadline ? deadline.capFor(CALL_CAP_MS) : CALL_CAP_MS, effort);
     },
     {
       // A slow model counts as busy, so the next backup gets a turn while time remains.
@@ -366,7 +394,7 @@ async function callGateway(
   });
   if (!res.ok) {
     const body = await res.text();
-    throw failure(res.status, "gateway", body.slice(0, 300));
+    throw failure(res.status, "gateway", body.slice(0, 4000));
   }
   const json = (await res.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
@@ -445,7 +473,7 @@ export const runForge = createServerFn({ method: "POST" })
           ? r === "craft"
             ? // a busy or slow Pro falls back to Flash below, so Pro gets less time
               callGemini(choice.key, r, text, maxTokens, GEMINI_MODELS.craft, deadline.capFor(PRO_CAP_MS))
-            : geminiFlashWithBackups(choice.key, text, maxTokens, deadline)
+            : geminiFlashWithBackups(choice.key, text, maxTokens, deadline, geminiEffortFor(data.task))
           : callGateway(choice.key, r, text, maxTokens, cap);
     };
     // Gemini Pro on a Google key fails fast (no waiting and retrying) so the Flash fallback

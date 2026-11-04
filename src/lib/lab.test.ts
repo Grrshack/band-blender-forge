@@ -21,7 +21,7 @@ import { BRIEF_PART_MAX, cleanAlbumPlan, runPipeline } from "./forge-pipeline";
 import { briefMatches, joinBrief } from "./prompt-craft";
 import { fakeAsk } from "./fake-ai";
 import { DAILY_TEXT, limitKind, paced } from "./rate-pace";
-import { nextModelWhenOutOfQuota, rateLimitMessage } from "./provider-errors";
+import { nextModelWhenOutOfQuota, parseRateLimit, rateLimitMessage } from "./provider-errors";
 
 /** A repeatable stand-in for Math.random. */
 function seeded(seed = 7) {
@@ -246,5 +246,26 @@ describe("pacing free-key batches", () => {
     expect(tried).toEqual([0, 1, 2]);
     await expect(nextModelWhenOutOfQuota(3, async () => { throw new Error("rejected"); }, (e) => e === quota)).rejects.toThrow("rejected");
     await expect(nextModelWhenOutOfQuota(2, async () => { throw quota; }, (e) => e === quota)).rejects.toBe(quota);
+  });
+});
+
+describe("reading Google's 429", () => {
+  it("finds the daily limit even when it's far down the error body", () => {
+    const body = JSON.stringify([
+      {
+        error: {
+          code: 429,
+          message: "You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits.",
+          status: "RESOURCE_EXHAUSTED",
+          details: [
+            { "@type": "type.googleapis.com/google.rpc.Help", links: [{ description: "Learn more about Gemini API quotas", url: "https://ai.google.dev/gemini-api/docs/rate-limits" }] },
+            { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ quotaMetric: "generativelanguage.googleapis.com/generate_content_free_tier_requests", quotaId: "GenerateRequestsPerDayPerProjectPerModel-FreeTier" }] },
+          ],
+        },
+      },
+    ]);
+    expect(body.length).toBeGreaterThan(300);
+    expect(parseRateLimit(body.slice(0, 300)).kind).toBe("unknown"); // what the old cut-off saw
+    expect(parseRateLimit(body).kind).toBe("day");
   });
 });
