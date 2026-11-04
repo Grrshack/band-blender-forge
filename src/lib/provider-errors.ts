@@ -12,7 +12,17 @@ export type RateLimitKind =
   /** A 429 without details. */
   | "unknown";
 
-export type RateLimitInfo = { kind: RateLimitKind; retryMs: number | null; reason?: string | undefined };
+export type RateLimitInfo = {
+  kind: RateLimitKind;
+  retryMs: number | null;
+  reason?: string | undefined;
+  /** Every model in the fallback chain said no, not just one. */
+  allModels?: boolean | undefined;
+};
+
+/** Shown when every free Gemini Flash model refused the key: waiting a minute won't help. */
+export const GEMINI_ALL_OUT_MESSAGE =
+  "Google says this key has no requests left right now on any of its free Flash models. That's almost always today's free allowance being used up; it resets at midnight Pacific time. To keep going now, turn on billing for this key in Google AI Studio (a Lab Pick costs a fraction of a cent), or use an Anthropic key. If billing is already on, check its spending cap and balance.";
 
 export function parseRateLimit(body: string): RateLimitInfo {
   const text = body || "";
@@ -36,6 +46,7 @@ function shortReason(text: string): string | undefined {
 
 export function rateLimitMessage(provider: string, info: RateLimitInfo): string {
   const google = provider === "gemini";
+  if (google && info.allModels) return GEMINI_ALL_OUT_MESSAGE;
   switch (info.kind) {
     case "unavailable":
       return google

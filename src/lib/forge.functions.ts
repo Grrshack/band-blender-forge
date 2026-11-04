@@ -296,14 +296,26 @@ async function geminiFlashWithBackups(key: string, user: string, maxTokens: numb
   const chain = [GEMINI_MODELS.fast, ...GEMINI_BACKUP_MODELS];
   // Free keys get a small daily allowance per model (the newest Flash has the smallest), so a
   // used-up model hands over to the next one instead of failing the request.
-  return nextModelWhenOutOfQuota(
-    chain.length,
-    (from) => geminiChain(chain.slice(from), key, user, maxTokens, deadline),
-    (e) =>
-      e instanceof RateLimitError &&
-      (e.info.kind === "day" || e.info.kind === "unknown" || (e.info.kind === "minute" && (e.info.retryMs ?? 0) > 20_000)) &&
-      (deadline?.remaining() ?? 60_000) > 20_000,
-  );
+  const outOfQuota = (e: unknown): e is RateLimitError =>
+    e instanceof RateLimitError &&
+    (e.info.kind === "day" || e.info.kind === "unknown" || (e.info.kind === "minute" && (e.info.retryMs ?? 0) > 20_000));
+  let tried = 0;
+  try {
+    return await nextModelWhenOutOfQuota(
+      chain.length,
+      (from) => {
+        tried = from + 1;
+        return geminiChain(chain.slice(from), key, user, maxTokens, deadline);
+      },
+      (e) => outOfQuota(e) && (deadline?.remaining() ?? 60_000) > 20_000,
+    );
+  } catch (e) {
+    // Every model said "quota exceeded": say so plainly, and don't retry (it's a "day" limit).
+    if (outOfQuota(e) && tried === chain.length) {
+      throw new RateLimitError({ kind: "day", retryMs: null, allModels: true }, "gemini");
+    }
+    throw e;
+  }
 }
 
 async function geminiChain(models: string[], key: string, user: string, maxTokens: number, deadline?: Deadline) {

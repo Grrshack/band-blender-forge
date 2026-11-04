@@ -213,6 +213,9 @@ describe("pacing free-key batches", () => {
     expect(limitKind(rateLimitMessage("gemini", { kind: "unknown", retryMs: null }))).toBe("minute");
     expect(limitKind("The AI took too long to answer")).toBeNull();
     expect(limitKind(DAILY_TEXT)).toBe("day");
+    // Every Flash model refused: a "day" limit, so nothing waits a minute and retries.
+    expect(limitKind(rateLimitMessage("gemini", { kind: "day", retryMs: null, allModels: true }))).toBe("day");
+    expect(rateLimitMessage("gemini", { kind: "day", retryMs: null, allModels: true })).toMatch(/any of its free Flash models/);
   });
 
   it("spaces calls out and waits out one per-minute limit", async () => {
