@@ -1,6 +1,6 @@
 import type { Json } from "@/integrations/supabase/types";
 import { ChevronDown, Clipboard, Info, LayoutTemplate, Loader2, Lock, Radar, Send, ShieldAlert, Sparkles, Wand } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState , type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
@@ -40,7 +40,10 @@ export function BandBlender({
   takes,
   onTakes,
   onFix,
+  sendButton,
 }: {
+  /** Send to Suno for the whole song, shown with the result's buttons. */
+  sendButton?: ReactNode;
   /** The take log, so a rated take feeds Fix a Track's diagnosis. */
   takes?: Take[] | undefined;
   onTakes?: ((next: Take[]) => void) | undefined;
@@ -540,6 +543,7 @@ export function BandBlender({
                   >
                     <Sparkles className="size-3.5" /> Send to Lyric Forge
                   </Button>
+                  {sendButton}
                 </div>
               }
             >

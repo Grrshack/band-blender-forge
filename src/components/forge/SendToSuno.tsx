@@ -1,8 +1,8 @@
-import { Download, ExternalLink, Puzzle, Send } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, ExternalLink, Puzzle, Send } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { EXTENSION_STORE_URL } from "@/lib/brand";
+import { EXTENSION_GUIDE_PATH, EXTENSION_STORE_URL } from "@/lib/brand";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export type SunoPayload = { title: string; style: string; exclude: string; lyrics: string; artists?: string[] };
@@ -16,9 +16,23 @@ export function hasSunoExtension(): boolean {
  * With the extension: hands the fields to it and opens Suno's Create page, where a small panel
  * fills the boxes on request. Without it: explains how to add it.
  */
-export function SendToSuno({ payload }: { payload: SunoPayload }) {
+/** The installed extension's version, read after the page has loaded (null = not detected). */
+export function useExtensionVersion(): string | null {
+  const [v, setV] = useState<string | null>(null);
+  useEffect(() => {
+    const read = () => setV(document.documentElement.dataset["bbExtension"] ?? null);
+    read();
+    // The extension marks the page as it loads; check again shortly in case it was a beat late.
+    const t = setTimeout(read, 1500);
+    return () => clearTimeout(t);
+  }, []);
+  return v;
+}
+
+export function SendToSuno({ payload, showStatus = false }: { payload: SunoPayload; showStatus?: boolean }) {
   const [help, setHelp] = useState(false);
   const [sent, setSent] = useState(false);
+  const version = useExtensionVersion();
 
   const send = () => {
     if (!hasSunoExtension()) {
@@ -34,9 +48,25 @@ export function SendToSuno({ payload }: { payload: SunoPayload }) {
 
   return (
     <>
-      <Button size="sm" onClick={send} className="glow-primary gap-1.5 text-xs">
+      <Button
+        size="sm"
+        onClick={send}
+        className="glow-primary gap-1.5 text-xs"
+        title={version ? `Send to Suno (extension ${version} connected)` : "Send to Suno"}
+      >
         <Send className="size-3.5" /> {sent ? "Sent: press Fill in Suno" : "Send to Suno"}
       </Button>
+      {showStatus ? (
+        version ? (
+          <span className="inline-flex items-center gap-1 text-[11px] text-signal-high">
+            <CheckCircle2 className="size-3.5" /> Extension connected
+          </span>
+        ) : (
+          <button type="button" onClick={() => setHelp(true)} className="text-[11px] text-muted-foreground underline-offset-2 hover:underline">
+            Extension not detected
+          </button>
+        )
+      ) : null}
       <Dialog open={help} onOpenChange={setHelp}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -44,43 +74,36 @@ export function SendToSuno({ payload }: { payload: SunoPayload }) {
               <Puzzle className="size-5 text-primary" /> Add the Send to Suno extension
             </DialogTitle>
             <DialogDescription>
-              A small browser extension for Chrome, Edge or Brave on a computer. Press Send to Suno here, then Fill on
+              A free browser extension for Chrome, Edge or Brave on a computer. Press Send to Suno here, then Fill on
               Suno&apos;s Create page, and your title, style, exclude list and lyrics go straight in. You still press
               Create yourself.
             </DialogDescription>
           </DialogHeader>
-          {EXTENSION_STORE_URL ? (
-            <ol className="list-decimal space-y-2 pl-5 text-sm">
-              <li>
-                <a href={EXTENSION_STORE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline underline-offset-2">
-                  Add it from the Chrome Web Store <ExternalLink className="size-3.5" />
-                </a>{" "}
-                (it works in Edge and Brave too).
-              </li>
-              <li>Reload this page and press Send to Suno again.</li>
-            </ol>
-          ) : (
           <ol className="list-decimal space-y-2 pl-5 text-sm">
             <li>
-              Download it:{" "}
-              <a href="/band-blender-extension.zip" download className="inline-flex items-center gap-1 text-primary underline underline-offset-2">
-                band-blender-extension.zip <Download className="size-3.5" />
-              </a>
-              , then unzip it.
+              <a href={EXTENSION_STORE_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline underline-offset-2">
+                Add it from the Chrome Web Store <ExternalLink className="size-3.5" />
+              </a>{" "}
+              (one click; it works in Edge and Brave too).
             </li>
-            <li>
-              Open <span className="font-mono text-xs">chrome://extensions</span> and turn on <span className="font-medium">Developer mode</span>{" "}
-              (top right).
-            </li>
-            <li>
-              Press <span className="font-medium">Load unpacked</span> and choose the unzipped folder.
-            </li>
-            <li>Reload this page and press Send to Suno again.</li>
+            <li>Reload this page, then press Send to Suno again.</li>
           </ol>
-          )}
+          <div className="rounded-lg border border-border bg-card/50 p-3 text-xs">
+            <p className="font-medium text-foreground">Already added it?</p>
+            <ul className="mt-1 list-disc space-y-1 pl-4 text-muted-foreground">
+              <li>Reload this page. The extension connects when a page loads, so tabs opened before you added it can&apos;t see it.</li>
+              <li>
+                Check it&apos;s switched on: open <span className="font-mono">chrome://extensions</span> in a new tab.
+              </li>
+              <li>In an Incognito or private window, extensions are off unless you allow them there.</li>
+            </ul>
+          </div>
           <p className="text-xs text-muted-foreground">
             It only fills text boxes when you press Fill: it never presses Create, never reads your songs or account, and
-            sends nothing anywhere.{EXTENSION_STORE_URL ? null : " A one-click version from the Chrome Web Store is coming."}
+            sends nothing anywhere.{" "}
+            <a href={EXTENSION_GUIDE_PATH} className="text-primary underline underline-offset-2">
+              How it works
+            </a>
           </p>
           <div className="flex justify-end">
             <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">

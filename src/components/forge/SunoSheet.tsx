@@ -214,7 +214,7 @@ export function SunoSheet({
           <CopyButton value={everything} label="Copy all" />
           {engine === "suno" ? (
             <>
-              <SendToSuno payload={{ title: lyrics.title, style, exclude, lyrics: lyricText, artists: names }} />
+              <SendToSuno payload={{ title: lyrics.title, style, exclude, lyrics: lyricText, artists: names }} showStatus />
               <SendToChat song={{ title: lyrics.title, style, exclude, lyrics: lyricText }} disabled={!style.trim()} />
             </>
           ) : (

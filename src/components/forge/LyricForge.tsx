@@ -1,5 +1,9 @@
 import { ChevronDown,
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  CopyPlus,
+  GripVertical,
   Loader2,
   Lock,
   LockOpen,
@@ -10,7 +14,7 @@ import { ChevronDown,
   Undo2,
   Wand2,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel } from "./Field";
@@ -37,6 +41,15 @@ import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { LYRIC_NOTATION, exportLyrics } from "@/lib/prompt-craft";
 import { cn } from "@/lib/utils";
 import { bpmFrom, clock, sectionTimes } from "@/lib/section-times";
+import {
+  INSTRUMENTAL_SECTION_TAGS,
+  LYRIC_SECTION_TAGS,
+  dropIndex,
+  duplicateSection,
+  insertSection,
+  moveItem,
+  newSection,
+} from "@/lib/section-order";
 
 /** Estimated syllables, plus a flag for worn-out phrases and lines far off the section's typical length. */
 function LineMarkers({
@@ -114,20 +127,16 @@ function LineMarkers({
   );
 }
 
-const QUICK_SECTIONS = [
-  "[Guitar Solo]",
-  "[Instrumental Break]",
-  "[Drop]",
-  "[Breakdown]",
-  "[Outro]",
-];
 
 export function LyricForge({
   value,
   onChange,
   blend,
   renderTakeCheck,
+  sendButton,
 }: {
+  /** Send to Suno for the whole song (title, style, exclude, lyrics), next to Copy for Suno. */
+  sendButton?: ReactNode;
   /** The "how did it come out?" card, shown once there are lyrics. */
   renderTakeCheck?: ((opts: { highlight: boolean }) => ReactNode) | undefined;
   value: LyricSlice;
@@ -245,7 +254,22 @@ export function LyricForge({
   const setCue = (si: number, cue: string) =>
     patchSections((prev) => prev.map((s, i) => (i === si ? { ...s, cue } : s)));
 
-  const addSection = (tag: string) => patchSections((prev) => [...prev, { tag, lines: [] }]);
+  // Where "Add section" puts new sections: after this index, or at the end (null).
+  const [addAfter, setAddAfter] = useState<number | null>(null);
+  const [customTag, setCustomTag] = useState("");
+  const addSection = (tag: string) => {
+    const at = addAfter !== null && addAfter < sections.length ? addAfter : undefined;
+    patchSections((prev) => insertSection(prev, newSection(tag, prev), at));
+    // Keep adding in order: the next one goes after the one just added.
+    if (at !== undefined) setAddAfter(at + 1);
+  };
+  const moveSection = (from: number, to: number) => patchSections((prev) => moveItem(prev, from, to));
+  const copySection = (si: number) => patchSections((prev) => duplicateSection(prev, si));
+
+  // Drag and drop (desktop); the arrows do the same on phones and with a keyboard.
+  const dragFrom = useRef<number | null>(null);
+  const [drop, setDrop] = useState<{ over: number; after: boolean } | null>(null);
+  const canReorder = !loading && busy === null;
 
   const removeSection = (si: number) => patchSections((prev) => prev.filter((_, i) => i !== si));
 
@@ -589,6 +613,7 @@ export function LyricForge({
                 <Rows3 className="size-3.5" /> {showRhymes ? "Hide rhyme scheme" : "Rhyme scheme"}
               </Button>
               <CopyButton value={exportLyrics(composeSunoLyrics(sections), value.cleanEnding !== false).text} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
+              {sendButton}
             </div>
           ) : undefined
         }
@@ -614,9 +639,57 @@ export function LyricForge({
               </div>
             ) : null}
             {sections.map((s, si) => (
-              <div key={si} className="rounded-lg border border-border bg-card/60">
+              <div
+                key={si}
+                data-section={si}
+                onDragOver={(e) => {
+                  if (dragFrom.current === null) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  const box = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientY > box.top + box.height / 2;
+                  if (drop?.over !== si || drop.after !== after) setDrop({ over: si, after });
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = dragFrom.current;
+                  // Read the position from the drop itself: the highlight state can lag a frame behind.
+                  const box = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientY > box.top + box.height / 2;
+                  if (from !== null) moveSection(from, dropIndex(from, si, after));
+                  dragFrom.current = null;
+                  setDrop(null);
+                }}
+                className={cn(
+                  "rounded-lg border border-border bg-card/60 transition-shadow",
+                  drop?.over === si && !drop.after && "shadow-[0_-3px_0_0_var(--accent)]",
+                  drop?.over === si && drop.after && "shadow-[0_3px_0_0_var(--accent)]",
+                )}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
                   <span className="flex flex-wrap items-center gap-2">
+                    <span
+                      draggable={canReorder}
+                      onDragStart={(e) => {
+                        dragFrom.current = si;
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", s.tag);
+                        const card = (e.currentTarget as HTMLElement).closest("[data-section]");
+                        if (card) e.dataTransfer.setDragImage(card, 24, 18);
+                      }}
+                      onDragEnd={() => {
+                        dragFrom.current = null;
+                        setDrop(null);
+                      }}
+                      title={canReorder ? "Drag to move this section" : "Wait for the AI to finish before moving sections"}
+                      aria-hidden
+                      className={cn(
+                        "-ml-1 hidden rounded p-0.5 text-muted-foreground sm:inline-flex",
+                        canReorder ? "cursor-grab hover:bg-secondary hover:text-foreground active:cursor-grabbing" : "opacity-40",
+                      )}
+                    >
+                      <GripVertical className="size-4" />
+                    </span>
                     <span className="font-mono text-xs tracking-[0.16em] text-accent uppercase">{s.tag}</span>
                     {timing.sections[si] ? (
                       <span
@@ -661,9 +734,41 @@ export function LyricForge({
                         <RefreshCw
                           className={cn("size-3.5", busy === `s-${si}` && "animate-spin")}
                         />
-                        <span className="hidden sm:inline">Regenerate section</span>
+                        <span className="hidden sm:inline">
+                          {s.lines.every((l) => !l.text.trim()) ? "Write this section" : "Regenerate section"}
+                        </span>
                       </Button>
                     ) : null}
+                    <button
+                      type="button"
+                      onClick={() => moveSection(si, si - 1)}
+                      disabled={!canReorder || si === 0}
+                      aria-label={`Move ${s.tag} up`}
+                      title="Move up"
+                      className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-25"
+                    >
+                      <ArrowUp className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveSection(si, si + 1)}
+                      disabled={!canReorder || si === sections.length - 1}
+                      aria-label={`Move ${s.tag} down`}
+                      title="Move down"
+                      className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-25"
+                    >
+                      <ArrowDown className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copySection(si)}
+                      disabled={!canReorder}
+                      aria-label={`Duplicate ${s.tag}`}
+                      title="Duplicate (e.g. repeat a chorus)"
+                      className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-25"
+                    >
+                      <CopyPlus className="size-3.5" />
+                    </button>
                     <CopyButton value={composeSunoLyrics([s])} size="icon" />
                     <button
                       type="button"
@@ -704,6 +809,7 @@ export function LyricForge({
                         value={l.text}
                         onChange={(e) => editLine(si, li, e.target.value)}
                         readOnly={l.locked}
+                        placeholder="Write a line, or use Write this section above"
                         className={cn(
                           "w-full min-w-0 flex-1 basis-full bg-transparent py-1 text-sm outline-none sm:basis-auto",
                           l.locked ? "text-primary" : "text-foreground",
@@ -764,21 +870,75 @@ export function LyricForge({
                 </ul>
               </div>
             ))}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="mr-1 font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-                Add section
-              </span>
-              {QUICK_SECTIONS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => addSection(t)}
-                  className="flex items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-1 font-mono text-[10px] tracking-wider text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent"
-                >
-                  <Plus className="size-3" />
-                  {t}
-                </button>
+            <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Add section</span>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  where
+                  <select
+                    value={addAfter === null ? "end" : String(addAfter)}
+                    onChange={(e) => setAddAfter(e.target.value === "end" ? null : Number(e.target.value))}
+                    className="h-7 rounded-md border border-border bg-background px-1.5 text-xs text-foreground"
+                    aria-label="Where to add the section"
+                  >
+                    <option value="end">At the end</option>
+                    <option value="-1">At the start</option>
+                    {sections.map((x, i) => (
+                      <option key={i} value={i}>
+                        After {x.tag.replace(/[[\]]/g, "")}
+                        {sections.filter((y) => y.tag === x.tag).length > 1 ? ` (#${i + 1})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  <span className="hidden sm:inline">Drag the handle on any section to move it, or </span>use the arrows.
+                </span>
+              </div>
+              {(
+                [
+                  ["Sung", LYRIC_SECTION_TAGS],
+                  ["Instrumental", INSTRUMENTAL_SECTION_TAGS],
+                ] as const
+              ).map(([label, tags]) => (
+                <div key={label} className="flex flex-wrap items-center gap-1.5">
+                  <span className="w-20 text-[11px] text-muted-foreground">{label}</span>
+                  {tags.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => addSection(t)}
+                      className="flex items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-1 font-mono text-[10px] tracking-wider text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent"
+                    >
+                      <Plus className="size-3" />
+                      {t}
+                    </button>
+                  ))}
+                </div>
               ))}
+              <form
+                className="flex flex-wrap items-center gap-1.5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const t = customTag.trim().replace(/[[\]]/g, "").slice(0, 40);
+                  if (!t) return;
+                  addSection(`[${t}]`);
+                  setCustomTag("");
+                }}
+              >
+                <span className="w-20 text-[11px] text-muted-foreground">Your own</span>
+                <Input
+                  value={customTag}
+                  onChange={(e) => setCustomTag(e.target.value)}
+                  placeholder="e.g. Sax Solo, Spoken Word, Choir"
+                  className="h-7 w-56 text-xs"
+                  maxLength={40}
+                  aria-label="Your own section name"
+                />
+                <Button type="submit" size="sm" variant="outline" className="h-7 gap-1 px-2 text-[11px]" disabled={!customTag.trim()}>
+                  <Plus className="size-3" /> Add
+                </Button>
+              </form>
             </div>
           </div>
         ) : (
