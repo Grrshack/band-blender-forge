@@ -15,9 +15,8 @@ export const APP_DOMAIN = "suno-blender.lovable.app";
  */
 export const TESTING_PHASE = true;
 
-/**
- * The extension's Chrome Web Store page. Paste the link here once Google approves the listing
- * (it looks like https://chromewebstore.google.com/detail/...); until then it stays empty and the
- * Send to Suno help shows the manual zip install.
- */
-export const EXTENSION_STORE_URL = "";
+/** The extension's Chrome Web Store page (live since Nov 6, 2026). */
+export const EXTENSION_STORE_URL =
+  "https://chromewebstore.google.com/detail/band-blender-send-to-suno/fnihjgnbppkekjlacgamoomhgmipapog";
+/** The how-to page for the extension. */
+export const EXTENSION_GUIDE_PATH = "/guides/send-to-suno-extension";

@@ -15,6 +15,65 @@ export type Guide = {
 
 export const GUIDES: Guide[] = [
   {
+    slug: "send-to-suno-extension",
+    title: "Send to Suno: the free Chrome extension, step by step",
+    description:
+      "Put your title, style, exclude list and lyrics into Suno's Create page in one click. How to add it, how to send a song, and what to do if it doesn't show up.",
+    sections: [
+      {
+        heading: "What it does",
+        body: [
+          "Band Blender: Send to Suno is a small, free extension for Chrome, Edge or Brave on a computer. When you press Send to Suno in Band Blender, it carries your song to Suno's Create page, and when you press Fill there, it puts the title, style, exclude list and lyrics into the right boxes.",
+          "It never presses Create for you, never reads your Suno library or account, and never sends your song anywhere else. You check the boxes and press Create yourself.",
+        ],
+      },
+      {
+        heading: "Add it",
+        body: [
+          "Open the extension's Chrome Web Store page (linked at the bottom of this guide) and press Add to Chrome. In Edge, allow extensions from other stores when it asks. Brave works like Chrome.",
+          "Pin it so you can see it's on: press the puzzle-piece icon next to the address bar and the pin beside Band Blender: Send to Suno.",
+          "Then reload any Band Blender tab you already had open. The extension connects when a page loads, so a tab opened before you added it won't see it.",
+          "Phones and tablets can't run Chrome extensions; there, use the Copy buttons on the Suno Sheet instead.",
+        ],
+      },
+      {
+        heading: "Send a song",
+        body: [
+          "Finish your style and lyrics, then press Send to Suno. It's on the Suno Sheet, next to Copy for Suno in Lyric Forge, and with the result in the Band Blender. The Suno Sheet also shows \"Extension connected\" when everything is ready.",
+          "Suno's Create page opens in a new tab. Switch it to Custom mode if it isn't already, so the Style and Lyrics boxes show.",
+          "Press Fill on the small Band Blender panel. Check the boxes, then press Create. Sending another song replaces the one waiting.",
+        ],
+      },
+      {
+        heading: "If it doesn't show up",
+        body: [
+          "Band Blender says the extension isn't there: reload the Band Blender page, check the extension is switched on (open chrome://extensions), and remember extensions are off in Incognito or private windows unless you allow them.",
+          "No panel on Suno: reload Suno's Create page and switch to Custom mode. If Suno has changed its page and a box doesn't fill, use the Copy buttons on the Suno Sheet and tell us with Send feedback so we can update the extension.",
+        ],
+      },
+      {
+        heading: "In version 1.1 and later",
+        body: [
+          "A live check on Suno's Create page: a small badge checks the Style, Exclude and Lyrics boxes as you type (character limits, artist names Suno blocks, contradictions, soft vocals that get buried, a missing clean ending). Its Fix buttons change a box only when you press them, and you can turn the check off in the extension's options.",
+          "Send to Gemini and ElevenLabs Music: the same panel fills their prompt box from the Suno Sheet's Gemini / Flow and ElevenLabs tabs.",
+        ],
+      },
+      {
+        heading: "Privacy",
+        body: [
+          "The extension runs only on Band Blender and on the music sites it fills. What you send waits in your browser's extension storage until you press Fill or close the panel, then it's deleted. It has no access to your accounts, and nothing is sent to us or anyone else. The full details are on Band Blender's privacy page.",
+        ],
+      },
+    ],
+    tool: { tab: "suno", label: "Open the Suno Sheet" },
+    sources: [
+      {
+        label: "Band Blender: Send to Suno on the Chrome Web Store",
+        url: "https://chromewebstore.google.com/detail/band-blender-send-to-suno/fnihjgnbppkekjlacgamoomhgmipapog",
+      },
+    ],
+  },
+  {
     slug: "fix-muffled-suno-song",
     title: "Why your Suno song sounds muffled, and what actually fixes it",
     description:
