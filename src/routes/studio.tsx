@@ -25,6 +25,8 @@ import { Panel } from "@/components/forge/Field";
 import { TakeLog } from "@/components/forge/TakeLog";
 import { SongPackCard } from "@/components/forge/SongPackButton";
 import { LabStudio } from "@/components/forge/LabStudio";
+import { SendToSuno } from "@/components/forge/SendToSuno";
+import { sunoPayloadFrom } from "@/lib/suno-payload";
 import { dropAlt } from "@/lib/prompt-craft";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
 import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
@@ -409,6 +411,7 @@ function Index() {
                       takes={state.takes}
                       onTakes={(v) => patch("takes", v)}
                       onFix={openFixWith}
+                      sendButton={<SendToSuno payload={sunoPayloadFrom(state)} />}
                     />
                   )}
                   {tab === "blend" && (
@@ -427,6 +430,7 @@ function Index() {
                       value={state.lyrics}
                       onChange={(v) => patch("lyrics", v)}
                       blend={state.blend.result}
+                      sendButton={<SendToSuno payload={sunoPayloadFrom(state)} />}
                       renderTakeCheck={({ highlight }) => (
                         <TakeCheck
                           key={state.lyrics.sections.map((x) => x.lines[0]?.text ?? x.tag).join("|")}
