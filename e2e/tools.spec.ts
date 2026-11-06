@@ -89,3 +89,46 @@ test("the admin Lab stays closed to everyone else", async ({ page }) => {
   await expect(page.getByText("Sign in with the admin account to use the Lab.")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Tools" }).getByRole("button", { name: /^Lab$/ })).toHaveCount(0);
 });
+
+test("Lyric Forge sections can be moved, added where you want, and duplicated", async ({ page }) => {
+  await openTool(page, "lyrics");
+  await page.getByRole("button", { name: /^Forge Lyrics/ }).click();
+  const order = () =>
+    page.locator("main [data-section] .font-mono.uppercase").filter({ hasText: /^\[/ }).allInnerTexts();
+  await expect.poll(order).toEqual(["[INTRO]", "[VERSE 1]", "[CHORUS]", "[VERSE 2]", "[CHORUS]", "[OUTRO]"]);
+
+  // Arrows
+  await page.getByRole("button", { name: "Move [Outro] up" }).click();
+  await expect.poll(order).toEqual(["[INTRO]", "[VERSE 1]", "[CHORUS]", "[VERSE 2]", "[OUTRO]", "[CHORUS]"]);
+
+  // Drag the last Chorus onto the top half of Verse 2
+  const cards = page.locator("main [data-section]");
+  // A tall window so both sections are on screen: the test can't scroll mid-drag (people can).
+  await page.setViewportSize({ width: 1280, height: 3200 });
+  await cards.nth(5).locator("[draggable=true]").dragTo(cards.nth(3), { targetPosition: { x: 60, y: 8 } });
+  await expect.poll(order).toEqual(["[INTRO]", "[VERSE 1]", "[CHORUS]", "[CHORUS]", "[VERSE 2]", "[OUTRO]"]);
+
+  // Add a Guitar Solo after Verse 1, then a sung Bridge right after it
+  await page.getByLabel("Where to add the section").selectOption({ label: "After Verse 1" });
+  await page.getByRole("button", { name: "[Guitar Solo]" }).click();
+  await page.getByRole("button", { name: "[Bridge]" }).click();
+  await expect.poll(order).toEqual(["[INTRO]", "[VERSE 1]", "[GUITAR SOLO]", "[BRIDGE]", "[CHORUS]", "[CHORUS]", "[VERSE 2]", "[OUTRO]"]);
+  // The new Bridge has lines to write, and the AI can write them
+  const bridge = cards.nth(3);
+  await bridge.getByRole("button", { name: /Write this section/ }).click();
+  await expect(bridge.locator("input").nth(1)).not.toHaveValue("");
+
+  // Duplicate the first Chorus
+  await page.getByRole("button", { name: "Duplicate [Chorus]" }).first().click();
+  await expect.poll(async () => (await order()).filter((t) => t === "[CHORUS]").length).toBe(3);
+});
+
+test("Send to Suno is on Lyric Forge too, and points to the Chrome Web Store when the extension isn't there", async ({ page }) => {
+  await openTool(page, "lyrics");
+  await page.getByRole("button", { name: /^Forge Lyrics/ }).click();
+  await page.getByRole("button", { name: "Send to Suno" }).first().click();
+  const link = page.getByRole("link", { name: /Add it from the Chrome Web Store/ });
+  await expect(link).toHaveAttribute("href", /chromewebstore\.google\.com\/detail\/band-blender-send-to-suno/);
+  await expect(page.getByText("Already added it?")).toBeVisible();
+  await expect(page.getByText(/unzip/i)).toHaveCount(0);
+});

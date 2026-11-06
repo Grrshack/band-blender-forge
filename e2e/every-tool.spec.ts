@@ -22,6 +22,7 @@ test("the side menu opens every tool", async ({ page }) => {
 const PUBLIC_PAGES = [
   "/",
   "/guides",
+  "/guides/send-to-suno-extension",
   "/tools",
   "/tools/bpm-key-finder",
   "/tools/lyric-checker",
