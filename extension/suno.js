@@ -1,6 +1,7 @@
 // Runs on suno.com. Two things, both on the person's click only:
-//  1. When Band Blender sent something in the last 2 hours, a panel fills Suno's Create boxes
-//     when you press Fill.
+//  1. When Band Blender sent something in the last 2 hours, a panel fills Suno's Create page
+//     when you press Fill: the boxes you tick, the take you pick, and (1.1+) Instrumental, vocal
+//     gender and the Weirdness / Style Influence sliders. Undo puts things back.
 //  2. A small "Band Blender check" badge reads what's in the Style, Exclude and Lyrics boxes as you
 //     type (Suno's limits, artist names, contradictions, soft vocals, clean endings) and offers
 //     fixes that change a box only when you press them.
@@ -73,59 +74,350 @@
 
   // ------------------------------------------------------------------ 1. Fill panel
 
+  const VERSION = chrome.runtime.getManifest().version;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const ours = (el) => el.closest("#bb-suno-panel-host") || el.closest("#bb-live-host");
+  const visible = (el) => el && el.offsetParent !== null;
+  const textOf = (el) => (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+  const labelOf = (el) =>
+    [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("data-testid"), el.getAttribute("name"), el.id, textOf(el)]
+      .filter(Boolean)
+      .join(" ");
+
+  /** The smallest element whose own text matches, e.g. the "Weirdness" label. */
+  function findLabel(re) {
+    const all = document.querySelectorAll("label, span, div, p, h3, h4, button");
+    let best = null;
+    for (const el of all) {
+      if (ours(el) || !visible(el)) continue;
+      const t = textOf(el);
+      if (t.length > 60 || !re.test(t)) continue;
+      if (!best || t.length < textOf(best).length) best = el;
+    }
+    return best;
+  }
+
+  /** Looks for a control near a label: up to 4 levels of its containers. */
+  function near(labelEl, selector) {
+    let box = labelEl;
+    for (let i = 0; i < 5 && box; i++, box = box.parentElement) {
+      const found = [...box.querySelectorAll(selector)].filter((el) => !ours(el) && visible(el));
+      if (found.length) return found;
+    }
+    return [];
+  }
+
+  /** Suno keeps Exclude, vocal gender and the sliders under "More options": open it if it's closed. */
+  async function openMoreOptions() {
+    const btn = [...document.querySelectorAll("button, [role=button], summary")].find(
+      (el) => !ours(el) && visible(el) && /more options|advanced options|advanced/i.test(labelOf(el)) && labelOf(el).length < 40,
+    );
+    if (!btn) return false;
+    if (btn.getAttribute("aria-expanded") === "true") return true;
+    btn.click();
+    await sleep(350);
+    return true;
+  }
+
+  // Toggles: read "on" from whatever the control exposes.
+  function isOn(el) {
+    if (!el) return null;
+    if ("checked" in el && el.type === "checkbox") return el.checked;
+    for (const a of ["aria-checked", "aria-pressed", "aria-selected"]) {
+      const v = el.getAttribute(a);
+      if (v === "true") return true;
+      if (v === "false") return false;
+    }
+    const st = el.getAttribute("data-state");
+    if (st) return /^(on|checked|active|open)$/.test(st);
+    return null;
+  }
+
+  function findInstrumental() {
+    const direct = [...document.querySelectorAll("[role=switch], input[type=checkbox], button")].find(
+      (el) => !ours(el) && visible(el) && /instrumental/i.test(labelOf(el)) && labelOf(el).length < 40,
+    );
+    if (direct) return direct;
+    const label = findLabel(/^instrumental$/i);
+    return label ? near(label, "[role=switch], input[type=checkbox], button")[0] || null : null;
+  }
+
+  function findGender(which) {
+    const re = which === "male" ? /^male$/i : /^female$/i;
+    const label = findLabel(/^vocal gender$|^vocals?$|^gender$/i);
+    const pool = label ? near(label, "button, [role=radio], [role=tab], label") : [...document.querySelectorAll("button, [role=radio]")];
+    return pool.find((el) => !ours(el) && visible(el) && re.test(textOf(el))) || null;
+  }
+
+  function findSlider(re) {
+    const label = findLabel(re);
+    if (!label) return null;
+    return near(label, 'input[type=range], [role=slider]')[0] || null;
+  }
+
+  const sliderValue = (el) => (el.tagName === "INPUT" ? Number(el.value) : Number(el.getAttribute("aria-valuenow")));
+
+  /** Sets a slider to a percentage: native range inputs directly, custom sliders with the keyboard. */
+  async function setSlider(el, pct) {
+    if (el.tagName === "INPUT") {
+      const min = Number(el.min || 0);
+      const max = Number(el.max || 100);
+      const v = String(Math.round(min + ((max - min) * pct) / 100));
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, v);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return Math.abs(sliderValue(el) - Number(v)) <= 1;
+    }
+    const min = Number(el.getAttribute("aria-valuemin") || 0);
+    const max = Number(el.getAttribute("aria-valuemax") || 100);
+    const target = min + ((max - min) * pct) / 100;
+    const key = (k) => el.dispatchEvent(new KeyboardEvent("keydown", { key: k, code: k, bubbles: true }));
+    el.focus();
+    key("Home");
+    await sleep(30);
+    for (let i = 0; i < 220 && sliderValue(el) < target - 0.5; i++) {
+      const before = sliderValue(el);
+      key("ArrowRight");
+      if (i % 10 === 9) await sleep(0);
+      if (sliderValue(el) === before && i > 3) break; // not responding to keys
+    }
+    el.blur();
+    return Math.abs(sliderValue(el) - target) <= Math.max(2, (max - min) / 50);
+  }
+
+  /** What the panel would fill, for the chosen take. */
+  function itemsFor(pending, takeIndex) {
+    const take = Array.isArray(pending.takes) && pending.takes[takeIndex];
+    const items = [];
+    const text = (key, label, value) => value && items.push({ kind: "text", key, label, value });
+    text("title", "Title", pending.title);
+    text("style", "Style", take ? take.style : pending.style);
+    text("exclude", "Exclude styles", take ? take.exclude : pending.exclude);
+    text("lyrics", "Lyrics", pending.lyrics);
+    if (typeof pending.instrumental === "boolean") items.push({ kind: "instrumental", key: "instrumental", label: "Instrumental", value: pending.instrumental });
+    if (pending.vocalGender) items.push({ kind: "gender", key: "gender", label: "Vocal gender", value: pending.vocalGender });
+    if (typeof pending.weirdness === "number") items.push({ kind: "slider", key: "weirdness", label: "Weirdness", value: pending.weirdness, re: /^weirdness/i });
+    if (typeof pending.styleInfluence === "number") items.push({ kind: "slider", key: "styleInfluence", label: "Style Influence", value: pending.styleInfluence, re: /^style influence/i });
+    return items;
+  }
+
+  const shown = (it) =>
+    it.kind === "text"
+      ? it.value.replace(/\s+/g, " ").slice(0, 52)
+      : it.kind === "instrumental"
+        ? (it.value ? "on" : "off")
+        : it.kind === "gender"
+          ? (it.value === "male" ? "Male" : "Female")
+          : `${it.value}%`;
+
+  let lastReport = { found: {}, fill: "" };
+
   function panel(pending) {
     if (document.getElementById("bb-suno-panel-host")) return;
-    const host = document.createElement("div");
-    host.id = "bb-suno-panel-host";
-    host.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:2147483647;";
-    const root = host.attachShadow({ mode: "open" });
-    root.innerHTML = `
-      <style>${STYLE}</style>
+    const panelHost = document.createElement("div");
+    panelHost.id = "bb-suno-panel-host";
+    panelHost.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:2147483647;";
+    const proot = panelHost.attachShadow({ mode: "open" });
+    proot.innerHTML = `
+      <style>${STYLE}
+        .take{display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px;color:#bbb}
+        .take select{flex:1;background:#26263a;color:#eee;border:1px solid #3b3b55;border-radius:6px;padding:3px}
+        .row label{display:flex;gap:6px;align-items:center;min-width:0;cursor:pointer}
+        .row input{accent-color:#6d5cff}
+        .btns{display:flex;gap:6px}.btns .b{flex:1}
+        button.u{background:#26263a;color:#ddd;border:0;border-radius:8px;padding:8px 10px;cursor:pointer;margin-top:8px}
+        button.u:disabled{opacity:.4;cursor:default}
+        .foot{display:flex;justify-content:space-between;margin-top:8px;font-size:11px}
+        .foot a{color:#8f86ff;cursor:pointer;text-decoration:none}
+      </style>
       <div class="p">
         <div class="h">Band Blender <button class="x" title="Dismiss">×</button></div>
+        <div class="takes"></div>
         <div class="rows"></div>
-        <button class="b">Fill Suno's boxes</button>
-        <div class="msg">Fills the boxes only. Check them, then press Create yourself.</div>
+        <div class="btns"><button class="b">Fill Suno</button><button class="u" disabled title="Put Suno's boxes back as they were">Undo</button></div>
+        <div class="msg">Untick anything you want to keep as it is in Suno. Then check, and press Create yourself.</div>
+        <div class="foot"><a class="report">Report a problem</a><span style="color:#666">v${VERSION}</span></div>
       </div>`;
-    const rows = root.querySelector(".rows");
-    for (const f of FIELDS) {
-      const v = pending[f.key];
-      if (!v) continue;
-      const row = document.createElement("div");
-      row.className = "row";
-      const s = document.createElement("span");
-      s.textContent = `${f.label}: ${v.replace(/\s+/g, " ").slice(0, 60)}`;
-      const copy = document.createElement("button");
-      copy.className = "c";
-      copy.textContent = "Copy";
-      copy.onclick = () => navigator.clipboard.writeText(v).then(() => (copy.textContent = "Copied"));
-      row.append(s, copy);
-      rows.append(row);
+    const rowsEl = proot.querySelector(".rows");
+    const msg = proot.querySelector(".msg");
+    const undoBtn = proot.querySelector(".u");
+    let takeIndex = Number.isInteger(pending.activeTake) ? pending.activeTake : 0;
+    const unticked = new Set();
+    let items = [];
+    let undo = null;
+
+    if (Array.isArray(pending.takes) && pending.takes.length > 1) {
+      const wrap = proot.querySelector(".takes");
+      wrap.className = "take";
+      const lab = document.createElement("span");
+      lab.textContent = "Take";
+      const sel = document.createElement("select");
+      sel.setAttribute("aria-label", "Which take to fill");
+      pending.takes.forEach((t, i) => {
+        const o = document.createElement("option");
+        o.value = String(i);
+        o.textContent = t.label;
+        if (i === takeIndex) o.selected = true;
+        sel.append(o);
+      });
+      sel.onchange = () => {
+        takeIndex = Number(sel.value);
+        draw();
+        msg.textContent = "Switched take. Press Fill to put its style and exclude list in (untick Lyrics to keep yours).";
+      };
+      wrap.append(lab, sel);
     }
-    const msg = root.querySelector(".msg");
-    root.querySelector(".b").onclick = () => {
-      const missed = [];
-      for (const f of FIELDS) {
-        const v = pending[f.key];
-        if (!v) continue;
-        const el = findField(f);
-        if (el) setValue(el, v);
-        else missed.push(f.label);
+
+    function draw() {
+      items = itemsFor(pending, takeIndex);
+      rowsEl.textContent = "";
+      for (const it of items) {
+        const row = document.createElement("div");
+        row.className = "row";
+        const lab = document.createElement("label");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = !unticked.has(it.key);
+        box.onchange = () => (box.checked ? unticked.delete(it.key) : unticked.add(it.key));
+        const s = document.createElement("span");
+        s.textContent = `${it.label}: ${shown(it)}`;
+        lab.append(box, s);
+        row.append(lab);
+        if (it.kind === "text") {
+          const copy = document.createElement("button");
+          copy.className = "c";
+          copy.textContent = "Copy";
+          copy.onclick = () => navigator.clipboard.writeText(it.value).then(() => (copy.textContent = "Copied"));
+          row.append(copy);
+        }
+        rowsEl.append(row);
       }
-      msg.textContent = missed.length
-        ? `Couldn't find: ${missed.join(", ")}. Turn on Custom mode (and open "More options" for Exclude), then press Fill again, or use Copy.`
-        : "Filled. Check the boxes, then press Create.";
+    }
+    draw();
+
+    proot.querySelector(".b").onclick = async () => {
+      const chosen = items.filter((it) => !unticked.has(it.key));
+      const missed = [];
+      const check = [];
+      const snap = [];
+      const found = {};
+      // Only press "More options" when its controls aren't showing, so an open section isn't closed.
+      const hidden = !findField(byKey("exclude")) && !findLabel(/^weirdness|^vocal gender$/i);
+      if (hidden && chosen.some((it) => it.kind !== "text" || it.key === "exclude")) found.moreOptions = await openMoreOptions();
+      for (const it of chosen) {
+        if (it.kind === "text") {
+          const el = findField(byKey(it.key));
+          found[it.key] = Boolean(el);
+          if (!el) {
+            missed.push(it.label);
+            continue;
+          }
+          snap.push({ kind: "text", el, value: readField(el) });
+          setValue(el, it.value);
+        } else if (it.kind === "instrumental") {
+          const el = findInstrumental();
+          found.instrumental = el ? el.getAttribute("role") || el.tagName.toLowerCase() : false;
+          if (!el) {
+            missed.push("Instrumental switch");
+            continue;
+          }
+          const was = isOn(el);
+          if (was !== it.value) {
+            el.click();
+            await sleep(150);
+            snap.push({ kind: "toggle", el });
+          }
+          if (isOn(el) !== it.value) check.push(`Instrumental (${it.value ? "on" : "off"})`);
+        } else if (it.kind === "gender") {
+          const el = findGender(it.value);
+          found.gender = el ? el.getAttribute("role") || el.tagName.toLowerCase() : false;
+          if (!el) {
+            missed.push("Vocal gender");
+            continue;
+          }
+          if (isOn(el) !== true) {
+            el.click();
+            await sleep(120);
+          }
+          if (isOn(el) === false) check.push(`Vocal gender (${shown(it)})`);
+          if (isOn(el) === null) check.push(`that ${shown(it)} is selected`);
+        } else if (it.kind === "slider") {
+          const el = findSlider(it.re);
+          found[it.key] = el ? (el.tagName === "INPUT" ? "range" : "slider") : false;
+          if (!el) {
+            missed.push(it.label);
+            continue;
+          }
+          const before = sliderValue(el);
+          const ok = await setSlider(el, it.value);
+          snap.push({ kind: "slider", el, value: before, pct: null });
+          if (!ok) check.push(`${it.label} (set it to ${it.value}%)`);
+        }
+      }
+      undo = snap;
+      undoBtn.disabled = !snap.length;
+      // Filled: delete the stored song. This panel keeps it in memory, so you can still switch takes and Fill again.
+      chrome.storage.local.remove("pending");
+      const parts = [];
+      if (missed.length) parts.push(`Couldn't find: ${missed.join(", ")}. Turn on Custom mode and open "More options", then press Fill again, or set them yourself.`);
+      if (check.length) parts.push(`Please check ${check.join(", ")}.`);
+      msg.textContent = parts.length ? parts.join(" ") : "Filled. Check the boxes, then press Create.";
+      lastReport = { found, fill: msg.textContent };
       runCheck();
     };
-    root.querySelector(".x").onclick = () => {
-      chrome.storage.local.remove("pending");
-      host.remove();
+
+    undoBtn.onclick = async () => {
+      if (!undo) return;
+      for (const u of undo.slice().reverse()) {
+        if (u.kind === "text") setValue(u.el, u.value);
+        else if (u.kind === "toggle") u.el.click();
+        else if (u.kind === "slider" && Number.isFinite(u.value)) {
+          const min = u.el.tagName === "INPUT" ? Number(u.el.min || 0) : Number(u.el.getAttribute("aria-valuemin") || 0);
+          const max = u.el.tagName === "INPUT" ? Number(u.el.max || 100) : Number(u.el.getAttribute("aria-valuemax") || 100);
+          await setSlider(u.el, ((u.value - min) / (max - min || 1)) * 100);
+        }
+      }
+      undo = null;
+      undoBtn.disabled = true;
+      msg.textContent = "Put back as it was before Fill (vocal gender stays as chosen; change it in Suno if needed).";
+      runCheck();
     };
-    document.body.append(host);
+
+    proot.querySelector(".report").onclick = () => {
+      const f = lastReport.found;
+      const mark = (k, label) => `${label} ${f[k] === undefined ? "–" : f[k] ? `found${typeof f[k] === "string" ? ` (${f[k]})` : ""}` : "NOT found"}`;
+      const text = [
+        `Band Blender extension ${VERSION} on ${location.hostname}${location.pathname}`,
+        [
+          mark("title", "Title"),
+          mark("style", "Style"),
+          mark("exclude", "Exclude"),
+          mark("lyrics", "Lyrics"),
+          mark("moreOptions", "More options"),
+          mark("instrumental", "Instrumental"),
+          mark("gender", "Vocal gender"),
+          mark("weirdness", "Weirdness"),
+          mark("styleInfluence", "Style Influence"),
+        ].join(" · "),
+        `Last fill: ${lastReport.fill || "not pressed yet"}`,
+        `Browser: ${navigator.userAgent.match(/(Edg|Chrome|Brave|Firefox)\/[\d.]+/g)?.join(" ") || "unknown"}`,
+      ].join("\n");
+      navigator.clipboard.writeText(text).then(() => {
+        msg.textContent = "Copied a short report (which of Suno's controls were found, no song text). Paste it into Send feedback on Band Blender.";
+      });
+    };
+
+    proot.querySelector(".x").onclick = () => {
+      chrome.storage.local.remove("pending");
+      panelHost.remove();
+    };
+    document.body.append(panelHost);
   }
 
   chrome.storage.local.get("pending", ({ pending }) => {
-    if (pending && Date.now() - pending.at < FRESH_MS) panel(pending);
+    if (!pending) return;
+    if (Date.now() - pending.at < FRESH_MS) panel(pending);
+    else chrome.storage.local.remove("pending"); // older than 2 hours: delete it
   });
   chrome.storage.onChanged.addListener((changes) => {
     const next = changes.pending && changes.pending.newValue;

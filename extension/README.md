@@ -5,9 +5,16 @@ Sheet, and a live check on Suno's Create page.
 
 ## What it does
 
-- **Send and fill.** Press Send in the Export Sheet. Suno's Create page opens with a small panel;
-  press **Fill Suno's boxes** and the title, style, exclude list and lyrics go in. Gemini and
-  ElevenLabs Music get the same panel for their prompt box.
+- **Send and fill.** Press Send to Suno on the Suno Sheet, Lyric Forge or Band Blender. Suno's
+  Create page opens with a small panel; press **Fill Suno** and the title, style, exclude list and
+  lyrics go in. Gemini and ElevenLabs Music get the same panel for their prompt box.
+- **1.1 Fill panel.** Pick which take to fill (Main, Darker, Bigger drop…), untick anything to leave
+  as it is in Suno, and **Undo** puts the boxes back. It also sets Instrumental (on when the song has
+  sections but no sung lines), vocal gender and the Weirdness / Style Influence sliders, opening
+  "More options" when it has to. Anything it can't find or set is named: "Couldn't find …" /
+  "Please check …". **Report a problem** copies which of Suno's controls were found (no song text).
+- **Toolbar button.** Shows whether a song is waiting, with Open Suno, Open Band Blender, the guide
+  and Settings. No extra permissions.
 - **Live check on suno.com.** A small "Band Blender" badge (bottom left) checks the Style, Exclude
   and Lyrics boxes as you type: Suno's 1,000 / 1,000 / 5,000 character limits, artist names,
   contradictions, soft vocals with no placement, and a clean ending. Fixes change a box only when
@@ -17,13 +24,16 @@ Sheet, and a live check on Suno's Create page.
 
 - Runs only on Band Blender, suno.com, gemini.google.com and elevenlabs.io.
 - Never presses Create or Send, never reads your songs, library or account, and sends nothing to
-  any server. What you sent is kept in the browser for 2 hours, then ignored.
+  any server. What you sent is deleted from the browser's extension storage once you press Fill or
+  dismiss the panel, and anything older than 2 hours is deleted the next time Suno or the toolbar
+  button opens.
 - Suno's terms ban robots, scraping and data mining. This does none of those: it reads and types
   into boxes on your screen, on your click.
 
 ## Files
 
-- `manifest.json`, `bridge.js` (Band Blender page), `suno.js`, `engines.js`, `options.html/js`.
+- `manifest.json`, `bridge.js` (Band Blender page), `suno.js`, `engines.js`, `options.html/js`,
+  `popup.html/js` (toolbar button).
 - `live.js` is generated from `src/lib` (the same pre-flight checks the Export Sheet runs):
   `node scripts/build-extension.mjs`. Don't edit it by hand.
 

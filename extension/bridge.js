@@ -25,6 +25,19 @@
         artists: Array.isArray(p.artists) ? p.artists.filter((a) => typeof a === "string").slice(0, 3).map((a) => a.slice(0, 80)) : [],
         at: Date.now(),
       };
+      // 1.1: Suno's advanced options, the Instrumental switch, and alternate takes.
+      if (p.vocalGender === "male" || p.vocalGender === "female") pending.vocalGender = p.vocalGender;
+      for (const k of ["weirdness", "styleInfluence"]) {
+        if (typeof p[k] === "number" && Number.isFinite(p[k])) pending[k] = Math.round(Math.min(100, Math.max(0, p[k])));
+      }
+      if (typeof p.instrumental === "boolean") pending.instrumental = p.instrumental;
+      if (Array.isArray(p.takes) && p.takes.length > 1) {
+        pending.takes = p.takes
+          .filter((t) => t && typeof t.label === "string" && typeof t.style === "string")
+          .slice(0, 7)
+          .map((t) => ({ label: t.label.slice(0, 30), style: clean(t.style, MAX.style), exclude: clean(t.exclude, MAX.exclude) }));
+        pending.activeTake = Number.isInteger(p.activeTake) && p.activeTake >= 0 && p.activeTake < pending.takes.length ? p.activeTake : 0;
+      }
       chrome.storage.local.set({ pending }, () => {
         window.postMessage({ source: "bb-extension", type: "stored" }, location.origin);
       });

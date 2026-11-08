@@ -88,6 +88,7 @@
       }
       setValue(el, main.value);
       msg.textContent = "Filled. Check it, then send it yourself.";
+      chrome.storage.local.remove("pendingEngine"); // filled: delete the stored prompt
     };
     root.querySelector(".x").onclick = () => {
       chrome.storage.local.remove("pendingEngine");
@@ -97,6 +98,7 @@
   }
 
   const show = (p) => {
+    if (p && p.at && Date.now() - p.at >= FRESH_MS) chrome.storage.local.remove("pendingEngine"); // older than 2 hours
     if (p && p.engine === HERE && Array.isArray(p.fields) && p.fields.length && Date.now() - p.at < FRESH_MS) panel(p);
   };
   chrome.storage.local.get("pendingEngine", ({ pendingEngine }) => show(pendingEngine));

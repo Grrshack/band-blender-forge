@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Band Blender</title>
+<style>
+  body{margin:0;width:280px;font:13px/1.45 system-ui,-apple-system,sans-serif;background:#14141c;color:#eee}
+  .p{padding:14px}
+  h1{font-size:14px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:baseline}
+  h1 small{font-weight:400;color:#777;font-size:11px}
+  .status{background:#1d1d2a;border:1px solid #33334a;border-radius:8px;padding:8px 10px;margin-bottom:10px}
+  .status b{display:block;margin-bottom:2px}
+  .status .muted{color:#999;font-size:12px}
+  a.btn{display:block;text-align:center;text-decoration:none;border-radius:8px;padding:8px 10px;margin-top:6px;background:#26263a;color:#eee}
+  a.btn.main{background:#6d5cff;color:#fff;font-weight:600}
+  .links{display:flex;justify-content:space-between;margin-top:10px;font-size:12px}
+  .links a{color:#8f86ff;text-decoration:none;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="p">
+  <h1>Band Blender <small id="ver"></small></h1>
+  <div class="status" id="status"><b>Nothing waiting</b><span class="muted">Press Send to Suno on Band Blender's Suno Sheet, Lyric Forge or Band Blender page.</span></div>
+  <a class="btn main" id="open-suno" href="https://suno.com/create" target="_blank" rel="noopener">Open Suno</a>
+  <a class="btn" href="https://suno-blender.lovable.app/studio" target="_blank" rel="noopener">Open Band Blender</a>
+  <div class="links">
+    <a href="https://suno-blender.lovable.app/guides/send-to-suno-extension" target="_blank" rel="noopener">How it works</a>
+    <a id="settings">Settings</a>
+  </div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
