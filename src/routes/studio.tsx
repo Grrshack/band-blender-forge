@@ -27,6 +27,7 @@ import { SongPackCard } from "@/components/forge/SongPackButton";
 import { LabStudio } from "@/components/forge/LabStudio";
 import { SendToSuno } from "@/components/forge/SendToSuno";
 import { sunoPayloadFrom } from "@/lib/suno-payload";
+import { activeTakeLabel } from "@/lib/alt-takes";
 import { dropAlt } from "@/lib/prompt-craft";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
 import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
@@ -471,6 +472,7 @@ function Index() {
                           })
                         }
                         defaultTitle={state.blend.artists.filter((a) => a.trim()).slice(0, 2).join(" × ")}
+                        takeLabel={activeTakeLabel(state.blend.result)}
                       />
                     </Panel>
                   )}
