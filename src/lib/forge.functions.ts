@@ -47,6 +47,7 @@ const InputSchema = z.object({
     "masterSuggest",
     "intent",
     "albumPlan",
+    "alternates",
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),
@@ -504,7 +505,7 @@ export const runForge = createServerFn({ method: "POST" })
 
     // Lyrics tasks generate full song sections and need more room than a blend or critique.
     // A whole album plan (a Studio Brief per track) is the longest answer of all.
-    const initialTokens = data.task === "albumPlan" ? 7000 : ["lyrics", "regenSection"].includes(data.task) ? 4000 : 3000;
+    const initialTokens = data.task === "albumPlan" ? 7000 : data.task === "alternates" ? 5000 : ["lyrics", "regenSection"].includes(data.task) ? 4000 : 3000;
 
     const ask = async (text: string): Promise<Record<string, unknown>> => {
       try {

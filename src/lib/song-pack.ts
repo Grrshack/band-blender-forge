@@ -9,6 +9,7 @@ import { disclosureAnswers } from "@/lib/release-check";
 import { bpmFrom, clock, sectionTimes } from "@/lib/section-times";
 import { composeSunoLyrics, vocalString } from "@/lib/suno";
 import { buildZip, type ZipEntry } from "@/lib/zip";
+import { allTakes } from "@/lib/alt-takes";
 import { exportBrief, type DossierResult, type ForgeState } from "@/components/forge/types";
 
 export const packSlug = (name: string) =>
@@ -115,6 +116,15 @@ export function songPackFiles(name: string, state: ForgeState): Array<[string, s
   if (b?.styleAlt?.trim())
     add(`suno/style-${other}.txt`, b.styleAlt, `the same style as a ${other === "brief" ? "Studio Brief" : "tag list"}`);
   add("suno/exclude.txt", b?.excludeStyles ?? "", "paste into Exclude Styles");
+  const { takes, active } = allTakes(b);
+  takes.forEach((t, i) => {
+    if (i === active) return;
+    add(
+      `suno/takes/${packSlug(t.label)}.txt`,
+      [`${t.label} take${t.angle ? `: ${t.angle}` : ""}`, "", "Style:", t.styleTag, "", "Exclude styles:", t.excludeStyles].join("\n"),
+      `the ${t.label} alternate take (style and exclude)`,
+    );
+  });
   add("suno/lyrics.txt", sung, "paste into Lyrics (clean ending included when it fits)");
   const vocal = vocalString(b?.vocalPrompt);
   if (vocal) add("suno/vocal.txt", vocal, "the vocal description on its own");

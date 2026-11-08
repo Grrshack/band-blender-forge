@@ -158,6 +158,23 @@ Use standard tags: [Intro] [Verse 1] [Pre-Chorus] [Chorus] [Verse 2] [Bridge] as
 ${LYRIC_NOTATION_RULE}
 Length limit: Suno's lyrics box holds 5,000 characters including tags and cues. Keep the whole song (every tag, cue and line) under ${LYRIC_CHAR_BUDGET} characters; if the plan asks for more, shorten lines rather than drop sections.`;
     }
+    case "alternates": {
+      const dirs = Array.isArray(payload["directions"]) ? (payload["directions"] as Array<{ label?: string; ask?: string }>) : [];
+      const spec = (k: (typeof BRIEF_KEYS)[number]) => BRIEF_PART_SPECS[k];
+      return `Write alternate takes of the same song's Suno style, one per direction below, so the user can generate takes that genuinely differ and keep the best one.
+Input: ${p}
+"style" is the current style (Studio Brief or tag list), "excludeStyles" its current exclusions.
+Directions, in this order: ${dirs.map((d, i) => `${i + 1}. "${d.label ?? ""}": ${d.ask ?? ""}`).join(" ")}
+For each direction: change what it asks for so the difference is audible in the first seconds, and keep everything else (the genre, the voice, the core instruments, the subject) so it is clearly the same song. Don't just reorder or rename tags.
+Write every take in two versions:
+- "styleTag": a Suno tag list. ${styleRule("tags", STYLE_TARGET)}
+- "styleBriefParts": a Studio Brief in six parts: sound (${spec("sound")}), pulse (${spec("pulse")}), players (${spec("players")}), voice (${spec("voice")}), arc (${spec("arc")}), finish (${spec("finish")}). Each part one natural sentence, never starting with the part's name; all six together under ${STYLE_TARGET} characters.
+No negatives in styleTag or the brief; those go in "excludeStyles": 3-8 comma-separated traits, starting from the current ones and adjusted for the direction (a softer take might keep out "heavy distortion").
+${VOCAL_PLACEMENT_RULE}
+HARD RULE: no real artist, band, producer, label or song names anywhere.
+Return JSON exactly:
+{"alternates":[{"label":"the direction's name","angle":"one sentence on what changed and what stayed","styleTag":"","styleBriefParts":{"sound":"","pulse":"","players":"","voice":"","arc":"","finish":""},"excludeStyles":""}]}`;
+    }
     case "albumPlan": {
       const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
       const spec = (k: (typeof BRIEF_KEYS)[number]) => BRIEF_PART_SPECS[k];

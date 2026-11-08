@@ -147,6 +147,18 @@ function answer(task: string, payload: Json): Json {
       if (payload["convertTo"] === "tags") return { styleTag: TAGS };
       return { genre: "Dark synthpop", styleTag: `${TAGS}, warmer`, excludeStyles: "autotune", changes: ["Test answer: made it warmer."] };
     }
+    case "alternates": {
+      const dirs = Array.isArray(payload["directions"]) ? (payload["directions"] as Array<{ label?: string }>) : [{ label: "Darker" }];
+      return {
+        alternates: dirs.slice(0, 3).map((d, i) => ({
+          label: d.label ?? `Take ${i + 2}`,
+          angle: `Test answer: the ${String(d.label ?? "").toLowerCase()} take; same voice and hook.`,
+          styleTag: `${TAGS}, ${String(d.label ?? "").toLowerCase()} take`,
+          styleBriefParts: { ...PARTS, sound: `Dark synthpop, ${String(d.label ?? "").toLowerCase()} and cinematic.` },
+          excludeStyles: "autotune, trap hi-hats",
+        })),
+      };
+    }
     case "albumPlan": {
       const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
       const roles = ["Opener", "Single", "Emotional core", "Peak", "Closer"];

@@ -317,6 +317,12 @@ async function runTask(task: string, payload: Json, deps: PipelineDeps): Promise
       return out;
     }
 
+    case "alternates": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const wanted = Array.isArray(payload["directions"]) ? Math.min(3, (payload["directions"] as unknown[]).length) : 3;
+      return cleanAlternates(await deps.ask(base), names, wanted || 3);
+    }
+
     case "albumPlan": {
       const names = strings(payload["artists"]).slice(0, 3);
       const count = Math.min(12, Math.max(3, Number(payload["trackCount"]) || 5));
@@ -353,6 +359,33 @@ function findAlbumLeaks(r: Json, names: string[]): string[] {
     ...tracks.flatMap((t) => ALBUM_TEXT_FIELDS.map((k) => String(t[k] ?? ""))),
   ];
   return [...new Set(texts.flatMap((t) => findStyleLeaks(t, names)))];
+}
+
+/**
+ * Makes alternate takes safe to use: at most `count`, each with a tag list within Suno's limit,
+ * a Studio Brief whose six parts always fit the box, an exclude list, and no artist names.
+ */
+export function cleanAlternates(raw: Json, names: string[], count: number): Json {
+  const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const scrub = (v: unknown, max: number) => fitToLimit(scrubArtistNames(text(v), names).text.trim(), max);
+  const alternates = (Array.isArray(raw["alternates"]) ? (raw["alternates"] as unknown[]) : [])
+    .map(obj)
+    .slice(0, count)
+    .map((a) => {
+      const parts = cleanBriefParts(obj(a["styleBriefParts"]));
+      const capped: BriefParts = {};
+      if (parts) for (const k of BRIEF_KEYS) if (parts[k]) capped[k] = scrub(parts[k], BRIEF_PART_MAX[k]);
+      const hasBrief = parts !== null && Object.keys(capped).length >= 4;
+      return {
+        label: scrub(a["label"], 30),
+        angle: scrub(a["angle"], 200),
+        styleTag: scrub(a["styleTag"], SUNO_LIMITS.style),
+        ...(hasBrief ? { styleBriefParts: capped, styleBrief: joinBrief(capped) } : {}),
+        excludeStyles: scrub(a["excludeStyles"], SUNO_LIMITS.exclude),
+      };
+    })
+    .filter((a) => a.styleTag || a.styleBrief);
+  return { alternates };
 }
 
 /** Longest each Studio Brief part may be, so all six always fit Suno's 1,000-character box. */

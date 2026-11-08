@@ -18,7 +18,7 @@ export const GUIDES: Guide[] = [
     slug: "send-to-suno-extension",
     title: "Send to Suno: the free Chrome extension, step by step",
     description:
-      "Put your title, style, exclude list and lyrics into Suno's Create page in one click. How to add it, how to send a song, and what to do if it doesn't show up.",
+      "Put your title, style, exclude list, lyrics and Suno settings into Suno's Create page in one click, and flip between alternate takes. How to add it, how to send a song, and what to do if it doesn't show up.",
     sections: [
       {
         heading: "What it does",
@@ -41,7 +41,7 @@ export const GUIDES: Guide[] = [
         body: [
           "Finish your style and lyrics, then press Send to Suno. It's on the Suno Sheet, next to Copy for Suno in Lyric Forge, and with the result in the Band Blender. The Suno Sheet also shows \"Extension connected\" when everything is ready.",
           "Suno's Create page opens in a new tab. Switch it to Custom mode if it isn't already, so the Style and Lyrics boxes show.",
-          "Press Fill on the small Band Blender panel. Check the boxes, then press Create. Sending another song replaces the one waiting.",
+          "Press Fill on the small Band Blender panel. Check the boxes, then press Create. Sending another song replaces the one waiting, and a song is deleted from the extension once you Fill it.",
         ],
       },
       {
@@ -56,12 +56,17 @@ export const GUIDES: Guide[] = [
         body: [
           "A live check on Suno's Create page: a small badge checks the Style, Exclude and Lyrics boxes as you type (character limits, artist names Suno blocks, contradictions, soft vocals that get buried, a missing clean ending). Its Fix buttons change a box only when you press them, and you can turn the check off in the extension's options.",
           "Send to Gemini and ElevenLabs Music: the same panel fills their prompt box from the Suno Sheet's Gemini / Flow and ElevenLabs tabs.",
+          "Alternate takes: make a Darker, Heavier or Bigger drop version of your style (Make takes, under the style in the Band Blender or on the Suno Sheet). Every take goes with Send to Suno, and the panel has a Take menu, so you can Fill one, press Create, then pick another and Fill again.",
+          "Pick what to fill: untick any row on the panel (say Lyrics, when you've edited them in Suno) and Fill leaves that box alone. Undo puts the boxes back the way they were before your last Fill.",
+          "Suno's advanced options: set vocal gender, Weirdness and Style Influence on the Suno Sheet (Suno's advanced options), and Fill sets them in Suno's More options. A song with sections but no sung lines switches Instrumental on; one with lyrics switches it off.",
+          "If Suno has moved something, the panel says what it couldn't find or set, so you can set it yourself. Press Report a problem to copy a short note of which controls it found (no song text) and paste it into Send feedback.",
+          "The toolbar button (pin it from the puzzle-piece icon) shows whether a song is waiting, with buttons for Suno, Band Blender, this guide and Settings.",
         ],
       },
       {
         heading: "Privacy",
         body: [
-          "The extension runs only on Band Blender and on the music sites it fills. What you send waits in your browser's extension storage until you press Fill or close the panel, then it's deleted. It has no access to your accounts, and nothing is sent to us or anyone else. The full details are on Band Blender's privacy page.",
+          "The extension runs only on Band Blender and on the music sites it fills. What you send waits in your browser's extension storage until you press Fill or close the panel, then it's deleted (and anything left over is deleted after 2 hours). It has no access to your accounts, and nothing is sent to us or anyone else. The full details are on Band Blender's privacy page.",
         ],
       },
     ],
