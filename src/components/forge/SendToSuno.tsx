@@ -5,7 +5,22 @@ import { Button } from "@/components/ui/button";
 import { EXTENSION_GUIDE_PATH, EXTENSION_STORE_URL } from "@/lib/brand";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export type SunoPayload = { title: string; style: string; exclude: string; lyrics: string; artists?: string[] };
+export type SunoPayload = {
+  title: string;
+  style: string;
+  exclude: string;
+  lyrics: string;
+  artists?: string[];
+  /** Extension 1.1+: Suno's advanced options; missing ones are left as Suno has them. */
+  vocalGender?: "male" | "female" | undefined;
+  weirdness?: number | undefined;
+  styleInfluence?: number | undefined;
+  /** true = turn Instrumental on, false = make sure it's off, missing = leave it. */
+  instrumental?: boolean | undefined;
+  /** Extension 1.1+: every alternate take, so the panel on Suno can switch between them. */
+  takes?: Array<{ label: string; style: string; exclude: string }> | undefined;
+  activeTake?: number | undefined;
+};
 
 /** True when the Band Blender browser extension is installed (it marks the page). */
 export function hasSunoExtension(): boolean {

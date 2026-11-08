@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { SoundProfiles } from "./SoundProfiles";
-import { StyleVariants } from "./StyleVariants";
+import { AlternateMaker } from "./AlternateTakes";
 import type { BlendSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { track } from "@/lib/stats";
@@ -155,11 +155,11 @@ export function TakeCheck({
               onClick={() => setShowVariants((v) => !v)}
               className="gap-1.5 text-xs"
             >
-              {showVariants ? "Hide" : "Try"} three different versions of the prompt
+              {showVariants ? "Hide" : "Try"} other takes of the prompt (darker, heavier, a bigger drop…)
             </Button>
             {showVariants ? (
               <div className="mt-3">
-                <StyleVariants blend={blend} onBlend={onBlend} />
+                <AlternateMaker blend={blend} onBlend={onBlend} />
               </div>
             ) : null}
           </div>

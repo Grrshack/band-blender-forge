@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { activeFormat, arrangeFormats, briefMatches, dropAlt } from "@/lib/prompt-craft";
+import { AlternateMaker, TakeTabs } from "./AlternateTakes";
 import { BriefReadout } from "./BriefReadout";
 import { BriefSplitButton, StyleFormatSwitch } from "./StyleFormatSwitch";
 import { track } from "@/lib/stats";
@@ -561,6 +562,9 @@ export function BandBlender({
                 </div>
               ) : null}
               <div className="mt-1">
+                <div className="mb-2">
+                  <TakeTabs blend={value} onBlend={onChange} />
+                </div>
                 <StyleFormatSwitch
                   result={result}
                   sunoVersion={sunoVersion}
@@ -586,6 +590,9 @@ export function BandBlender({
                   <ReadoutField label="Exclude Styles" value={result.excludeStyles} mono />
                 </div>
               ) : null}
+              <div className="mt-3">
+                <AlternateMaker blend={value} onBlend={onChange} />
+              </div>
               {result.voiceTags ? (
                 <div className="mt-3">
                   <ReadoutField

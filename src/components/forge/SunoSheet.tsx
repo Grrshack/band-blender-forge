@@ -8,7 +8,9 @@ import { StyleFormatSwitch } from "./StyleFormatSwitch";
 import { SendToEngine, SendToSuno } from "./SendToSuno";
 import { ShareExport } from "./ShareExport";
 import { SoundProfiles } from "./SoundProfiles";
-import { StyleVariants } from "./StyleVariants";
+import { AlternateMaker, TakeTabs } from "./AlternateTakes";
+import { SunoOptionsCard } from "./SunoOptionsCard";
+import { sunoExtras } from "@/lib/suno-payload";
 import type { BlendResult, BlendSlice, LyricSlice } from "./types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,7 +216,10 @@ export function SunoSheet({
           <CopyButton value={everything} label="Copy all" />
           {engine === "suno" ? (
             <>
-              <SendToSuno payload={{ title: lyrics.title, style, exclude, lyrics: lyricText, artists: names }} showStatus />
+              <SendToSuno
+                payload={{ title: lyrics.title, style, exclude, lyrics: lyricText, artists: names, ...sunoExtras(blend, lyrics.sections) }}
+                showStatus
+              />
               <SendToChat song={{ title: lyrics.title, style, exclude, lyrics: lyricText }} disabled={!style.trim()} />
             </>
           ) : (
@@ -307,6 +312,7 @@ export function SunoSheet({
           hint="Doesn't change how the song sounds."
         />
 
+        <TakeTabs blend={blend} onBlend={onBlend} />
         {result?.styleTag ? (
           <StyleFormatSwitch
             result={result}
@@ -348,7 +354,7 @@ export function SunoSheet({
 
         <ClauseChips style={style} onAdd={applyClause} />
 
-        <StyleVariants blend={blend} onBlend={onBlend} />
+        <AlternateMaker blend={blend} onBlend={onBlend} />
 
         <SunoBox
           label="Exclude styles"
@@ -409,6 +415,7 @@ export function SunoSheet({
           }
         />
 
+        <SunoOptionsCard blend={blend} onBlend={onBlend} />
         <SunoSettingsCard />
 
         <ShareExport

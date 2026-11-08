@@ -56,6 +56,10 @@ export type BlendResult = {
   /** Potential contradictions in the style tag the user should know about. */
   contradictions?: string[];
   variants?: StyleVariant[];
+  /** Alternate takes (Main plus darker, heavier…), shown as tabs; the active one fills the fields above. */
+  altTakes?: import("@/lib/alt-takes").AltTake[] | undefined;
+  /** Which alternate take is showing ("main" when missing). */
+  activeTake?: string | undefined;
   /** Changes made by the last Style Chat refinement — persisted so they survive tab switches. */
   refineChanges?: string[];
 };
@@ -102,7 +106,18 @@ export type FixSlice = {
   undo: { styleTag: string; excludeStyles: string } | null;
 };
 
+/** Suno's advanced options to set when the extension fills the page. Missing = leave Suno's own. */
+export type SunoOptions = {
+  vocalGender?: "male" | "female" | undefined;
+  /** 0-100 */
+  weirdness?: number | undefined;
+  /** 0-100 */
+  styleInfluence?: number | undefined;
+};
+
 export type BlendSlice = {
+  /** Suno's advanced options for Send to Suno (vocal gender, Weirdness, Style Influence). */
+  sunoOptions?: SunoOptions | undefined;
   artists: string[];
   sliders: { energy: number; complexity: number; brightness: number };
   result: BlendResult | null;

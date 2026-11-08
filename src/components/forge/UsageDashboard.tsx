@@ -20,6 +20,7 @@ const TASK_LABELS: Record<string, string> = {
   masterSuggest: "AI Suggest",
   refine: "Refine Blend",
   albumPlan: "Album Producer",
+  alternates: "Alternate takes",
 };
 
 const TASK_COLORS: Record<string, string> = {

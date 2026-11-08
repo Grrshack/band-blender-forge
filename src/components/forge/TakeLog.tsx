@@ -28,6 +28,7 @@ export function TakeLog({
   onRestore,
   onShareRecipe,
   defaultTitle = "",
+  takeLabel,
 }: {
   /** Shares a kept take (5 stars, with a Suno link) to the community as a recipe. */
   onShareRecipe?: (take: Take, title: string) => Promise<void>;
@@ -37,6 +38,8 @@ export function TakeLog({
   style: string;
   exclude: string;
   onRestore: (style: string, exclude: string) => void;
+  /** The open alternate take ("Darker"…), noted on the logged take. */
+  takeLabel?: string | undefined;
 }) {
   const [rating, setRating] = useState<Take["rating"]>(3);
   const [note, setNote] = useState("");
@@ -69,7 +72,8 @@ export function TakeLog({
   const log = () => {
     if (!style.trim()) return;
     if (linkBad) return;
-    onTakes([...takes, newTake(style, exclude, rating, note, new Date(), link)]);
+    const noted = takeLabel ? `[${takeLabel} take] ${note}`.trim() : note;
+    onTakes([...takes, newTake(style, exclude, rating, noted, new Date(), link)]);
     track("take_logged", String(rating));
     setNote("");
     setLink("");
