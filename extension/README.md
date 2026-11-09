@@ -13,6 +13,10 @@ Sheet, and a live check on Suno's Create page.
   sections but no sung lines), vocal gender and the Weirdness / Style Influence sliders, opening
   "More options" when it has to. Anything it can't find or set is named: "Couldn't find …" /
   "Please check …". **Report a problem** copies which of Suno's controls were found (no song text).
+- **Reuses your Suno tab (1.1).** Send to Suno switches to a Suno Create tab you already have open
+  instead of opening another (background.js; Suno tabs say hello, only their tab ids are kept for
+  the browser session). A Suno tab on another page is left alone. Works with Suno's July 2026
+  lyrics editor too (found by its "Lyrics" label, filled the way a paste arrives if typing is refused).
 - **Toolbar button.** Shows whether a song is waiting, with Open Suno, Open Band Blender, the guide
   and Settings. No extra permissions.
 - **Live check on suno.com.** A small "Band Blender" badge (bottom left) checks the Style, Exclude
@@ -33,7 +37,7 @@ Sheet, and a live check on Suno's Create page.
 ## Files
 
 - `manifest.json`, `bridge.js` (Band Blender page), `suno.js`, `engines.js`, `options.html/js`,
-  `popup.html/js` (toolbar button).
+  `popup.html/js` (toolbar button), `background.js` (switches to an open Suno tab).
 - `live.js` is generated from `src/lib` (the same pre-flight checks the Export Sheet runs):
   `node scripts/build-extension.mjs`. Don't edit it by hand.
 

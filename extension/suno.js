@@ -23,17 +23,49 @@
   let root = null;
   let lastKey = "";
 
-  const describe = (el) =>
-    [el.getAttribute("placeholder"), el.getAttribute("aria-label"), el.getAttribute("name"), el.getAttribute("data-testid"), el.id]
+  const describe = (el) => {
+    const by = el.getAttribute("aria-labelledby");
+    const labelled = by ? by.split(/\s+/).map((id) => document.getElementById(id)?.textContent || "").join(" ") : "";
+    const inner = el.isContentEditable ? el.querySelector("[data-placeholder]")?.getAttribute("data-placeholder") : "";
+    return [el.getAttribute("placeholder"), el.getAttribute("aria-label"), el.getAttribute("aria-placeholder"), el.getAttribute("data-placeholder"), inner, labelled, el.getAttribute("name"), el.getAttribute("data-testid"), el.id]
       .filter(Boolean)
       .join(" ");
+  };
 
-  function findField(f) {
-    const els = document.querySelectorAll('textarea, input[type="text"], input:not([type]), [contenteditable="true"]');
+  // Plain boxes and rich editors (Suno rebuilt its lyrics editor in July 2026).
+  const EDITABLE = 'textarea, input[type="text"], input:not([type]), [contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"], [role="textbox"]';
+  const LABELS = { title: /^(song )?title( \(optional\))?$/i, style: /^(styles?|style of music)$/i, exclude: /^exclude( styles)?$/i, lyrics: /^lyrics$/i };
+  const foundBy = {};
+
+  function editables() {
+    const out = [];
+    for (const el of document.querySelectorAll(EDITABLE)) {
+      if (el.closest("#bb-suno-panel-host") || el.closest("#bb-live-host") || el.offsetParent === null) continue;
+      if (out.some((o) => o.contains(el))) continue; // inside an editor already listed
+      out.push(el);
+    }
+    return out;
+  }
+
+  function findField(f, guess = false) {
+    const els = editables();
     for (const el of els) {
-      if (el.closest("#bb-suno-panel-host") || el.closest("#bb-live-host")) continue;
       const d = describe(el);
-      if (d && f.match.test(d) && !f.avoid.test(d) && el.offsetParent !== null) return el;
+      if (d && f.match.test(d) && !f.avoid.test(d)) return ((foundBy[f.key] = "attribute"), el);
+    }
+    // A label next to the box ("Lyrics") when the box itself has no placeholder or name.
+    const label = typeof findLabel === "function" && LABELS[f.key] ? findLabel(LABELS[f.key]) : null;
+    if (label) {
+      const roots = near(label, EDITABLE).map((el) => els.find((o) => o === el || o.contains(el))).filter(Boolean);
+      if (roots[0]) return ((foundBy[f.key] = "label"), roots[0]);
+    }
+    // Lyrics only, on Fill: the tallest multi-line box that isn't the title, style or exclude box.
+    if (guess && f.key === "lyrics") {
+      const taken = FIELDS.filter((x) => x.key !== "lyrics").map((x) => findField(x)).filter(Boolean);
+      const tall = els
+        .filter((el) => !taken.includes(el) && el.tagName !== "INPUT" && el.getBoundingClientRect().height >= 60)
+        .sort((a, b) => b.getBoundingClientRect().height - a.getBoundingClientRect().height)[0];
+      if (tall) return ((foundBy[f.key] = "size"), tall);
     }
     return null;
   }
@@ -41,11 +73,26 @@
   const readField = (el) => (el ? (el.isContentEditable ? el.innerText : el.value) || "" : "");
 
   // React-controlled inputs ignore a plain .value change; use the native setter and fire events.
+  const squash = (t) => (t || "").replace(/\s+/g, " ").trim();
+  /** True when the box now holds the text (rich editors may reformat line breaks). */
+  const holds = (el, value) => {
+    const want = squash(value);
+    const got = squash(readField(el));
+    return want === "" ? got === "" : got.includes(want.slice(0, 40)) && got.length >= want.length * 0.8;
+  };
+
   function setValue(el, value) {
     el.focus();
     if (el.isContentEditable) {
       document.execCommand("selectAll", false);
       if (!document.execCommand("insertText", false, value)) el.textContent = value;
+      if (!holds(el, value)) {
+        // Some editors only take text the way a paste arrives.
+        document.execCommand("selectAll", false);
+        const dt = new DataTransfer();
+        dt.setData("text/plain", value);
+        el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      }
     } else {
       const proto = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
       Object.getOwnPropertyDescriptor(proto, "value").set.call(el, value);
@@ -306,14 +353,16 @@
       if (hidden && chosen.some((it) => it.kind !== "text" || it.key === "exclude")) found.moreOptions = await openMoreOptions();
       for (const it of chosen) {
         if (it.kind === "text") {
-          const el = findField(byKey(it.key));
-          found[it.key] = Boolean(el);
+          const el = findField(byKey(it.key), true);
+          found[it.key] = el ? `${foundBy[it.key]}, ${el.isContentEditable ? "editor" : el.tagName.toLowerCase()}` : false;
           if (!el) {
             missed.push(it.label);
             continue;
           }
           snap.push({ kind: "text", el, value: readField(el) });
           setValue(el, it.value);
+          await sleep(60);
+          if (!holds(el, it.value)) check.push(`${it.label} (press its Copy button and paste it in)`);
         } else if (it.kind === "instrumental") {
           const el = findInstrumental();
           found.instrumental = el ? el.getAttribute("role") || el.tagName.toLowerCase() : false;
@@ -400,6 +449,16 @@
           mark("styleInfluence", "Style Influence"),
         ].join(" · "),
         `Last fill: ${lastReport.fill || "not pressed yet"}`,
+        `Boxes on the page: ${editables()
+          .slice(0, 8)
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            const kind = el.isContentEditable ? "editor" : el.tagName.toLowerCase();
+            const name = (describe(el) || "no name").replace(/\s+/g, " ").slice(0, 50);
+            return `${kind}[${name}] ${Math.round(r.width)}x${Math.round(r.height)}`;
+          })
+          .join(" · ") || "none"}`,
+        `Custom mode: ${findLabel(/^lyrics$/i) || findField(byKey("lyrics")) ? "looks on" : "lyrics box not seen (Simple mode?)"}`,
         `Browser: ${navigator.userAgent.match(/(Edg|Chrome|Brave|Firefox)\/[\d.]+/g)?.join(" ") || "unknown"}`,
       ].join("\n");
       navigator.clipboard.writeText(text).then(() => {
@@ -419,6 +478,12 @@
     if (Date.now() - pending.at < FRESH_MS) panel(pending);
     else chrome.storage.local.remove("pending"); // older than 2 hours: delete it
   });
+  // Lets Send to Suno switch to this tab instead of opening another (only the page path is shared).
+  chrome.runtime.sendMessage({ type: "suno-tab" }).catch(() => {});
+  chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+    if (msg && msg.type === "where") reply({ path: location.pathname });
+  });
+
   chrome.storage.onChanged.addListener((changes) => {
     const next = changes.pending && changes.pending.newValue;
     if (next) {

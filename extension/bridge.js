@@ -40,6 +40,11 @@
       }
       chrome.storage.local.set({ pending }, () => {
         window.postMessage({ source: "bb-extension", type: "stored" }, location.origin);
+        // 1.1: the site asks us to open Suno, so an open Suno Create tab is reused instead of a new one.
+        if (msg.openSuno) {
+          const done = (how) => window.postMessage({ source: "bb-extension", type: "suno-opened", how }, location.origin);
+          chrome.runtime.sendMessage({ type: "open-suno" }).then((r) => done((r && r.how) || "failed"), () => done("failed"));
+        }
       });
     }
 
