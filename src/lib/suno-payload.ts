@@ -46,3 +46,14 @@ export function sunoExtras(blend: BlendSlice, sections: Section[]): Partial<Suno
       : {}),
   };
 }
+
+/** True when the extension version v is at least min ("1.10.0" > "1.2.0"); null = not installed. */
+export const versionAtLeast = (v: string | null, min: string) => {
+  if (!v) return false;
+  const a = v.split(".").map(Number);
+  const b = min.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return true;
+};

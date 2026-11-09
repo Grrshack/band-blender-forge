@@ -40,7 +40,7 @@ export const GUIDES: Guide[] = [
         heading: "Send a song",
         body: [
           "Finish your style and lyrics, then press Send to Suno. It's on the Suno Sheet, next to Copy for Suno in Lyric Forge, and with the result in the Band Blender. The Suno Sheet also shows \"Extension connected\" when everything is ready.",
-          "Suno's Create page opens in a new tab. Switch it to Custom mode if it isn't already, so the Style and Lyrics boxes show.",
+          "Suno's Create page opens in a new tab, or, with version 1.1, the extension switches to a Create tab you already have open. Switch it to Custom mode if it isn't already, so the Style and Lyrics boxes show.",
           "Press Fill on the small Band Blender panel. Check the boxes, then press Create. Sending another song replaces the one waiting, and a song is deleted from the extension once you Fill it.",
         ],
       },
@@ -49,6 +49,7 @@ export const GUIDES: Guide[] = [
         body: [
           "Band Blender says the extension isn't there: reload the Band Blender page, check the extension is switched on (open chrome://extensions), and remember extensions are off in Incognito or private windows unless you allow them.",
           "No panel on Suno: reload Suno's Create page and switch to Custom mode. If Suno has changed its page and a box doesn't fill, use the Copy buttons on the Suno Sheet and tell us with Send feedback so we can update the extension.",
+          "Lyrics didn't go in: make sure Suno is in Custom mode (Simple mode has no lyrics box). Version 1.1 also works with Suno's newer lyrics editor and says \"Please check Lyrics\" if they didn't take; press Copy on the Lyrics row and paste them, then press Report a problem and send us the note.",
         ],
       },
       {
