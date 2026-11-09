@@ -47,8 +47,12 @@
     return out;
   }
 
+  const multiline = (el) => el.tagName !== "INPUT" && el.getBoundingClientRect().height >= 60;
+  const tallest = (list) => list.slice().sort((a, b) => b.getBoundingClientRect().height - a.getBoundingClientRect().height)[0];
+
   function findField(f, guess = false) {
     const els = editables();
+    if (f.key === "lyrics") return findLyrics(f, els, guess);
     for (const el of els) {
       const d = describe(el);
       if (d && f.match.test(d) && !f.avoid.test(d)) return ((foundBy[f.key] = "attribute"), el);
@@ -59,15 +63,50 @@
       const roots = near(label, EDITABLE).map((el) => els.find((o) => o === el || o.contains(el))).filter(Boolean);
       if (roots[0]) return ((foundBy[f.key] = "label"), roots[0]);
     }
-    // Lyrics only, on Fill: the tallest multi-line box that isn't the title, style or exclude box.
-    if (guess && f.key === "lyrics") {
-      const taken = FIELDS.filter((x) => x.key !== "lyrics").map((x) => findField(x)).filter(Boolean);
-      const tall = els
-        .filter((el) => !taken.includes(el) && el.tagName !== "INPUT" && el.getBoundingClientRect().height >= 60)
-        .sort((a, b) => b.getBoundingClientRect().height - a.getBoundingClientRect().height)[0];
-      if (tall) return ((foundBy[f.key] = "size"), tall);
-    }
     return null;
+  }
+
+  /**
+   * The lyrics box. Suno's Advanced mode can show other small boxes that mention lyrics (an AI
+   * lyrics prompt, say), so a big multi-line box wins over a one-line one, in this order:
+   * named "lyrics" → next to a "Lyrics" heading → (on Fill) the tallest box that isn't title,
+   * style or exclude → a one-line box named "lyrics" as a last resort.
+   */
+  function findLyrics(f, els, guess) {
+    const named = els.filter((el) => {
+      const d = describe(el);
+      return d && f.match.test(d) && !f.avoid.test(d);
+    });
+    const bigNamed = tallest(named.filter(multiline));
+    if (bigNamed) return ((foundBy.lyrics = "attribute"), bigNamed);
+    const label = findLabel(LABELS.lyrics);
+    if (label) {
+      const roots = near(label, EDITABLE).map((el) => els.find((o) => o === el || o.contains(el))).filter(Boolean);
+      const big = tallest(roots.filter(multiline));
+      if (big) return ((foundBy.lyrics = "label"), big);
+    }
+    if (guess) {
+      const taken = FIELDS.filter((x) => x.key !== "lyrics").map((x) => findField(x)).filter(Boolean);
+      const tall = tallest(els.filter((el) => !taken.includes(el) && !named.includes(el) && multiline(el)));
+      if (tall) return ((foundBy.lyrics = "size"), tall);
+    }
+    if (named[0]) return ((foundBy.lyrics = "attribute, one line"), named[0]);
+    return null;
+  }
+
+  /** A second way in, for editors that undo typed text a moment later: hand it over like a paste. */
+  function pasteInto(el, value) {
+    el.focus();
+    if (el.isContentEditable) {
+      document.execCommand("selectAll", false);
+      const dt = new DataTransfer();
+      dt.setData("text/plain", value);
+      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    } else {
+      el.select?.();
+      if (!document.execCommand("insertText", false, value)) setValue(el, value);
+    }
+    el.blur();
   }
 
   const readField = (el) => (el ? (el.isContentEditable ? el.innerText : el.value) || "" : "");
@@ -348,6 +387,7 @@
       const check = [];
       const snap = [];
       const found = {};
+      const typed = [];
       // Only press "More options" when its controls aren't showing, so an open section isn't closed.
       const hidden = !findField(byKey("exclude")) && !findLabel(/^weirdness|^vocal gender$/i);
       if (hidden && chosen.some((it) => it.kind !== "text" || it.key === "exclude")) found.moreOptions = await openMoreOptions();
@@ -361,8 +401,7 @@
           }
           snap.push({ kind: "text", el, value: readField(el) });
           setValue(el, it.value);
-          await sleep(60);
-          if (!holds(el, it.value)) check.push(`${it.label} (press its Copy button and paste it in)`);
+          typed.push({ el, it });
         } else if (it.kind === "instrumental") {
           const el = findInstrumental();
           found.instrumental = el ? el.getAttribute("role") || el.tagName.toLowerCase() : false;
@@ -403,12 +442,21 @@
           if (!ok) check.push(`${it.label} (set it to ${it.value}%)`);
         }
       }
+      // Some editors accept text and then quietly undo it, so look again a moment later.
+      await sleep(450);
+      for (const { el, it } of typed) {
+        if (holds(el, it.value)) continue;
+        pasteInto(el, it.value);
+        await sleep(350);
+        if (!holds(el, it.value)) check.push(`${it.label} (it didn't stay in; press its Copy button and paste it in)`);
+        found[it.key] += holds(el, it.value) ? ", took a paste" : ", didn't stay";
+      }
       undo = snap;
       undoBtn.disabled = !snap.length;
       // Filled: delete the stored song. This panel keeps it in memory, so you can still switch takes and Fill again.
       chrome.storage.local.remove("pending");
       const parts = [];
-      if (missed.length) parts.push(`Couldn't find: ${missed.join(", ")}. Turn on Custom mode and open "More options", then press Fill again, or set them yourself.`);
+      if (missed.length) parts.push(`Couldn't find: ${missed.join(", ")}. Switch Suno to Advanced (Custom) mode and open "More options", then press Fill again, or set them yourself.`);
       if (check.length) parts.push(`Please check ${check.join(", ")}.`);
       msg.textContent = parts.length ? parts.join(" ") : "Filled. Check the boxes, then press Create.";
       lastReport = { found, fill: msg.textContent };
@@ -458,7 +506,7 @@
             return `${kind}[${name}] ${Math.round(r.width)}x${Math.round(r.height)}`;
           })
           .join(" · ") || "none"}`,
-        `Custom mode: ${findLabel(/^lyrics$/i) || findField(byKey("lyrics")) ? "looks on" : "lyrics box not seen (Simple mode?)"}`,
+        `Advanced mode: ${findLabel(/^lyrics$/i) || findField(byKey("lyrics")) ? "looks on" : "lyrics box not seen (Simple mode?)"}`,
         `Browser: ${navigator.userAgent.match(/(Edg|Chrome|Brave|Firefox)\/[\d.]+/g)?.join(" ") || "unknown"}`,
       ].join("\n");
       navigator.clipboard.writeText(text).then(() => {
