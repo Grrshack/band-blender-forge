@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { EXTENSION_GUIDE_PATH, EXTENSION_STORE_URL } from "@/lib/brand";
+import { versionAtLeast } from "@/lib/suno-payload";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export type SunoPayload = {
@@ -44,6 +45,27 @@ export function useExtensionVersion(): string | null {
   return v;
 }
 
+const SUNO_CREATE = "https://suno.com/create";
+
+/** Hands the song to extension 1.1+ and lets it open (or switch to) Suno; falls back to a new tab. */
+export function openSunoViaExtension(payload: SunoPayload, waitMs = 1000) {
+  let answered = false;
+  const onAnswer = (e: MessageEvent) => {
+    const d = e.data as { source?: string; type?: string; how?: string } | null;
+    if (e.source !== window || d?.source !== "bb-extension" || d.type !== "suno-opened") return;
+    answered = true;
+    window.removeEventListener("message", onAnswer);
+    if (d.how === "failed") window.open(SUNO_CREATE, "_blank", "noopener");
+  };
+  window.addEventListener("message", onAnswer);
+  window.postMessage({ source: "band-blender", type: "send-to-suno", payload, openSuno: true }, window.location.origin);
+  setTimeout(() => {
+    if (answered) return;
+    window.removeEventListener("message", onAnswer);
+    window.open(SUNO_CREATE, "_blank", "noopener");
+  }, waitMs);
+}
+
 export function SendToSuno({ payload, showStatus = false }: { payload: SunoPayload; showStatus?: boolean }) {
   const [help, setHelp] = useState(false);
   const [sent, setSent] = useState(false);
@@ -54,9 +76,16 @@ export function SendToSuno({ payload, showStatus = false }: { payload: SunoPaylo
       setHelp(true);
       return;
     }
-    window.postMessage({ source: "band-blender", type: "send-to-suno", payload }, window.location.origin);
-    // Opened here, inside the click, so pop-up blockers allow it.
-    window.open("https://suno.com/create", "_blank", "noopener");
+    const ext = document.documentElement.dataset["bbExtension"] ?? null;
+    if (versionAtLeast(ext, "1.1.0")) {
+      // 1.1+: the extension switches to a Suno Create tab you already have open, or opens one.
+      // If it doesn't answer within a second, open Suno here instead.
+      openSunoViaExtension(payload);
+    } else {
+      window.postMessage({ source: "band-blender", type: "send-to-suno", payload }, window.location.origin);
+      // Opened here, inside the click, so pop-up blockers allow it.
+      window.open("https://suno.com/create", "_blank", "noopener");
+    }
     setSent(true);
     setTimeout(() => setSent(false), 4000);
   };
