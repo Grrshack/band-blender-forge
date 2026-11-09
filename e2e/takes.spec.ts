@@ -10,8 +10,11 @@ test("make alternate takes, pick one, and send it with Suno's options", async ({
   await page.addInitScript(() => {
     (window as unknown as { __sent: unknown[] }).__sent = [];
     window.addEventListener("message", (e) => {
-      const d = e.data as { source?: string; type?: string; payload?: unknown };
-      if (d?.source === "band-blender" && d.type === "send-to-suno") (window as unknown as { __sent: unknown[] }).__sent.push(d.payload);
+      const d = e.data as { source?: string; type?: string; payload?: unknown; openSuno?: boolean };
+      if (d?.source === "band-blender" && d.type === "send-to-suno") {
+        (window as unknown as { __sent: unknown[] }).__sent.push(d.payload);
+        (window as unknown as { __openSuno?: boolean }).__openSuno = d.openSuno;
+      }
     });
   });
 
@@ -50,7 +53,11 @@ test("make alternate takes, pick one, and send it with Suno's options", async ({
   await expect(page.getByText(/Fill sets these|fills these in Suno/).first()).toBeVisible();
 
   // Send: every take goes, the open one is marked, options ride along.
+  // Extension 1.1 is asked to open (or switch to) Suno; no answer here, so the site opens it after a second.
+  await page.context().route("https://suno.com/**", (r) => r.fulfill({ contentType: "text/html", body: "<!doctype html><title>Suno</title>" }));
+  const opened = page.waitForEvent("popup", { timeout: 5000 });
   await page.getByRole("button", { name: /^Send to Suno/ }).filter({ visible: true }).first().click();
+  expect((await opened).url()).toBe("https://suno.com/create");
   await page.waitForFunction(() => (window as unknown as { __sent: unknown[] }).__sent.length > 0);
   const sent = (await page.evaluate(() => (window as unknown as { __sent: unknown[] }).__sent.at(-1))) as {
     style: string;
@@ -61,6 +68,7 @@ test("make alternate takes, pick one, and send it with Suno's options", async ({
     styleInfluence?: number;
     instrumental?: boolean;
   };
+  expect(await page.evaluate(() => (window as unknown as { __openSuno?: boolean }).__openSuno)).toBe(true);
   expect(sent.style).toContain("darker take");
   expect(sent.takes?.map((t) => t.label)).toEqual(["Main", "Darker", "Bigger drop"]);
   expect(sent.activeTake).toBe(1);
