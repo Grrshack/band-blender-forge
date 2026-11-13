@@ -6,11 +6,11 @@ import { APP_NAME } from "@/lib/brand";
 export const Route = createFileRoute("/tools/")({
   head: () => ({
     meta: [
-      { title: `Free Suno tools: BPM & key finder, lyric checker, metatags | ${APP_NAME}` },
+      { title: `Free Suno tools: prompt checker, BPM & key finder, lyric checker, metatags | ${APP_NAME}` },
       {
         name: "description",
         content:
-          "Free tools for Suno users. Find a song's BPM and key, check lyrics for clichés and words Suno sings wrong, look up metatags, and check a song before release. No account.",
+          "Free tools for Suno users. Score your Suno prompt with one-click fixes, find a song's BPM and key, check lyrics for clichés and words Suno sings wrong, look up metatags, and check a song before release. No account.",
       },
     ],
   }),

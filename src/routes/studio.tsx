@@ -8,6 +8,7 @@ import { BandBlender } from "@/components/forge/BandBlender";
 import { ComparableArtists } from "@/components/forge/ComparableArtists";
 import { FixTake } from "@/components/forge/FixTake";
 import { GuidedFlow } from "@/components/forge/GuidedFlow";
+import { QuickSong } from "@/components/forge/QuickSong";
 import { HonestFeedback } from "@/components/forge/HonestFeedback";
 import { LyricForge } from "@/components/forge/LyricForge";
 import { MasteringLab } from "@/components/forge/MasteringLab";
@@ -28,7 +29,8 @@ import { LabStudio } from "@/components/forge/LabStudio";
 import { SendToSuno } from "@/components/forge/SendToSuno";
 import { sunoPayloadFrom } from "@/lib/suno-payload";
 import { activeTakeLabel } from "@/lib/alt-takes";
-import { dropAlt } from "@/lib/prompt-craft";
+import { dropAlt, looksLikeBrief } from "@/lib/prompt-craft";
+import { CHECKER_IMPORT_KEY, readCheckerImport, sectionsFromText } from "@/lib/prompt-checker";
 import { KeySetupDialog } from "@/components/forge/KeySetupDialog";
 import { ALL_TAB_VALUES, RackMobileNav, RackSidebar } from "@/components/forge/RackNav";
 import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
@@ -130,7 +132,9 @@ function Index() {
     return () => window.removeEventListener("bb:open-tab", open);
   }, [setTab]);
 
-  // A ?tab= link opens that tool; otherwise everyone lands on "Start here".
+  const returningRef = useRef<boolean | null>(null);
+  // A ?tab= link opens that tool; otherwise first-time visitors land on Quick song and
+  // everyone else on "Start here".
   useEffect(() => {
     try {
       if (getHandoff()) {
@@ -138,7 +142,10 @@ function Index() {
         return; // the handoff effect below picks the tab
       }
       const asked = new URLSearchParams(window.location.search).get("tab");
-      const first = asked && ALL_TAB_VALUES.includes(asked) ? asked : "assistant";
+      // Read once: effects can run twice in development, and the first run marks the visit.
+      if (returningRef.current === null) returningRef.current = localStorage.getItem("blf.visited") === "1";
+      const returning = returningRef.current;
+      const first = asked && ALL_TAB_VALUES.includes(asked) ? asked : returning ? "assistant" : "quick";
       setTab(first);
       localStorage.setItem("blf.visited", "1");
     } catch {
@@ -146,9 +153,41 @@ function Index() {
     }
   }, []);
 
+  // The free prompt checker hands its boxes over (in this tab's sessionStorage) as a new song
+  // on the Suno Sheet: /studio?tab=suno&import=checker.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("import") !== "checker") return;
+    let got: ReturnType<typeof readCheckerImport> = null;
+    try {
+      got = readCheckerImport(sessionStorage.getItem(CHECKER_IMPORT_KEY));
+      sessionStorage.removeItem(CHECKER_IMPORT_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+    q.delete("import");
+    const rest = q.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+    if (!got) return;
+    const fresh = emptyState();
+    const format = looksLikeBrief(got.style) ? "brief" : "tags";
+    setState({
+      ...fresh,
+      blend: {
+        ...fresh.blend,
+        promptFormat: format,
+        result: { styleTag: got.style.trim(), styleFormat: format, excludeStyles: got.exclude.trim() },
+      },
+      lyrics: { ...fresh.lyrics, title: got.title.trim(), sections: sectionsFromText(got.lyrics) },
+    });
+    setTab("suno");
+    toast.success("Your checked prompt is on the Suno Sheet as a new song.");
+  }, []);
+
   // What a visitor typed on the landing page arrives here as ?describe= / ?artist= / ?song=.
   // Read once after hydration, applied, then removed from the address bar.
   const [assistantStart, setAssistantStart] = useState<string | null>(null);
+  const [quickStart, setQuickStart] = useState<string | null>(null);
   useEffect(() => {
     const got = getHandoff();
     if (!got) return;
@@ -166,8 +205,9 @@ function Index() {
       },
     }));
     if (handoff.kind === "describe") {
-      setAssistantStart(handoff.text);
-      setTab("assistant");
+      // Plain words from the landing page make a whole song: Quick song starts straight away.
+      setQuickStart(handoff.text);
+      setTab("quick");
     } else {
       setTab("blend");
       setBlendAutoRun(true);
@@ -400,6 +440,15 @@ function Index() {
                   <RackMobileNav tab={tab} onTab={setTab} />
 
                   {/* Tab content — conditional rendering */}
+                  {tab === "quick" && (
+                    <QuickSong
+                      state={state}
+                      onState={setState}
+                      onGoTab={setTab}
+                      autoStart={quickStart}
+                      onAutoStartDone={() => setQuickStart(null)}
+                    />
+                  )}
                   {tab === "blend" && (
                     <BandBlender
                       value={state.blend}

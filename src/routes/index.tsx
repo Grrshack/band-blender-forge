@@ -246,7 +246,7 @@ function Landing() {
                     </button>
                   ))}
                 </div>
-                <button className="go" type="submit">Build my prompt</button>
+                <button className="go" type="submit">{mode === "describe" ? "Build my song" : "Build my prompt"}</button>
               </div>
               {hint ? (
                 <p className="hint" role="alert">{hint}</p>
