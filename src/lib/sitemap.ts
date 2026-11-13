@@ -9,6 +9,7 @@ export const PUBLIC_PATHS = [
   "/",
   "/studio",
   "/tools",
+  "/tools/suno-prompt-checker",
   "/tools/bpm-key-finder",
   "/tools/lyric-checker",
   "/tools/suno-metatags",
