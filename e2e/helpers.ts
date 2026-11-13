@@ -6,6 +6,7 @@ export const FAKE_KEY = "AIzaTestKeyForAutomaticTests000000000";
 /** Every tool in the studio menu: its tab id and the menu label. */
 export const TOOLS: Array<{ tab: string; label: string }> = [
   { tab: "song", label: "This Song" },
+  { tab: "quick", label: "Quick song" },
   { tab: "assistant", label: "Start here" },
   { tab: "blend", label: "Band Blender" },
   { tab: "analyze", label: "Analyze a Song" },

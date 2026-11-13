@@ -28,6 +28,7 @@ const PUBLIC_PAGES = [
   "/tools/lyric-checker",
   "/tools/release-checklist",
   "/tools/suno-metatags",
+  "/tools/suno-prompt-checker",
   "/privacy",
   "/auth",
 ];
