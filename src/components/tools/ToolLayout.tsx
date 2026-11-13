@@ -6,6 +6,11 @@ import { APP_NAME } from "@/lib/brand";
 
 export const FREE_TOOLS = [
   {
+    to: "/tools/suno-prompt-checker",
+    title: "Suno Prompt Checker",
+    body: "Paste your style, exclude list and lyrics for a score and one-click fixes before you spend credits.",
+  },
+  {
     to: "/tools/bpm-key-finder",
     title: "BPM & Key Finder",
     body: "Drop a song to get its tempo, key, sections with bar counts, and tone. Runs in your browser.",
