@@ -1,5 +1,7 @@
 # Runs Band Blender's automatic checks on every push to main (including Lovable's edits)
 # and on demand from the Actions tab. A red X on a commit means something broke.
+#   0. Build          — the site still builds; this also writes Lovable's route list
+#                       (src/routeTree.gen.ts) for any new page, before the type check
 #   1. Type check     — the code still fits together
 #   2. Unit tests     — prompt rules, limits, mastering maths, song pack, etc.
 #   3. Click-through  — a real browser opens every tool and the main song flow.
@@ -33,6 +35,9 @@ jobs:
 
       - name: Install
         run: bun install
+
+      - name: Build (also registers new pages)
+        run: npx vite build
 
       - name: Type check
         run: npx tsc --noEmit
