@@ -25,6 +25,7 @@ import {
   Sliders,
   Stethoscope,
   Wand2,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +54,13 @@ export const TAB_GROUPS: Group[] = [
   {
     stage: "Create",
     tabs: [
+      {
+        value: "quick",
+        label: "Quick song",
+        icon: Zap,
+        hint: "Say what your song is and get a Suno style and lyrics, checked and ready to send, in about a minute",
+        badge: "new",
+      },
       {
         value: "assistant",
         label: "Start here",

@@ -235,8 +235,21 @@ export function WorkspaceBar({
         void refresh();
       }
     };
+    // Quick song hands over a finished song: it becomes a new song (autosave creates it),
+    // so the song that was open isn't overwritten.
+    const onNew = (e: Event) => {
+      const d = (e as CustomEvent<{ state?: ForgeState; name?: string }>).detail;
+      if (!d?.state) return;
+      setCurrentId(null);
+      setName(d.name?.trim() || UNTITLED);
+      onLoadState(d.state);
+    };
     window.addEventListener("bb:open-song", onOpen);
-    return () => window.removeEventListener("bb:open-song", onOpen);
+    window.addEventListener("bb:new-song", onNew);
+    return () => {
+      window.removeEventListener("bb:open-song", onOpen);
+      window.removeEventListener("bb:new-song", onNew);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

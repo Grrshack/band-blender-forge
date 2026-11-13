@@ -38,7 +38,7 @@ const clampSlider = (v: unknown): number => {
   return Math.max(0, Math.min(100, Math.round(n)));
 };
 
-function sanitizeIntent(raw: unknown): IntentResponse {
+export function sanitizeIntent(raw: unknown): IntentResponse {
   const r = (raw ?? {}) as Record<string, unknown>;
   const str = (k: string): string =>
     typeof r[k] === "string" ? (r[k] as string).trim() : "";
