@@ -29,7 +29,8 @@ test("prompt checker scores an example, fixes it, and opens it on the Suno Sheet
 
   await page.getByRole("button", { name: /Open in the studio/ }).click();
   await page.waitForURL(/\/studio/);
-  await expect(page.getByText("Your checked prompt is on the Suno Sheet as a new song.")).toBeVisible();
+  // The studio's first load can be slow on a cold test server.
+  await expect(page.getByText("Your checked prompt is on the Suno Sheet as a new song.")).toBeVisible({ timeout: 20000 });
   await expect(page.locator("main").getByText(/synthwave/).first()).toBeAttached();
   await expect(page.locator("main").getByText("Neon lights in the city tonight").first()).toBeAttached();
   expect(new URL(page.url()).searchParams.get("import")).toBeNull();
@@ -68,12 +69,28 @@ test("a first visit lands on Quick song; the landing page's Describe box starts 
     localStorage.removeItem("blf.visited");
   });
   await page.goto("/studio");
-  await expect(page.getByRole("heading", { name: "Quick song" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Quick song" })).toBeVisible({ timeout: 20000 });
 
   await page.goto("/");
   await page.waitForLoadState("networkidle");
   await page.locator("#l-desc").fill("Dark, heavy trip-hop about insomnia, whispered verses");
   await page.getByRole("button", { name: "Build my song" }).click();
-  await expect(page.getByTestId("quick-style")).toContainText("dark synthpop");
+  await expect(page.getByTestId("quick-style")).toContainText("dark synthpop", { timeout: 20000 });
   await expect(page.getByTestId("quick-lyrics")).toContainText("[Verse 1]");
+});
+
+test("the tester welcome's Let's go opens Quick song", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("bb.e2e-welcome")) return;
+    sessionStorage.setItem("bb.e2e-welcome", "1");
+    localStorage.removeItem("blf.visited");
+    localStorage.removeItem("bb.tester-welcome-seen");
+  });
+  await page.goto("/studio");
+  const welcome = page.getByRole("dialog", { name: "Thanks for testing!" });
+  await expect(welcome).toBeVisible({ timeout: 20000 });
+  await expect(welcome.getByText("Make a quick song and try it in Suno")).toBeVisible();
+  await welcome.getByRole("button", { name: "Let's go" }).click();
+  await expect(welcome).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Quick song" })).toBeVisible();
 });
