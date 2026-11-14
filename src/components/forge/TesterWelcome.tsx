@@ -1,4 +1,4 @@
-import { MessageSquarePlus, PenLine, Radar, Sliders } from "lucide-react";
+import { ClipboardCheck, MessageSquarePlus, PenLine, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useSettings } from "./settings";
@@ -10,12 +10,14 @@ import { readHandoff } from "@/lib/handoff";
 
 const SEEN_KEY = "bb.tester-welcome-seen";
 
-const STEPS = [
+type Step = { icon: typeof Zap; title: string; body: string } & ({ tab: string } | { href: string });
+
+const STEPS: Step[] = [
   {
-    icon: Sliders,
-    tab: "blend",
-    title: "Make a style prompt and try it in Suno",
-    body: "Blend two or three artists you like, copy it into Suno, then come back and rate the take: Keeper or Not quite.",
+    icon: Zap,
+    tab: "quick",
+    title: "Make a quick song and try it in Suno",
+    body: "Say what your song is, press Make my song, and send it to Suno. Then come back and rate the take: Keeper or Not quite.",
   },
   {
     icon: PenLine,
@@ -24,12 +26,12 @@ const STEPS = [
     body: "Try Rhyme: \"Barely rhymes\" and Voice: \"Raw\", then press Rhyme scheme to see how it reads.",
   },
   {
-    icon: Radar,
-    tab: "analyze",
-    title: "Analyze or master a song",
-    body: "Drop in a song you love for its tempo, key and sections, or master one of your own in Mastering.",
+    icon: ClipboardCheck,
+    href: "/tools/suno-prompt-checker",
+    title: "Check a prompt you already have",
+    body: "Paste it into the free Suno Prompt Checker for a score and one-click fixes. No key needed.",
   },
-] as const;
+];
 
 /**
  * One-time note for testers: three things to try and how to send feedback. Shown on the
@@ -79,10 +81,15 @@ export function TesterWelcome({ onGoTab, skip }: { onGoTab: (tab: string) => voi
 
         <ol className="space-y-2">
           {STEPS.map((s, i) => (
-            <li key={s.tab}>
+            <li key={s.title}>
               <button
                 type="button"
-                onClick={() => go(s.tab)}
+                onClick={() => {
+                  if ("href" in s) {
+                    close();
+                    window.location.href = s.href;
+                  } else go(s.tab);
+                }}
                 className="flex w-full gap-3 rounded-lg border border-border bg-card/50 p-3 text-left transition-colors hover:border-primary/60"
               >
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
@@ -105,7 +112,7 @@ export function TesterWelcome({ onGoTab, skip }: { onGoTab: (tab: string) => voi
             <button type="button" onClick={() => { close(); openKeyDialog(); }} className="text-primary underline underline-offset-2">
               Set it up now
             </button>
-            . Mastering, Analyze a Song and the free tools work without one.
+            . The Prompt Checker, Mastering, Analyze a Song and the other free tools work without one.
           </p>
         ) : null}
 
@@ -121,7 +128,7 @@ export function TesterWelcome({ onGoTab, skip }: { onGoTab: (tab: string) => voi
           <Button variant="outline" onClick={() => { close(); openFeedback({ kind: "idea" }); }}>
             Send feedback now
           </Button>
-          <Button onClick={() => go("assistant")}>Let&apos;s go</Button>
+          <Button onClick={() => go("quick")}>Let&apos;s go</Button>
         </div>
       </DialogContent>
     </Dialog>
