@@ -199,6 +199,7 @@ const STYLE_KEYS = [
   "styleTag",
   "styleBrief",
   "styleAlt",
+  "styleShort",
   "excludeStyles",
 ] as const;
 const VOCAL_KEYS = ["voice", "delivery", "harmonies", "effects"] as const;
@@ -244,6 +245,7 @@ export function scrubBlend(blend: Json, names: string[]): { blend: Json; removed
     const r = scrubArtistNames(t, names);
     removed.push(...r.removed);
     if (key === "styleTag" || key === "styleBrief" || key === "styleAlt") return fitToLimit(r.text, SUNO_LIMITS.style);
+    if (key === "styleShort") return fitToLimit(r.text, SHORT_STYLE_MAX);
     if (key === "excludeStyles") return fitToLimit(r.text, SUNO_LIMITS.exclude);
     return r.text;
   });
@@ -282,7 +284,14 @@ export async function enforceNoArtistNames(
 /* Suno-format text                                                    */
 /* ------------------------------------------------------------------ */
 
-export type SunoSection = { tag: string; cue?: string | undefined; lines: { text: string }[] };
+/** Who sings a section: shown in its tag ([Verse 2 | Female Vocal]). "both" is a duet section. */
+export type Singer = "male" | "female" | "both";
+export const SINGER_TAGS: Record<Singer, string> = { male: "Male Vocal", female: "Female Vocal", both: "Duet" };
+
+export type SunoSection = { tag: string; cue?: string | undefined; singer?: Singer | undefined; lines: { text: string }[] };
+
+/** The Short style in the length test: 4–7 descriptors, about 250 characters. */
+export const SHORT_STYLE_MAX = 300;
 
 const bracket = (s: string) => {
   const inner = s
@@ -292,16 +301,59 @@ const bracket = (s: string) => {
   return inner ? `[${inner}]` : "";
 };
 
-/** Section tag, optional performance cue on its own bracketed line, then the lines. */
-export function composeSunoLyrics(sections: SunoSection[]): string {
-  return sections
+/** A cue as tag parts: "belted, full band" → ["Belted", "Full band"]. */
+export function cueParts(cue: string | undefined): string[] {
+  const seen = new Set<string>();
+  return (cue ?? "")
+    .replace(/[[\]]/g, "")
+    .split(/[,|;]/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .filter((p) => (seen.has(p.toLowerCase()) ? false : (seen.add(p.toLowerCase()), true)))
+    .slice(0, 4);
+}
+
+/**
+ * A section's tag with its singer and cue inside it, pipe-separated, which Suno holds to better
+ * than a separate cue line: [Chorus | Female Vocal | Belted | Full band].
+ */
+export function sectionHeader(s: Pick<SunoSection, "tag" | "cue" | "singer">): string {
+  const base = bracket(s.tag);
+  if (!base) return "";
+  const mods = [s.singer ? SINGER_TAGS[s.singer] : "", ...cueParts(s.cue)].filter(Boolean);
+  return mods.length ? `${base.slice(0, -1)} | ${mods.join(" | ")}]` : base;
+}
+
+/**
+ * Suno's lyrics box: each section's tag (with singer and cue inside it), then its lines.
+ * `lead` (e.g. "[Female Vocal]") goes on the first line when no section names its own singer.
+ */
+export function composeSunoLyrics(sections: SunoSection[], opts: { lead?: string | undefined } = {}): string {
+  const body = sections
     .map((s) =>
-      [bracket(s.tag), s.cue ? bracket(s.cue) : "", ...s.lines.map((l) => l.text)]
+      [sectionHeader(s), ...s.lines.map((l) => l.text)]
         .filter((x) => x !== "")
         .join("\n"),
     )
     .filter(Boolean)
     .join("\n\n");
+  const sung = sections.some((s) => s.lines.some((l) => l.text.trim()));
+  const lead = opts.lead && sung && !sections.some((s) => s.singer) ? bracket(opts.lead) : "";
+  return lead ? `${lead}\n\n${body}` : body;
+}
+
+/**
+ * The lead-vocal tag for the top of the lyrics: Suno's vocal gender if chosen, otherwise the
+ * gender (or duet) in the blend's voice tags. Only gender: performance tags can fight the style.
+ */
+export function leadVocalTag(voiceTags: string | undefined, gender?: "male" | "female" | undefined): string {
+  if (gender) return `[${SINGER_TAGS[gender]}]`;
+  const t = (voiceTags ?? "").toLowerCase();
+  if (/\bduet\b/.test(t)) return "[Duet]";
+  if (/\bfemale vocals?\b/.test(t)) return "[Female Vocal]";
+  if (/\bmale vocals?\b/.test(t)) return "[Male Vocal]";
+  return "";
 }
 
 export type VocalPrompt = {

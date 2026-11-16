@@ -4,10 +4,11 @@
  * this tab. Nothing is uploaded; the zip is built in the browser.
  */
 import { getLastCover } from "@/lib/cover-render";
-import { activeFormat, exportLyrics } from "@/lib/prompt-craft";
+import { activeFormat } from "@/lib/prompt-craft";
 import { disclosureAnswers } from "@/lib/release-check";
 import { bpmFrom, clock, sectionTimes } from "@/lib/section-times";
-import { composeSunoLyrics, vocalString } from "@/lib/suno";
+import { vocalString } from "@/lib/suno";
+import { sunoLyricsFor } from "@/lib/suno-payload";
 import { buildZip, type ZipEntry } from "@/lib/zip";
 import { allTakes } from "@/lib/alt-takes";
 import { exportBrief, type DossierResult, type ForgeState } from "@/components/forge/types";
@@ -101,8 +102,7 @@ export function songPackFiles(name: string, state: ForgeState): Array<[string, s
   const style = b?.styleTag?.trim() ?? "";
   const format = activeFormat(b);
   const other = format === "brief" ? "tags" : "brief";
-  const raw = lyrics.sections.length ? composeSunoLyrics(lyrics.sections) : "";
-  const sung = raw ? exportLyrics(raw, lyrics.cleanEnding !== false).text : "";
+  const sung = sunoLyricsFor(state);
 
   const listed: string[] = [];
   const add = (path: string, text: string, what: string) => {

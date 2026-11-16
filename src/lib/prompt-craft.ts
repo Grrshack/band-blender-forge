@@ -35,7 +35,7 @@ export function normalizePromptFormat(v: unknown): PromptFormat {
 /** The "styleTag" field description for the blend and song prompts. */
 export function styleFieldSpec(format: PromptFormat, max: number): string {
   if (format === "brief") {
-    return `a Studio Brief for Suno's style box: 3-6 short plain sentences, max ${max} characters, covering in this order — Sound (genre and mood in the first five words), Pulse (one BPM number plus the feel), Players (two to four instruments, each with what it is doing), Voice (who sings, the delivery, and where the voice sits: close and upfront, or set back), Arc (what the verses hold back and what the chorus adds), Finish (the room and mix). Concrete production words only; no negatives (those go in excludeStyles).`;
+    return `a Studio Brief for Suno's style box: 3-6 short plain sentences, max ${max} characters, covering in this order — Sound (the era if there is one, then genre and mood, genre in the first five words), Pulse (one BPM number plus the feel), Players (two to four instruments, each with what it is doing), Voice (who sings, the delivery, and where the voice sits: close and upfront, or set back), Arc (a short phrase: how the chorus lifts from the verses), Finish (the room and mix). Concrete production words only; no negatives (those go in excludeStyles).`;
   }
   return `a single comma-separated Suno style prompt line, ordered: genre, subgenre, tempo/bpm, instrumentation, vocal type, production, mood. Front-load genre and mood. Max ${max} characters.`;
 }
@@ -304,11 +304,11 @@ export const BRIEF_KEYS = BRIEF_PARTS.map((b) => b.key) as BriefKey[];
 
 /** What each part should say, for the AI. One sentence each, never naming the part. */
 export const BRIEF_PART_SPECS: Record<BriefKey, string> = {
-  sound: "one short sentence: genre and mood, genre within the first five words",
+  sound: "one short sentence: the era if there is one, then genre and mood, genre within the first five words (e.g. 'Late-90s trip-hop, hazy and nocturnal')",
   pulse: "one sentence: one BPM number and how the groove feels",
   players: "one or two sentences: two to four instruments, each with what it is doing",
   voice: "one sentence: who sings, how, and where the voice sits (close and upfront, or set back)",
-  arc: "one sentence: what the verses hold back and what the chorus adds",
+  arc: "a short phrase: how the chorus lifts from the verses (e.g. 'sparse verses, full-band chorus')",
   finish: "one sentence: the room and the mix",
 };
 

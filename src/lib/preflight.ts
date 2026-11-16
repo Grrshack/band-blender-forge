@@ -16,7 +16,7 @@ export type PreflightIssue = {
   level: "stop" | "warn";
   message: string;
   /** A one-click fix the UI can offer. */
-  fix?: "placeVocal" | "removeNames";
+  fix?: "placeVocal" | "removeNames" | "addDuet";
 };
 
 const tagsOf = (s: string) =>

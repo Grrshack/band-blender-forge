@@ -16,6 +16,7 @@ import { bannedWordsInstruction } from "@/lib/banned-words";
 import { bannedListForPrompt, type ClicheHit } from "@/lib/cliches";
 import {
   normalizeSunoVersion,
+  SHORT_STYLE_MAX,
   STYLE_TARGET,
   STYLE_TARGET_FOR_VERSION,
   SUNO_VERSION_NAMES,
@@ -95,7 +96,7 @@ function promptBody(task: string, payload: Record<string, unknown>): string {
         : "";
       const targetEra = typeof payload["targetEra"] === "string" ? payload["targetEra"].trim() : "";
       const eraNote = targetEra
-        ? `\nEra targeting: Bias the production sound, mix conventions, and instrumentation toward ${targetEra} aesthetics. This applies to production choices (compression, reverb style, drum sound) as well as harmonic and rhythmic conventions of that period.`
+        ? `\nEra targeting: Bias the production sound, mix conventions, and instrumentation toward ${targetEra} aesthetics. This applies to production choices (compression, reverb style, drum sound) as well as harmonic and rhythmic conventions of that period. Say the era in words at the start of the style (e.g. "late-90s trip-hop"), since Suno reads an era as a production cue.`
         : "";
       return `Blend these artists into one coherent, produceable style for ${vLabel}.
 Target: ${vLabel}. ${vNote}${genreNote}${eraNote}
@@ -112,6 +113,7 @@ Return JSON exactly:
 "genre":"string","tempo":"string with BPM range and feel","instrumentation":"string",
 "vocals":"one-sentence summary of the vocal sound","mood":"string",
 "styleTag":"${styleFieldSpec("tags", vTarget)}",
+"styleShort":"the SAME sound in only 4-7 comma-separated descriptors: genre (with the era if one is targeted) first, then mood, two or three key instruments, then the vocal with its gender first (or 'instrumental'). Max ${SHORT_STYLE_MAX} characters. No negatives, no artist names.",
 ${briefPartsField()},
 "voiceTags":"Suno v6 bracket vocal tags to prepend to the lyrics field, e.g. '[Female Vocal]' or '[Male Vocal], [Whisper]'. Choose from: [Male Vocal] [Female Vocal] [Duet] [Choir] [Rap] [Whisper] [Falsetto] [Raw Vocals]. Max 2-3 tags. Empty string if not applicable.",
 "vocalPrompt":{"voice":"timbre and range, e.g. warm breathy alto","delivery":"phrasing and performance, e.g. close-mic, half-spoken verses, belted chorus","harmonies":"backing-vocal treatment, or 'none'","effects":"vocal processing, e.g. tape echo, light pitch correction"},

@@ -61,6 +61,7 @@ const BLEND: Json = {
   vocals: "Breathy female alto, close-mic",
   mood: "Melancholic, cinematic",
   styleTag: TAGS,
+  styleShort: "dark synthpop, melancholic, analog bass, arpeggiated synths, breathy female vocal upfront",
   styleBriefParts: PARTS,
   voiceTags: "[Female Vocal]",
   vocalPrompt: { voice: "breathy alto", delivery: "close-mic, half-spoken verses", harmonies: "light doubles in the chorus", effects: "plate reverb" },

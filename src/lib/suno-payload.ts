@@ -3,19 +3,25 @@
  * so sending from Lyric Forge or the Band Blender gives the same result.
  */
 import { exportLyrics } from "@/lib/prompt-craft";
-import { composeSunoLyrics } from "@/lib/suno";
+import { composeSunoLyrics, leadVocalTag } from "@/lib/suno";
 import type { BlendSlice, ForgeState, Section } from "@/components/forge/types";
 import { allTakes } from "@/lib/alt-takes";
 import type { SunoPayload } from "@/components/forge/SendToSuno";
 
+/** The lyrics exactly as they go into Suno: tags with singers and cues, the lead vocal, a clean ending. */
+export function sunoLyricsFor(state: Pick<ForgeState, "blend" | "lyrics">): string {
+  const lead = leadVocalTag(state.blend.result?.voiceTags, state.blend.sunoOptions?.vocalGender);
+  const raw = state.lyrics.sections.length ? composeSunoLyrics(state.lyrics.sections, { lead }) : "";
+  return raw ? exportLyrics(raw, state.lyrics.cleanEnding !== false).text : "";
+}
+
 export function sunoPayloadFrom(state: ForgeState): SunoPayload {
   const r = state.blend.result;
-  const raw = state.lyrics.sections.length ? composeSunoLyrics(state.lyrics.sections) : "";
   return {
     title: state.lyrics.title,
     style: r?.styleTag ?? state.lyrics.manualStyle ?? "",
     exclude: r?.excludeStyles ?? "",
-    lyrics: raw ? exportLyrics(raw, state.lyrics.cleanEnding !== false).text : "",
+    lyrics: sunoLyricsFor(state),
     artists: state.blend.artists.map((a) => a.trim()).filter(Boolean),
     ...sunoExtras(state.blend, state.lyrics.sections),
   };

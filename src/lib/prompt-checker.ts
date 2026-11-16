@@ -7,6 +7,7 @@
 import { GENRE_CARDS } from "./genre-cards";
 import { SEED_BUCKETS } from "./lab";
 import { checkLyrics } from "./lyric-check";
+import { addDuet, lyricStyleChecks } from "./lyric-style-checks";
 import { preflight } from "./preflight";
 import { COMMON_EXCLUDES, exportLyrics, hasCleanEnding, looksLikeBrief, mergeExcludes, placeVocal } from "./prompt-craft";
 import { SUNO_LIMITS, findStyleLeaks, fitToLimit, scrubArtistNames, type SunoVersion } from "./suno";
@@ -29,7 +30,8 @@ export type CheckerFix =
   | "addExcludes"
   | "moveNegatives"
   | "removeFluff"
-  | "trimStyle";
+  | "trimStyle"
+  | "addDuet";
 
 export type CheckerBox = "Style" | "Exclude" | "Lyrics" | "Title";
 
@@ -57,6 +59,7 @@ export const FIX_LABELS: Record<CheckerFix, string> = {
   moveNegatives: "Move them to Exclude",
   removeFluff: "Remove them",
   trimStyle: "Trim to 1,000",
+  addDuet: "Add \"duet\" to the style",
 };
 
 /** Well-known names from the genre cards and Lab lanes, checked on top of "in the style of …". */
@@ -176,6 +179,7 @@ export function checkPrompt(input: CheckerInput): CheckerReport {
     if (leaks.length) {
       issues.push({ box: "Lyrics", level: "warn", message: `Artist names in the lyrics (${leaks.join(", ")}). Suno may refuse them; check they're meant to be sung.` });
     }
+    for (const i of lyricStyleChecks(style, lyrics)) issues.push({ box: "Lyrics", ...i });
     const report = checkLyrics(lyrics);
     if (report.clicheCount) {
       issues.push({
@@ -250,6 +254,8 @@ export function applyFix(input: CheckerInput, fix: CheckerFix): CheckerInput {
     }
     case "trimStyle":
       return { ...input, style: fitToLimit(input.style.trim(), SUNO_LIMITS.style) };
+    case "addDuet":
+      return { ...input, style: addDuet(input.style) };
   }
 }
 

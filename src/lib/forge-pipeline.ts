@@ -10,6 +10,7 @@ import { clicheFixPrompt, polishPrompt, prompt } from "@/lib/forge-prompts";
 import { BRIEF_KEYS, cleanBriefParts, joinBrief, type BriefKey, type BriefParts } from "@/lib/prompt-craft";
 import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
 import {
+  SHORT_STYLE_MAX,
   SUNO_LIMITS,
   enforceNoArtistNames,
   findStyleLeaks,
@@ -114,6 +115,7 @@ export function clampSunoFields(result: Json): Json {
     if (typeof out[k] === "string") out[k] = fitToLimit(out[k] as string, SUNO_LIMITS.style);
   }
   if (typeof out["excludeStyles"] === "string") out["excludeStyles"] = fitToLimit(out["excludeStyles"] as string, SUNO_LIMITS.exclude);
+  if (typeof out["styleShort"] === "string") out["styleShort"] = fitToLimit((out["styleShort"] as string).trim(), SHORT_STYLE_MAX);
   return out;
 }
 
@@ -394,7 +396,7 @@ export const BRIEF_PART_MAX: Record<BriefKey, number> = {
   pulse: 120,
   players: 220,
   voice: 180,
-  arc: 180,
+  arc: 100,
   finish: 140,
 };
 
