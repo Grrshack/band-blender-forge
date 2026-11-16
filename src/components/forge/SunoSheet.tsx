@@ -19,10 +19,12 @@ import {
   SUNO_LIMITS,
   composeSunoLyrics,
   findStyleLeaks,
+  leadVocalTag,
   scrubArtistNames,
   vocalString,
 } from "@/lib/suno";
 import { ENGINE_LABELS, buildEngineExport, type Engine } from "@/lib/engines";
+import { addDuet, lyricStyleChecks } from "@/lib/lyric-style-checks";
 import { preflight, type PreflightIssue } from "@/lib/preflight";
 import {
   COMMON_EXCLUDES,
@@ -134,7 +136,7 @@ export function SunoSheet({
   const exclude = result?.excludeStyles ?? "";
   const vocal = vocalString(result?.vocalPrompt);
   const cleanEnding = lyrics.cleanEnding !== false;
-  const rawLyrics = composeSunoLyrics(lyrics.sections);
+  const rawLyrics = composeSunoLyrics(lyrics.sections, { lead: leadVocalTag(result?.voiceTags, blend.sunoOptions?.vocalGender) });
   const exported = exportLyrics(rawLyrics, cleanEnding);
   const lyricText = exported.text;
   const names = blend.artists.map((a) => a.trim()).filter(Boolean);
@@ -181,6 +183,8 @@ export function SunoSheet({
     ...(lyrics.title.length > SUNO_LIMITS.title ? [{ level: "stop" as const, message: `Title is ${lyrics.title.length} characters; Suno takes ${SUNO_LIMITS.title}.` }] : []),
     ...(exclude.length > SUNO_LIMITS.exclude ? [{ level: "stop" as const, message: `Exclude styles is ${exclude.length} characters; Suno takes ${SUNO_LIMITS.exclude}.` }] : []),
     ...(lyricText.length > SUNO_LIMITS.lyrics ? [{ level: "stop" as const, message: `Lyrics are ${lyricText.length} characters; Suno takes ${SUNO_LIMITS.lyrics}.` }] : []),
+    // Section tags against the style: two singers need "duet"; cues the style overrules.
+    ...lyricStyleChecks(style, lyricText).map((i) => ({ level: "warn" as const, message: i.message, ...(i.fix ? { fix: i.fix } : {}) })),
   ];
 
   const engineFields =
@@ -243,6 +247,7 @@ export function SunoSheet({
           issues={issues}
           onFix={(fix) => {
             if (fix === "removeNames") stripArtists();
+            if (fix === "addDuet") setResult({ styleTag: addDuet(style) });
             if (fix === "placeVocal") {
               const next = placeVocal(style);
               setResult({ styleTag: next, excludeStyles: mergeExcludes(exclude, "buried vocals, distant vocals", next) });
@@ -497,7 +502,7 @@ function PreflightCard({
                     onClick={() => onFix(i.fix!)}
                     className="ml-2 h-6 px-2 text-[11px]"
                   >
-                    {i.fix === "removeNames" ? "Remove them" : "Fix it"}
+                    {i.fix === "removeNames" ? "Remove them" : i.fix === "addDuet" ? "Add \"duet\"" : "Fix it"}
                   </Button>
                 ) : null}
               </span>

@@ -37,7 +37,7 @@ import {
 import { findBannedWords, parseBannedWords } from "@/lib/banned-words";
 import { findPronunciationRisks } from "@/lib/pronunciation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { composeSunoLyrics, vocalString } from "@/lib/suno";
+import { SINGER_TAGS, composeSunoLyrics, leadVocalTag, type Singer, vocalString } from "@/lib/suno";
 import { LYRIC_NOTATION, exportLyrics } from "@/lib/prompt-craft";
 import { cn } from "@/lib/utils";
 import { bpmFrom, clock, sectionTimes } from "@/lib/section-times";
@@ -49,6 +49,12 @@ import {
   insertSection,
   moveItem,
   newSection,
+  addBuildAndDrop,
+  beatSwitch,
+  hasTwoSingers,
+  keyChangeLastChorus,
+  singerSwitches,
+  type ShiftResult,
 } from "@/lib/section-order";
 
 /** Estimated syllables, plus a flag for worn-out phrases and lines far off the section's typical length. */
@@ -134,7 +140,10 @@ export function LyricForge({
   blend,
   renderTakeCheck,
   sendButton,
+  lead,
 }: {
+  /** The lead-vocal tag for the top of the lyrics (Suno's vocal gender or the blend's voice tags). */
+  lead?: string | undefined;
   /** Send to Suno for the whole song (title, style, exclude, lyrics), next to Copy for Suno. */
   sendButton?: ReactNode;
   /** The "how did it come out?" card, shown once there are lyrics. */
@@ -253,6 +262,25 @@ export function LyricForge({
 
   const setCue = (si: number, cue: string) =>
     patchSections((prev) => prev.map((s, i) => (i === si ? { ...s, cue } : s)));
+  const setSinger = (si: number, singer: Singer | "") =>
+    patchSections((prev) =>
+      prev.map((s, i) => {
+        if (i !== si) return s;
+        const { singer: _old, ...rest } = s;
+        return singer ? { ...rest, singer } : rest;
+      }),
+    );
+  const leadTag = lead ?? leadVocalTag(blend?.voiceTags);
+
+  // Song shifts (build and drop, key change, beat switch): one click each, with a note of what changed.
+  const [shiftNote, setShiftNote] = useState("");
+  const shift = (fn: (s: Section[]) => ShiftResult) => {
+    const r = fn(sections);
+    if (r.sections !== sections) set({ sections: r.sections });
+    setShiftNote(r.note);
+  };
+  const twoSingers = hasTwoSingers(sections);
+  const switches = singerSwitches(sections);
 
   // Where "Add section" puts new sections: after this index, or at the end (null).
   const [addAfter, setAddAfter] = useState<number | null>(null);
@@ -612,7 +640,7 @@ export function LyricForge({
               >
                 <Rows3 className="size-3.5" /> {showRhymes ? "Hide rhyme scheme" : "Rhyme scheme"}
               </Button>
-              <CopyButton value={exportLyrics(composeSunoLyrics(sections), value.cleanEnding !== false).text} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
+              <CopyButton value={exportLyrics(composeSunoLyrics(sections, { lead: leadTag }), value.cleanEnding !== false).text} label="Copy for Suno" onCopied={() => setJustCopied(true)} />
               {sendButton}
             </div>
           ) : undefined
@@ -787,9 +815,26 @@ export function LyricForge({
                   <input
                     value={s.cue ?? ""}
                     onChange={(e) => setCue(si, e.target.value)}
-                    placeholder="Whispered, sparse  (Suno reads this as [cue])"
+                    placeholder="Whispered, sparse  (goes inside the tag: [Chorus | Whispered | Sparse])"
+                    aria-label={`Cue for ${s.tag}`}
                     className="min-w-0 flex-1 bg-transparent py-1 text-xs text-accent italic outline-none placeholder:text-muted-foreground/60 placeholder:not-italic"
                   />
+                  {s.lines.length ? (
+                    <select
+                      value={s.singer ?? ""}
+                      onChange={(e) => setSinger(si, e.target.value as Singer | "")}
+                      aria-label={`Singer for ${s.tag}`}
+                      title="Who sings this section. Shown in the tag, e.g. [Verse 2 | Female Vocal]"
+                      className="h-6 rounded border border-border bg-background px-1 text-[11px] text-muted-foreground"
+                    >
+                      <option value="">Singer: song's lead</option>
+                      {(Object.keys(SINGER_TAGS) as Singer[]).map((k) => (
+                        <option key={k} value={k}>
+                          {k === "both" ? "Both (duet)" : k === "male" ? "Male" : "Female"}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                 </div>
                 {s.lines.length === 0 ? (
                   <p className="px-3 py-3 text-xs text-muted-foreground">
@@ -870,6 +915,14 @@ export function LyricForge({
                 </ul>
               </div>
             ))}
+            {twoSingers || switches > 6 ? (
+              <p role="note" className="rounded-lg border border-signal-mid/40 bg-signal-mid/5 px-3 py-2 text-xs text-foreground/90">
+                {twoSingers
+                  ? "Two singers: Suno only uses two voices when the word \"duet\" is in the style. The Suno Sheet's pre-flight check adds it in one click. "
+                  : ""}
+                {switches > 6 ? `The singer changes ${switches} times; about 4 to 6 changes a song works best.` : ""}
+              </p>
+            ) : null}
             <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">Add section</span>
@@ -894,6 +947,33 @@ export function LyricForge({
                 <span className="text-[11px] text-muted-foreground">
                   <span className="hidden sm:inline">Drag the handle on any section to move it, or </span>use the arrows.
                 </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 text-[11px] text-muted-foreground" title="Changes in the music are made with tags in the lyrics box">
+                  Song shifts
+                </span>
+                {(
+                  [
+                    ["Build + drop before the last chorus", addBuildAndDrop],
+                    ["Key change on the last chorus", keyChangeLastChorus],
+                    ["Beat switch before verse 2", beatSwitch],
+                  ] as const
+                ).map(([label, fn]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => shift(fn)}
+                    className="flex items-center gap-1 rounded-full border border-border bg-card/60 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-accent/60 hover:text-accent"
+                  >
+                    <Plus className="size-3" />
+                    {label}
+                  </button>
+                ))}
+                {shiftNote ? (
+                  <span role="status" className="text-[11px] text-accent">
+                    {shiftNote}
+                  </span>
+                ) : null}
               </div>
               {(
                 [

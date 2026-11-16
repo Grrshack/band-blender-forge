@@ -20,6 +20,7 @@ import { shareBlend } from "@/lib/forge.functions";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { applyLengthTest } from "@/lib/length-test";
 import { activeFormat, arrangeFormats, briefMatches, dropAlt } from "@/lib/prompt-craft";
 import { AlternateMaker, TakeTabs } from "./AlternateTakes";
 import { BriefReadout } from "./BriefReadout";
@@ -131,7 +132,8 @@ export function BandBlender({
           complexity: blend.recommendedSliders?.complexity ?? sliders.complexity,
           brightness: blend.recommendedSliders?.brightness ?? sliders.brightness,
         },
-        result: arrangeFormats(blend, promptFormat),
+        // Short vs Full style test: adds a "Short" take tab while it runs (length-test.ts).
+        result: applyLengthTest(arrangeFormats(blend, promptFormat)),
         lookupMode,
         songTitle,
         sunoVersion,

@@ -68,6 +68,11 @@ export function TakeTabs({ blend, onBlend }: { blend: BlendSlice; onBlend: (next
         ))}
       </div>
       {open?.angle ? <p className="text-[11px] text-muted-foreground">{open.angle}</p> : null}
+      {open && /drop/i.test(open.label) ? (
+        <p className="text-[11px] text-muted-foreground">
+          A drop is shaped in the lyrics too: in Lyric Forge, use Song shifts → "Build + drop before the last chorus".
+        </p>
+      ) : null}
       <p className="text-[11px] text-muted-foreground">
         The open take is what Copy, the Suno Sheet and Send to Suno use; edits stay with their take.
       </p>

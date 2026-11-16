@@ -34,6 +34,8 @@ export type BlendResult = {
   styleFormat?: PromptFormat | undefined;
   /** The same sound in the other format, for an instant swap. Cleared when an AI rewrite changes the style. */
   styleAlt?: string | undefined;
+  /** The length test: the same sound in 4–7 descriptors (about 250 characters). See length-test.ts. */
+  styleShort?: string | undefined;
   /** Raw second version from the AI; folded into styleTag/styleAlt as soon as it arrives. */
   styleBrief?: string | undefined;
   /** Raw Studio Brief parts from the AI; folded into briefParts with the brief. */
@@ -66,7 +68,7 @@ export type BlendResult = {
 
 export type Line = { text: string; locked: boolean; previous?: string };
 /** `cue` is a performance direction Suno reads, e.g. "Whispered, sparse". Empty `lines` = instrumental section. */
-export type Section = { tag: string; cue?: string | undefined; lines: Line[] };
+export type Section = { tag: string; cue?: string | undefined; singer?: import("@/lib/suno").Singer | undefined; lines: Line[] };
 
 export type CompareResult = {
   summary?: string;

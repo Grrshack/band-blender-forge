@@ -7,6 +7,7 @@
 import { ArrowRight, Check, Loader2, RotateCcw, Sparkles, Zap } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { TakeTabs } from "./AlternateTakes";
 import { CopyButton } from "./CopyButton";
 import { SendToSuno } from "./SendToSuno";
 import { StyleFormatSwitch } from "./StyleFormatSwitch";
@@ -18,10 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { sectionsFrom } from "@/lib/lab";
 import { checkPrompt } from "@/lib/prompt-checker";
-import { arrangeFormats, exportLyrics } from "@/lib/prompt-craft";
+import { applyLengthTest } from "@/lib/length-test";
+import { arrangeFormats } from "@/lib/prompt-craft";
 import { track } from "@/lib/stats";
-import { composeSunoLyrics, vocalString } from "@/lib/suno";
-import { sunoPayloadFrom } from "@/lib/suno-payload";
+import { vocalString } from "@/lib/suno";
+import { sunoLyricsFor, sunoPayloadFrom } from "@/lib/suno-payload";
 import { cn } from "@/lib/utils";
 
 export type QuickVocal = "any" | "female" | "male" | "instrumental";
@@ -116,7 +118,7 @@ export function QuickSong({ state, onState, onGoTab, autoStart, onAutoStartDone 
           },
         },
       });
-      const result = arrangeFormats(JSON.parse(blendRes.json) as BlendResult, prefs.promptFormat ?? "tags");
+      const result = applyLengthTest(arrangeFormats(JSON.parse(blendRes.json) as BlendResult, prefs.promptFormat ?? "tags"));
 
       // 3. Lyrics for that style (structure only for an instrumental).
       setStep(2);
@@ -356,10 +358,7 @@ function ResultCard({
 }) {
   const r = state.blend.result;
   const payload = useMemo(() => sunoPayloadFrom(state), [state]);
-  const lyricsText = useMemo(() => {
-    const raw = state.lyrics.sections.length ? composeSunoLyrics(state.lyrics.sections) : "";
-    return raw ? exportLyrics(raw, state.lyrics.cleanEnding !== false).text : "";
-  }, [state.lyrics]);
+  const lyricsText = useMemo(() => sunoLyricsFor(state), [state]);
   const check = useMemo(
     () =>
       checkPrompt({
@@ -401,6 +400,8 @@ function ResultCard({
           {check.score ?? "–"} · {problems ? `${problems} to check on the Suno Sheet` : "Ready for Suno"}
         </span>
       </div>
+
+      <TakeTabs blend={state.blend} onBlend={(b) => b.result && onResult(b.result)} />
 
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-2">

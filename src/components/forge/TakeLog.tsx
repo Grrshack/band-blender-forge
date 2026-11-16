@@ -17,6 +17,7 @@ import {
   type DownloadEvent,
   type SunoPlan,
 } from "@/lib/download-budget";
+import { ratingDetail } from "@/lib/length-test";
 import { track } from "@/lib/stats";
 
 /** Log each generated take with a rating, see what changed between versions, and restore any prompt. */
@@ -29,7 +30,10 @@ export function TakeLog({
   onShareRecipe,
   defaultTitle = "",
   takeLabel,
+  lengthTest,
 }: {
+  /** Short vs Full style test: which length is open, so the rating is counted for it. */
+  lengthTest?: "short" | "full" | "" | undefined;
   /** Shares a kept take (5 stars, with a Suno link) to the community as a recipe. */
   onShareRecipe?: (take: Take, title: string) => Promise<void>;
   defaultTitle?: string;
@@ -74,7 +78,7 @@ export function TakeLog({
     if (linkBad) return;
     const noted = takeLabel ? `[${takeLabel} take] ${note}`.trim() : note;
     onTakes([...takes, newTake(style, exclude, rating, noted, new Date(), link)]);
-    track("take_logged", String(rating));
+    track("take_logged", ratingDetail(rating, lengthTest ?? ""));
     setNote("");
     setLink("");
   };
