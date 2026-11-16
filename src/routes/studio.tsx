@@ -28,6 +28,8 @@ import { SongPackCard } from "@/components/forge/SongPackButton";
 import { LabStudio } from "@/components/forge/LabStudio";
 import { SendToSuno } from "@/components/forge/SendToSuno";
 import { sunoPayloadFrom } from "@/lib/suno-payload";
+import { leadVocalTag } from "@/lib/suno";
+import { lengthOfActive } from "@/lib/length-test";
 import { activeTakeLabel } from "@/lib/alt-takes";
 import { dropAlt, looksLikeBrief } from "@/lib/prompt-craft";
 import { CHECKER_IMPORT_KEY, readCheckerImport, sectionsFromText } from "@/lib/prompt-checker";
@@ -480,6 +482,7 @@ function Index() {
                       value={state.lyrics}
                       onChange={(v) => patch("lyrics", v)}
                       blend={state.blend.result}
+                      lead={leadVocalTag(state.blend.result?.voiceTags, state.blend.sunoOptions?.vocalGender)}
                       sendButton={<SendToSuno payload={sunoPayloadFrom(state)} />}
                       renderTakeCheck={({ highlight }) => (
                         <TakeCheck
@@ -521,7 +524,8 @@ function Index() {
                           })
                         }
                         defaultTitle={state.blend.artists.filter((a) => a.trim()).slice(0, 2).join(" × ")}
-                        takeLabel={activeTakeLabel(state.blend.result)}
+                        takeLabel={activeTakeLabel(state.blend.result) ?? (lengthOfActive(state.blend.result) === "full" ? "Full" : undefined)}
+                        lengthTest={lengthOfActive(state.blend.result)}
                       />
                     </Panel>
                   )}
