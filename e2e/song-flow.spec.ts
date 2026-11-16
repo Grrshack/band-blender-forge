@@ -26,7 +26,8 @@ test("blend, write lyrics, export a song pack, reopen it", async ({ page }) => {
 
   // Suno Sheet: every box filled, nothing blocking.
   await clickMenu(page, "Suno Sheet");
-  await expect(page.locator("main").getByText("[Chorus]").first()).toBeAttached();
+  // Tags carry their cue inside them now: [Chorus | Belted | Full band].
+  await expect(page.locator("main").getByText(/\[Chorus(?: \||\])/).first()).toBeAttached();
   await expect(page.getByLabel("Pre-flight check")).not.toContainText("No title yet");
   await expect(page.getByLabel("Pre-flight check")).not.toContainText("No lyrics yet");
 

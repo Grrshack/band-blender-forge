@@ -70,8 +70,9 @@ test("make alternate takes, pick one, and send it with Suno's options", async ({
   };
   expect(await page.evaluate(() => (window as unknown as { __openSuno?: boolean }).__openSuno)).toBe(true);
   expect(sent.style).toContain("darker take");
-  expect(sent.takes?.map((t) => t.label)).toEqual(["Main", "Darker", "Bigger drop"]);
-  expect(sent.activeTake).toBe(1);
+  // "Short" is the Short vs Full length test's tab (length-test.ts), added to every blend while it runs.
+  expect(sent.takes?.map((t) => t.label)).toEqual(["Main", "Short", "Darker", "Bigger drop"]);
+  expect(sent.activeTake).toBe(2);
   expect(sent.vocalGender).toBe("female");
   expect(sent.weirdness).toBe(40);
   expect(sent.styleInfluence).toBe(85);

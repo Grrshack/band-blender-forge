@@ -45,7 +45,7 @@ test("quick song makes a Suno-ready song and carries it into the studio", async 
   await page.getByRole("button", { name: /Make my song/ }).click();
 
   await expect(page.getByTestId("quick-style")).toContainText("dark synthpop");
-  await expect(page.getByTestId("quick-lyrics")).toContainText("[Verse 1]");
+  await expect(page.getByTestId("quick-lyrics")).toContainText(/\[Verse 1(?: \||\])/);
   await expect(page.getByTestId("quick-lyrics")).toContainText("[End]");
   await expect(page.getByTestId("quick-title")).toHaveText("Neon Rain");
   await expect(page.getByRole("button", { name: /^Send to Suno/ })).toBeVisible();
@@ -76,7 +76,7 @@ test("a first visit lands on Quick song; the landing page's Describe box starts 
   await page.locator("#l-desc").fill("Dark, heavy trip-hop about insomnia, whispered verses");
   await page.getByRole("button", { name: "Build my song" }).click();
   await expect(page.getByTestId("quick-style")).toContainText("dark synthpop", { timeout: 20000 });
-  await expect(page.getByTestId("quick-lyrics")).toContainText("[Verse 1]");
+  await expect(page.getByTestId("quick-lyrics")).toContainText(/\[Verse 1(?: \||\])/);
 });
 
 test("the tester welcome's Let's go opens Quick song", async ({ page }) => {

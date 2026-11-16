@@ -88,6 +88,9 @@ export { expect };
 export async function openTool(page: Page, tab: string) {
   await page.goto(`/studio?tab=${tab}`);
   await page.waitForLoadState("networkidle");
+  // The studio marks the open tool once it has started in the browser; typing before that can be
+  // wiped when the page takes over from the server's first draft (slow on a cold test server).
+  await page.waitForFunction((t) => document.body.dataset["tab"] === t, tab, { timeout: 30000 });
   await expectToolShown(page);
 }
 
