@@ -36,6 +36,9 @@ const ACTION_NAMES: Record<string, string> = {
   recipe_shared: "Shared a recipe",
   take_logged: "Logged a take",
   guide_view: "Read a guide",
+  identity_made: "Made an artist card",
+  identity_card_png: "Downloaded an artist card",
+  starter_step: "Ticked a starter step",
 };
 
 const top = (m: Map<string, number>, n = 12): Count[] =>

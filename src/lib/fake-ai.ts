@@ -130,6 +130,19 @@ function answer(task: string, payload: Json): Json {
           vocalLine: "breathy alto, close and upfront",
         })),
       };
+    case "identity":
+      return {
+        name: "Glass Harbor",
+        tagline: "Test answer: synth ballads for the last train home.",
+        genre: "Dark synthpop",
+        story: "Test answer: two night-shift workers who write songs on a borrowed synth between trains.",
+        members: [
+          { name: "Mara Venn", role: "vocals" },
+          { name: "Theo Lark", role: "synths and drum machine" },
+        ],
+        look: "Test answer: rain-soaked coats, sodium streetlight, a station platform at 3 a.m.",
+        palette: ["#14122b", "#3a6ea5", "#f2b8c6"],
+      };
     case "dossier":
       return {
         titleOptions: ["Neon Rain", "Glass City", "Upside Down"],

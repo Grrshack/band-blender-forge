@@ -12,6 +12,7 @@ import { sunoLyricsFor } from "@/lib/suno-payload";
 import { buildZip, type ZipEntry } from "@/lib/zip";
 import { allTakes } from "@/lib/alt-takes";
 import { exportBrief, type DossierResult, type ForgeState } from "@/components/forge/types";
+import { identityMarkdown } from "@/lib/artist-identity";
 
 export const packSlug = (name: string) =>
   name
@@ -130,6 +131,7 @@ export function songPackFiles(name: string, state: ForgeState): Array<[string, s
   if (vocal) add("suno/vocal.txt", vocal, "the vocal description on its own");
   add("lyrics/timeline.txt", lyricTimeline(state), "rough start time of each section");
   add("lyrics/lyrics.lrc", state.release?.lrc ?? "", "synced lyrics for Spotify, Apple Music, Musixmatch");
+  if (state.identity) add("release/artist-identity.md", identityMarkdown(state.identity), "the act: name, story, lineup, look");
   if (state.dossiers[0]) add("release/release-kit.md", releaseKit(state.dossiers[0]), "bio, pitch, hashtags, metadata");
   let answers: Array<{ where: string; answer: string }> = [];
   try {

@@ -8,7 +8,9 @@ import { findBannedWords } from "@/lib/banned-words";
 import { fixCliches, findCliches, type LyricBlock } from "@/lib/cliches";
 import { clicheFixPrompt, polishPrompt, prompt } from "@/lib/forge-prompts";
 import { BRIEF_KEYS, cleanBriefParts, joinBrief, type BriefKey, type BriefParts } from "@/lib/prompt-craft";
+import { cleanIdentity, findIdentityLeaks, type Lineup } from "@/lib/artist-identity";
 import type { ArtistLookup, RecordingLookup } from "@/lib/musicbrainz";
+import { KNOWN_ARTISTS } from "@/lib/prompt-checker";
 import {
   SHORT_STYLE_MAX,
   SUNO_LIMITS,
@@ -340,6 +342,23 @@ async function runTask(task: string, payload: Json, deps: PipelineDeps): Promise
         }
       }
       return cleanAlbumPlan(result, names, count);
+    }
+
+    case "identity": {
+      const names = strings(payload["artists"]).slice(0, 3);
+      const lineup = (["solo", "duo", "band"].includes(String(payload["lineup"])) ? payload["lineup"] : "auto") as Lineup;
+      let result = await deps.ask(base);
+      const leaks = findIdentityLeaks(result, names, KNOWN_ARTISTS);
+      if (leaks.length) {
+        try {
+          result = await deps.ask(
+            `${base}\n\nYour previous answer used real names: ${leaks.map((l) => `"${l}"`).join(", ")}. Invent a new act with an original name, and use no real names anywhere. Rewrite the complete JSON.`,
+          );
+        } catch {
+          /* clean the original below */
+        }
+      }
+      return cleanIdentity(result, names, lineup, KNOWN_ARTISTS) as unknown as Json;
     }
 
     default:

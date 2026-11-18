@@ -29,7 +29,7 @@ export const GENRE_CARDS: GenreCard[] = [
     vocals: "Rap verses, melodic hook, ad-libs",
     styleTemplate: "hip-hop, trap, 90bpm, 808 bass, hard-hitting, melodic hook, contemporary",
     exclude: "live drums, acoustic instruments, orchestral",
-    notes: "Suno responds well to explicit BPM values here. '808 bass' is a specific token that reliably triggers the low sub-bass. If you want melodic trap add 'melodic' before 'trap' — it shifts toward a Post Malone-adjacent sound.",
+    notes: "Suno responds well to explicit BPM values here. '808 bass' is a specific token that reliably triggers the low sub-bass. If you want melodic trap add 'melodic' before 'trap' — it shifts toward a sung, guitar-and-808 sound.",
     exampleBlends: [
       { artists: ["Kendrick Lamar", "J. Cole"], description: "Introspective lyricism over jazzy boom-bap production" },
       { artists: ["Travis Scott", "Don Toliver"], description: "Psychedelic trap with heavy 808s and auto-tuned melodies" },
@@ -44,9 +44,9 @@ export const GENRE_CARDS: GenreCard[] = [
     feel: "Catchy, uplifting, radio-ready",
     instrumentation: "Synth leads, electronic drums, bass, polished production",
     vocals: "Powerful lead vocal, layered harmonies, memorable hook",
-    styleTemplate: "pop, upbeat, 120bpm, catchy hook, polished production, radio-ready, contemporary",
+    styleTemplate: "pop, upbeat, 120bpm, catchy hook, polished glossy mix, punchy drums, bright synths",
     exclude: "lo-fi, raw production, noise",
-    notes: "Suno's pop output defaults to a very clean, compressed sound. Add an era or influence if you want something specific: 'Max Martin-style pop' or '2010s electropop' steers it away from generic. 'Radio-ready' as a token specifically increases the polish and compression.",
+    notes: "Suno's pop output defaults to a very clean, compressed sound. Add an era or influence if you want something specific: '2000s Swedish pop production' or '2010s electropop' steers it away from generic. 'Radio-ready' as a token specifically increases the polish and compression.",
     exampleBlends: [
       { artists: ["Taylor Swift", "Olivia Rodrigo"], description: "Emotional pop-rock with confessional lyrics" },
       { artists: ["The Weeknd", "Dua Lipa"], description: "80s-influenced dark pop with heavy synth layers" },
@@ -266,6 +266,8 @@ export type UseCaseCard = {
   emoji: string;
   description: string;
   styleTemplate: string;
+  /** What to put in Suno's Exclude box (negatives don't work in the style box). */
+  exclude?: string;
   notes: string;
 };
 
@@ -275,7 +277,7 @@ export const USE_CASE_CARDS: UseCaseCard[] = [
     name: "Podcast Intro",
     emoji: "🎙️",
     description: "Short, punchy music that establishes mood and ends cleanly — 15–30 seconds, ideally with a strong ending hit.",
-    styleTemplate: "podcast intro, short, punchy, 120bpm, electronic, builds quickly, clean ending, professional",
+    styleTemplate: "podcast intro, short, punchy, 120bpm, electronic, builds quickly, clean ending, crisp mix",
     notes: "'Clean ending' and 'short' are surprisingly effective Suno tokens — they influence the structural decisions. 'Builds quickly' pushes toward a rapid intro rather than a slow build. If you need a specific duration, describe it in terms of structure: 'intro, verse, quick end' rather than trying to specify seconds.",
   },
   {
@@ -283,7 +285,8 @@ export const USE_CASE_CARDS: UseCaseCard[] = [
     name: "Background Music",
     emoji: "🎵",
     description: "Non-distracting music for working, studying, or content — no drops, no builds, steady energy throughout.",
-    styleTemplate: "background music, ambient, 95bpm, non-distracting, steady energy, no drops, focus, instrumental",
+    styleTemplate: "background music, ambient, 95bpm, non-distracting, steady energy, focus, instrumental",
+    exclude: "drops, builds, vocals",
     notes: "'No drops' is a key token that prevents Suno from adding the dynamic build-and-release typical of produced music. 'Non-distracting' and 'focus' together consistently push output toward simpler, more repetitive textures. 'Instrumental' is essential — any vocal hook will pull attention away from whatever the music is backing.",
   },
   {
@@ -315,7 +318,8 @@ export const USE_CASE_CARDS: UseCaseCard[] = [
     name: "Meditation / Ambient",
     emoji: "🧘",
     description: "Slow, textural music for meditation, breathwork, or sleep — no pulse, evolving slowly.",
-    styleTemplate: "meditation, ambient, beatless, 60bpm, soft pads, nature sounds, calm, healing, slow evolving, no drums",
+    styleTemplate: "meditation, ambient, beatless, 60bpm, soft pads, nature sounds, calm, healing, slow evolving",
+    exclude: "drums, percussion, vocals",
     notes: "'Beatless' is essential — any rhythmic element will interrupt a meditative state. 'Evolving' tells Suno to move through textures rather than repeat.",
   },
   {
@@ -339,7 +343,7 @@ export const USE_CASE_CARDS: UseCaseCard[] = [
     name: "Corporate / Commercial",
     emoji: "💼",
     description: "Clean, positive background for business presentations, ads, or explainer videos.",
-    styleTemplate: "corporate, uplifting, acoustic guitar, light percussion, positive, professional, 100bpm, clean production, optimistic",
+    styleTemplate: "corporate, uplifting, acoustic guitar, light percussion, positive, 100bpm, clean production, optimistic",
     notes: "The dreaded but useful category. 'Acoustic guitar' + 'optimistic' reliably produces the clean, inoffensive corporate sound. Add 'no lyrics' if you want purely instrumental.",
   },
   {
@@ -355,7 +359,8 @@ export const USE_CASE_CARDS: UseCaseCard[] = [
     name: "Sleep / ASMR",
     emoji: "😴",
     description: "Ultra-quiet, almost imperceptible textures — designed to fade into the background of sleep.",
-    styleTemplate: "sleep music, ambient, very quiet, soft, 50bpm, barely audible, gentle pads, no melody, no rhythm, soothing",
+    styleTemplate: "sleep music, ambient, very quiet, soft, 50bpm, barely audible, gentle pads, soothing",
+    exclude: "melody, drums, rhythm, vocals",
     notes: "'Very quiet' and 'barely audible' actually influence Suno's dynamic mix level. 'No melody' prevents hooks that would pull attention back — you want pure texture.",
   },
 ];

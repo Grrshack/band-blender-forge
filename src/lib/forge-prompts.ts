@@ -210,10 +210,33 @@ Slider meanings (0-100): energy = how intense and driving (low sparse, high rele
 era must be "" or exactly one of: pre-70s, 70s, 80s, 90s, 00s, 2010s, current.
 Return JSON exactly:
 {"reply":"one or two short sentences saying what you set","artist_1":"string","artist_2":"string or empty","artist_3":"string or empty","target_genre":"short genre or empty","era":"string","energy":0,"complexity":0,"brightness":0}`;
+    case "identity": {
+      const lineup =
+        payload["lineup"] === "solo"
+          ? "A solo artist: exactly one member."
+          : payload["lineup"] === "duo"
+            ? "A duo: exactly two members."
+            : payload["lineup"] === "band"
+              ? "A band of 3 to 5 members."
+              : "Pick whatever lineup fits the song: a solo artist, a duo or a band of up to 5.";
+      return `Invent an original fictional music act to release this song under: the act that would plausibly make exactly this sound.
+Input: ${p}
+${lineup}
+Rules:
+- The act's name and every member's name must be invented. Not a real artist, band, producer, label or song, and no names from "artists" in the input. Avoid names a well-known act already uses.
+- No real artist names anywhere, including the story and the look. Describe influences as sounds and places, not people.
+- Don't invent achievements: no awards, chart positions, stream or sales numbers, record deals, famous venues or festivals. A new act's story is about where the sound came from, not success.
+- Make it specific to this song's sound, mood and lyrics. Avoid clichés like "a sonic journey" or "pushing boundaries".
+- "look" is a visual direction for photos and artwork: clothing, colour, setting, lighting, props. No real people.
+- "palette" is 3 hex colours that fit the look; the first should be dark.
+Return JSON exactly:
+{"name":"act name, max 40 characters","tagline":"one line, max 90 characters","genre":"short genre line, max 40 characters","story":"2-3 sentences, max 480 characters, present tense","members":[{"name":"invented name","role":"e.g. vocals, synths"}],"look":"1-2 sentences, max 320 characters","palette":["#rrggbb","#rrggbb","#rrggbb"]}`;
+    }
     case "dossier":
       return `Build a release dossier for this finished song idea, ready for distribution and promotion.
 Input: ${p}
 Be specific to THIS song's sound and lyrics. No generic marketing filler. No real artist names in tags or art prompts.
+If the input has "act" (an invented artist identity), write the bio, pitch and hooks about that act and its story, using its name, and base the cover directions on its look. Don't invent achievements for it.
 Return JSON exactly:
 {"titleOptions":["3 alternative release titles, max 60 chars each"],
 "coverArtPrompt":"one detailed image-generation prompt for square album art: subject, palette, lighting, texture, typography-free",

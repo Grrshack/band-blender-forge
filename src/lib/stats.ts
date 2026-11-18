@@ -18,7 +18,10 @@ export type StatEvent =
   | "master_export"
   | "recipe_shared"
   | "take_logged"
-  | "guide_view";
+  | "guide_view"
+  | "identity_made"
+  | "identity_card_png"
+  | "starter_step";
 
 const SESSION_KEY = "blf.stats.session";
 const SEEN_KEY = "blf.stats.seen";

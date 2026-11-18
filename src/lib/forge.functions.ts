@@ -48,6 +48,7 @@ const InputSchema = z.object({
     "intent",
     "albumPlan",
     "alternates",
+    "identity",
   ]),
   routing: RoutingSchema.default("fast"),
   apiKey: z.string().trim().max(300).optional(),
