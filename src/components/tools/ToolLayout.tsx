@@ -55,6 +55,9 @@ export function ToolLayout({
           <Link to="/tools" className="text-muted-foreground hover:text-foreground">
             Free tools
           </Link>
+          <Link to="/genres" className="text-muted-foreground hover:text-foreground">
+            Genres
+          </Link>
           <Link to="/guides" className="text-muted-foreground hover:text-foreground">
             Guides
           </Link>
