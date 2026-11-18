@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertOctagon, AlertTriangle, ArrowRight, Lightbulb, Undo2, Wand2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CopyButton } from "@/components/forge/CopyButton";
 import { ToolLayout } from "@/components/tools/ToolLayout";
@@ -18,6 +18,7 @@ import {
   type CheckerInput,
   type CheckerIssue,
 } from "@/lib/prompt-checker";
+import { markStep } from "@/lib/starter-steps";
 import { track } from "@/lib/stats";
 import { SUNO_LIMITS, SUNO_VERSION_LABELS, type SunoVersion } from "@/lib/suno";
 import { cn } from "@/lib/utils";
@@ -90,6 +91,15 @@ function PromptChecker() {
   const report = useMemo(() => checkPrompt(input), [input]);
   const set = (patch: Partial<CheckerInput>) => setInput((prev) => ({ ...prev, ...patch }));
 
+  // A genre page links here with ?style=…&exclude=… so its prompt opens ready to check.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const style = (q.get("style") ?? "").slice(0, 2000);
+    if (!style.trim()) return;
+    setInput({ ...EMPTY, style, exclude: (q.get("exclude") ?? "").slice(0, 2000) });
+    track("start_choice", "checker_from_link", { once: true });
+  }, []);
+
   const fix = (f: CheckerFix) => {
     setHistory((h) => [...h.slice(-9), input]);
     setInput((prev) => applyFix(prev, f));
@@ -116,6 +126,13 @@ function PromptChecker() {
 
   const byBox = (box: CheckerBox) => report.issues.filter((i) => i.box === box);
   const has = input.style.trim().length > 0;
+  // A scored prompt ticks the "Check a prompt" starter step (after a short pause, so typing
+  // a first word doesn't count).
+  useEffect(() => {
+    if (!has) return;
+    const t = setTimeout(() => markStep("check"), 1500);
+    return () => clearTimeout(t);
+  }, [has]);
   const stops = report.issues.filter((i) => i.level === "stop").length;
   const warns = report.issues.filter((i) => i.level === "warn").length;
 

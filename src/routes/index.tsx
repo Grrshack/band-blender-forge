@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import landingCss from "../styles/landing.css?url";
 import { APP_NAME } from "@/lib/brand";
+import { GENRE_PAGES } from "@/lib/genre-pages";
 import { GUIDES } from "@/lib/guides";
 import { FREE_TOOLS } from "@/components/tools/ToolLayout";
 import { buildStudioHref, legacyStudioRedirect, type HandoffInput } from "@/lib/handoff";
@@ -112,6 +113,7 @@ function Landing() {
         <nav aria-label="Main">
           <a className="hide-sm" href="#how">How it works</a>
           <Link className="hide-sm" to="/tools">Free tools</Link>
+          <Link className="hide-sm" to="/genres">Genres</Link>
           <Link className="hide-sm" to="/guides">Guides</Link>
           <a href="#faq">FAQ</a>
           <a className="open" href="/studio">Open the studio</a>
@@ -345,6 +347,26 @@ function Landing() {
           </ul>
         </section>
 
+        <section id="genres" className="wrap guides" aria-label="Prompts by genre">
+          <h2 className="display">Suno prompts by genre</h2>
+          <ul>
+            {GENRE_PAGES.filter((p) => p.kind === "genre")
+              .slice(0, 6)
+              .map((p) => (
+                <li key={p.slug}>
+                  <Link to="/genres/$slug" params={{ slug: p.slug }}>
+                    {p.emoji} {p.name} prompts: tempo, instruments and vocals <span aria-hidden="true">→</span>
+                  </Link>
+                </li>
+              ))}
+            <li>
+              <Link to="/genres">
+                All {GENRE_PAGES.length} genres and uses <span aria-hidden="true">→</span>
+              </Link>
+            </li>
+          </ul>
+        </section>
+
         <section id="guides" className="wrap guides" aria-label="Guides">
           <h2 className="display">Guides</h2>
           <ul>
@@ -382,6 +404,7 @@ function Landing() {
           <nav aria-label="Footer">
             <a href="/studio">Studio</a>
             <Link to="/tools">Free tools</Link>
+            <Link to="/genres">Genres</Link>
             <Link to="/guides">Guides</Link>
             <a href="#faq">FAQ</a>
             <Link to="/privacy">Privacy</Link>

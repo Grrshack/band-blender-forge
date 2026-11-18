@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { decodeShare, tokenFromHash, type SharePayload } from "@/lib/share";
 import { track } from "@/lib/stats";
 import { LYRIC_QUICK_SYMPTOMS, mergeSymptoms } from "@/lib/symptoms";
+import { StarterSteps } from "@/components/forge/StarterSteps";
 import { TakeCheck } from "@/components/forge/TakeCheck";
 import { SongAnalyzer } from "@/components/forge/SongAnalyzer";
 import { SongCompare } from "@/components/forge/SongCompare";
@@ -440,6 +441,7 @@ function Index() {
 
                 <div className="min-w-0 flex-1">
                   <RackMobileNav tab={tab} onTab={setTab} />
+                  <StarterSteps onOpenTab={setTab} />
 
                   {/* Tab content — conditional rendering */}
                   {tab === "quick" && (
@@ -535,6 +537,10 @@ function Index() {
                       lyrics={state.lyrics}
                       value={state.dossiers}
                       onChange={(v) => patch("dossiers", v)}
+                      identity={state.identity}
+                      onIdentity={(v) => patch("identity", v)}
+                      artistName={state.release?.artist ?? ""}
+                      onArtistName={(artist) => patch("release", { ...state.release, artist })}
                     />
                   )}
                   {tab === "fix" && (
