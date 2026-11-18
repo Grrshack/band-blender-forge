@@ -9,6 +9,7 @@
   <url><loc>https://suno-blender.lovable.app/tools/suno-metatags</loc></url>
   <url><loc>https://suno-blender.lovable.app/tools/release-checklist</loc></url>
   <url><loc>https://suno-blender.lovable.app/guides</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres</loc></url>
   <url><loc>https://suno-blender.lovable.app/guides/send-to-suno-extension</loc></url>
   <url><loc>https://suno-blender.lovable.app/guides/fix-muffled-suno-song</loc></url>
   <url><loc>https://suno-blender.lovable.app/guides/suno-v6-style-prompt</loc></url>
@@ -17,4 +18,29 @@
   <url><loc>https://suno-blender.lovable.app/guides/suno-from-your-own-beat</loc></url>
   <url><loc>https://suno-blender.lovable.app/guides/sketch-in-gemini-finish-in-suno</loc></url>
   <url><loc>https://suno-blender.lovable.app/guides/suno-custom-models</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/hip-hop</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/pop</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/rock</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/electronic</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/rnb</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/jazz</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/country</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/metal</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/indie</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/classical</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/reggae</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/folk</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/blues</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/latin</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/podcast-intro</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/background-music</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/content-creator</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/lofi-study</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/workout</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/meditation</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/cinematic-trailer</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/gaming</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/corporate</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/wedding</loc></url>
+  <url><loc>https://suno-blender.lovable.app/genres/sleep</loc></url>
 </urlset>
