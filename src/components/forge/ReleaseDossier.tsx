@@ -2,12 +2,14 @@ import { ChevronDown, ChevronUp, Disc3, ExternalLink, Loader2, Rocket } from "lu
 import { useState } from "react";
 import { RELEASE_CHECKLIST as CHECKLIST } from "@/lib/release-checklist";
 
+import { ArtistCard } from "./ArtistCard";
 import { CopyButton } from "./CopyButton";
 import { ErrorNote, Panel, ReadoutField } from "./Field";
 import { useSettings } from "./settings";
 import { useForge } from "./use-forge";
 import type { BlendSlice, DossierResult, LyricSlice } from "./types";
 import { Button } from "@/components/ui/button";
+import type { ArtistIdentity } from "@/lib/artist-identity";
 import { composeSunoLyrics } from "@/lib/suno";
 
 function dossierText(d: DossierResult): string {
@@ -30,12 +32,21 @@ export function ReleaseDossier({
   lyrics,
   value,
   onChange,
+  identity,
+  onIdentity,
+  artistName = "",
+  onArtistName,
 }: {
   blend: BlendSlice;
   lyrics: LyricSlice;
   /** Most-recent-first list of dossier runs, capped at 3. */
   value: DossierResult[];
   onChange: (v: DossierResult[]) => void;
+  /** The invented act (Artist card). When missing, the Artist card panel isn't shown. */
+  identity?: ArtistIdentity | undefined;
+  onIdentity?: (v: ArtistIdentity) => void;
+  artistName?: string;
+  onArtistName?: (name: string) => void;
 }) {
   const forge = useForge();
   const { apiKey, routing } = useSettings();
@@ -67,6 +78,17 @@ export function ReleaseDossier({
             style: r?.styleTag ?? lyrics.manualStyle,
             vocals: r?.vocals ?? "",
             lyrics: lyricText.slice(0, 4000),
+            ...(identity
+              ? {
+                  act: {
+                    name: identity.name,
+                    tagline: identity.tagline,
+                    story: identity.story,
+                    members: identity.members,
+                    look: identity.look,
+                  },
+                }
+              : {}),
           },
         },
       });
@@ -84,6 +106,16 @@ export function ReleaseDossier({
 
   return (
     <div className="space-y-5">
+    {onIdentity ? (
+      <ArtistCard
+        blend={blend}
+        lyrics={lyrics}
+        value={identity}
+        onChange={onIdentity}
+        artistName={artistName}
+        onArtistName={(n) => onArtistName?.(n)}
+      />
+    ) : null}
     <Panel
       title="Bio & Pitch"
       subtitle="Cover art prompts, streaming metadata, pitch copy and social hooks — one click, one AI call."
@@ -102,7 +134,7 @@ export function ReleaseDossier({
         </Button>
         <p className="text-xs text-muted-foreground">
           {ready
-            ? `Uses your blend${lyricText.trim() ? " and lyrics" : ""}${lyrics.title ? ` for "${lyrics.title}"` : ""}.`
+            ? `Uses your blend${lyricText.trim() ? " and lyrics" : ""}${lyrics.title ? ` for "${lyrics.title}"` : ""}${identity ? `, written about ${identity.name}` : ""}.`
             : "Run a blend or write lyrics first — the dossier is built from them."}
         </p>
       </div>

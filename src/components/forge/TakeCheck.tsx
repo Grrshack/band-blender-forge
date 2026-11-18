@@ -12,6 +12,7 @@ import { track } from "@/lib/stats";
 import { QUICK_SYMPTOMS } from "@/lib/symptoms";
 import { newTake, type Take } from "@/lib/takes";
 import { cn } from "@/lib/utils";
+import { markStep } from "@/lib/starter-steps";
 
 type Verdict = null | "up" | "down";
 
@@ -61,6 +62,7 @@ export function TakeCheck({
     if (logged || !style.trim()) return;
     onTakes([...takes, newTake(style, exclude, rating, label ? `[${label} take] ${note}`.trim() : note)]);
     track("take_logged", ratingDetail(rating, length));
+    markStep("rate");
     setLogged(true);
   };
 

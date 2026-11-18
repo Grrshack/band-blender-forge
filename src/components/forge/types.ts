@@ -1,4 +1,5 @@
 import { composeSunoLyrics, normalizeSunoVersion, type SunoVersion, vocalString } from "@/lib/suno";
+import { readIdentity, type ArtistIdentity } from "@/lib/artist-identity";
 import type { Take } from "@/lib/takes";
 import type { LyricVoice, RhymeStyle } from "@/lib/rhyme";
 import { normalizePromptFormat, type BriefParts, type PromptFormat } from "@/lib/prompt-craft";
@@ -247,6 +248,8 @@ export type ForgeState = {
   dossiers: DossierResult[];
   /** Release prep (checklist, disclosure, cover, synced lyrics). */
   release?: ReleaseSlice;
+  /** The invented act this song is released under (Bio & Pitch → Artist card). */
+  identity?: ArtistIdentity;
 };
 
 export const emptyState = (): ForgeState => ({
@@ -286,7 +289,8 @@ export function hasContent(s: ForgeState): boolean {
     s.fix.symptoms.length ||
     s.fix.result ||
     s.takes.length ||
-    s.dossiers.length > 0,
+    s.dossiers.length > 0 ||
+    s.identity,
   );
 }
 
@@ -323,6 +327,7 @@ export function mergeState(raw: unknown): ForgeState {
     master: { ...base.master, ...master },
     takes: Array.isArray(s["takes"]) ? s["takes"] : base.takes,
     ...(s["release"] && typeof s["release"] === "object" ? { release: s["release"] as ReleaseSlice } : {}),
+    ...(readIdentity(s["identity"]) ? { identity: readIdentity(s["identity"])! } : {}),
     // Accept the new array shape or silently migrate a legacy single-dossier save.
     dossiers: Array.isArray(s["dossiers"])
       ? (s["dossiers"] as DossierResult[])

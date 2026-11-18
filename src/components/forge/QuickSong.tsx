@@ -25,6 +25,7 @@ import { track } from "@/lib/stats";
 import { vocalString } from "@/lib/suno";
 import { sunoLyricsFor, sunoPayloadFrom } from "@/lib/suno-payload";
 import { cn } from "@/lib/utils";
+import { markStep } from "@/lib/starter-steps";
 
 export type QuickVocal = "any" | "female" | "male" | "instrumental";
 
@@ -174,6 +175,7 @@ export function QuickSong({ state, onState, onGoTab, autoStart, onAutoStartDone 
       };
       // A new song in the song menu, so whatever was open isn't overwritten.
       window.dispatchEvent(new CustomEvent("bb:new-song", { detail: { state: next, name: out.title || "Quick song" } }));
+      markStep("quick");
       setView("result");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
@@ -408,7 +410,7 @@ function ResultCard({
           <p className="text-sm font-medium">Style</p>
           <div className="flex items-center gap-2">
             <StyleFormatSwitch result={r} sunoVersion={state.blend.sunoVersion} onResult={onResult} compact />
-            <CopyButton value={r.styleTag} label="Copy" />
+            <CopyButton value={r.styleTag} label="Copy" onCopied={() => markStep("send")} />
           </div>
         </div>
         <p className="whitespace-pre-wrap rounded-lg border border-border bg-background/60 p-3 text-sm" data-testid="quick-style">
@@ -429,7 +431,7 @@ function ResultCard({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">{state.lyrics.tagsOnly ? "Structure" : "Lyrics"}</p>
-            <CopyButton value={lyricsText} label="Copy" />
+            <CopyButton value={lyricsText} label="Copy" onCopied={() => markStep("send")} />
           </div>
           <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background/60 p-3 font-mono text-xs leading-relaxed" data-testid="quick-lyrics">
             {lyricsText}

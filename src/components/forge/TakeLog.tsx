@@ -19,6 +19,7 @@ import {
 } from "@/lib/download-budget";
 import { ratingDetail } from "@/lib/length-test";
 import { track } from "@/lib/stats";
+import { markStep } from "@/lib/starter-steps";
 
 /** Log each generated take with a rating, see what changed between versions, and restore any prompt. */
 export function TakeLog({
@@ -79,6 +80,7 @@ export function TakeLog({
     const noted = takeLabel ? `[${takeLabel} take] ${note}`.trim() : note;
     onTakes([...takes, newTake(style, exclude, rating, noted, new Date(), link)]);
     track("take_logged", ratingDetail(rating, lengthTest ?? ""));
+    markStep("rate");
     setNote("");
     setLink("");
   };

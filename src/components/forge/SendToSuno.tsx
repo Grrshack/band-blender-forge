@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EXTENSION_GUIDE_PATH, EXTENSION_STORE_URL } from "@/lib/brand";
 import { versionAtLeast } from "@/lib/suno-payload";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { markStep } from "@/lib/starter-steps";
 
 export type SunoPayload = {
   title: string;
@@ -87,6 +88,7 @@ export function SendToSuno({ payload, showStatus = false }: { payload: SunoPaylo
       window.open("https://suno.com/create", "_blank", "noopener");
     }
     setSent(true);
+    markStep("send");
     setTimeout(() => setSent(false), 4000);
   };
 

@@ -21,6 +21,7 @@ const TASK_LABELS: Record<string, string> = {
   refine: "Refine Blend",
   albumPlan: "Album Producer",
   alternates: "Alternate takes",
+  identity: "Artist card",
 };
 
 const TASK_COLORS: Record<string, string> = {
@@ -34,6 +35,7 @@ const TASK_COLORS: Record<string, string> = {
   regenLine: "bg-yellow-500",
   regenSection: "bg-teal-500",
   dossier: "bg-cyan-500",
+  identity: "bg-pink-500",
   masterSuggest: "bg-purple-500",
   refine: "bg-indigo-500",
 };

@@ -39,6 +39,7 @@ import {
   type Clause,
 } from "@/lib/prompt-craft";
 import { cn } from "@/lib/utils";
+import { markStep } from "@/lib/starter-steps";
 
 function Counter({ n, max }: { n: number; max: number }) {
   const tone =
@@ -217,7 +218,7 @@ export function SunoSheet({
       subtitle="Check, then paste into Suno. Every box is ready to copy."
       action={
         <div className="flex flex-wrap justify-end gap-1.5">
-          <CopyButton value={everything} label="Copy all" />
+          <CopyButton value={everything} label="Copy all" onCopied={() => markStep("send")} />
           {engine === "suno" ? (
             <>
               <SendToSuno
